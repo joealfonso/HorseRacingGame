@@ -287,13 +287,19 @@ describe('V2: track geometry sourcing', () => {
 });
 
 describe('V1: no real track, race or venue name in src/sim/', () => {
-  const files = import.meta.glob('../sim/**/*.ts', { query: '?raw', import: 'default', eager: true }) as Record<string, string>;
+  // Source files and the frozen golden data next to the sim tests.
+  const files = {
+    ...(import.meta.glob('../sim/**/*.ts', { query: '?raw', import: 'default', eager: true }) as Record<string, string>),
+    ...(import.meta.glob('../sim/**/*.json', { query: '?raw', import: 'default', eager: true }) as Record<string, string>),
+  };
 
   const names = [trackJson.name, raceJson.track, raceJson.name, trackJson.location.split(',')[0]];
 
   it('reads at least one real source file, and some real names', () => {
     expect(Object.keys(files).length).toBeGreaterThan(0);
     expect(Object.keys(files).some((f) => f.endsWith('rng.ts'))).toBe(true);
+    expect(Object.keys(files).some((f) => f.endsWith('golden/inputs.json'))).toBe(true);
+    expect(Object.keys(files).some((f) => /golden\/seed-\d+\.json$/.test(f))).toBe(true);
     expect(names.every((n) => n.trim().length >= 4)).toBe(true);
   });
 
@@ -344,5 +350,108 @@ describe('V6: the shipped card and race', () => {
       'juvenile', 'distaff', 'turf sprint', 'dirt mile', 'filly'];
     const name = race().name.toLowerCase();
     for (const r of real) expect(name).not.toContain(r);
+  });
+});
+
+describe('V4: rules added in review', () => {
+  const raceFile = 'src/data/race.json';
+  const tuningFile = 'src/data/tuning.json';
+
+  describe('the race distance is a whole number of furlongs from 5 to 12', () => {
+    it.each([6.5, 4, 13, 4.99, 12.01, 0, -10, 8.5])('%s furlongs is rejected', (d) => {
+      const raw = fresh();
+      raw.race.distanceFurlongs = d;
+      expectRejected(raw, raceFile, 'distanceFurlongs');
+    });
+
+    it.each([5, 12, 6, 8, 10, 11])('%s furlongs is accepted (the shipped tuning has a pace par for it)', (d) => {
+      const raw = fresh();
+      raw.race.distanceFurlongs = d;
+      expect(() => validateData(raw)).not.toThrow();
+    });
+
+    it('a distance given as text is rejected too', () => {
+      const raw = fresh();
+      raw.race.distanceFurlongs = '10';
+      expectRejected(raw, raceFile, 'distanceFurlongs');
+    });
+  });
+
+  describe('tuning lines that make the model meaningless are rejected at their path', () => {
+    const lo = range.min;
+    const hi = range.max;
+    // A line { base, perPoint } that is exactly `atStat` at stat `stat` and rises by `slope` per point.
+    const line = (stat: number, atStat: number, slope: number) => ({ base: atStat - slope * stat, perPoint: slope });
+
+    describe.each(['enduranceSeconds', 'cruiseFeetPerSecond', 'kickAccelFeetPerSecondSquared'])('model.%s', (key) => {
+      const path = `model.${key}.value`;
+      const set = (value: { base: number; perPoint: number }) => {
+        const raw = fresh();
+        raw.tuning.model[key].value = value;
+        return raw;
+      };
+
+      it('is rejected when it is 0 at the bottom of the stat range', () => {
+        expectRejected(set(line(lo, 0, 0.5)), tuningFile, path);
+      });
+      it('is rejected when it is below 0 at the bottom of the stat range', () => {
+        expectRejected(set(line(lo, -3, 0.5)), tuningFile, path);
+      });
+      it('is rejected when it is 0 at the top of the stat range', () => {
+        expectRejected(set(line(hi, 0, -0.5)), tuningFile, path);
+      });
+      it('is rejected when it is below 0 at the top of the stat range', () => {
+        expectRejected(set(line(hi, -3, -0.5)), tuningFile, path);
+      });
+      it('is accepted when it is just above 0 at each end', () => {
+        expect(() => validateData(set(line(lo, 0.001, 0.5)))).not.toThrow();
+        expect(() => validateData(set(line(hi, 0.001, -0.5)))).not.toThrow();
+      });
+      it('is accepted when it is above 0 across the range (the shipped line)', () => {
+        expect(() => validateData(fresh())).not.toThrow();
+      });
+    });
+
+    describe('model.kickBoostShare', () => {
+      const path = 'model.kickBoostShare.value';
+      const set = (value: { base: number; perPoint: number }) => {
+        const raw = fresh();
+        raw.tuning.model.kickBoostShare.value = value;
+        return raw;
+      };
+
+      it('is rejected when it is 0 at the top of the stat range', () => {
+        expectRejected(set(line(hi, 0, 0.002)), tuningFile, path);
+      });
+      it('is rejected when it is below 0 at the top of the stat range', () => {
+        expectRejected(set(line(hi, -0.05, 0.002)), tuningFile, path);
+      });
+      it('is accepted when it is just above 0 at the top of the stat range', () => {
+        expect(() => validateData(set(line(hi, 0.001, 0.002)))).not.toThrow();
+      });
+      it('may be below 0 at the bottom of the stat range (the sim floors it)', () => {
+        expect(() => validateData(set(line(lo, -0.2, 0.003)))).not.toThrow();
+        // The shipped line is itself negative at the bottom and accepted.
+        const shippedLine = fresh().tuning.model.kickBoostShare.value;
+        expect(shippedLine.base + shippedLine.perPoint * lo).toBeLessThan(0);
+        expect(() => validateData(fresh())).not.toThrow();
+      });
+      it('is only checked at the top: a line that is 0 at the bottom and rises is accepted', () => {
+        expect(() => validateData(set(line(lo, 0, 0.002)))).not.toThrow();
+      });
+    });
+
+    it('the range the checks use is the stat range in tuning, not 1 to 100', () => {
+      const raw = fresh();
+      raw.tuning.statRange.value = { min: 1, max: 50 };
+      // Shipped endurance is 45 + 1.2 * stat: fine on 1 to 50. Make it 0 at stat 50 only.
+      raw.tuning.model.enduranceSeconds.value = line(50, 0, -0.5);
+      raw.card.horses.forEach((h: any) => { h.stats = { speed: 40, stamina: 40, kick: 40 }; }); // eslint-disable-line @typescript-eslint/no-explicit-any
+      expectRejected(raw, tuningFile, 'model.enduranceSeconds.value');
+      // The same line passes when the range ends at 49, where it is still above 0.
+      const ok = structuredClone(raw);
+      ok.tuning.statRange.value = { min: 1, max: 49 };
+      expect(() => validateData(ok)).not.toThrow();
+    });
   });
 });

@@ -8,8 +8,8 @@
       "style": "frontRunner",
       "stats": {
         "speed": 86,
-        "stamina": 60,
-        "kick": 45
+        "stamina": 68,
+        "kick": 60
       },
       "instructions": {
         "early": "default",
@@ -25,8 +25,8 @@
       "style": "frontRunner",
       "stats": {
         "speed": 80,
-        "stamina": 68,
-        "kick": 52
+        "stamina": 72,
+        "kick": 64
       },
       "instructions": {
         "early": "default",
@@ -43,7 +43,7 @@
       "stats": {
         "speed": 72,
         "stamina": 78,
-        "kick": 64
+        "kick": 66
       },
       "instructions": {
         "early": "default",
@@ -60,7 +60,7 @@
       "stats": {
         "speed": 76,
         "stamina": 70,
-        "kick": 70
+        "kick": 66
       },
       "instructions": {
         "early": "default",
@@ -77,7 +77,7 @@
       "stats": {
         "speed": 68,
         "stamina": 82,
-        "kick": 60
+        "kick": 64
       },
       "instructions": {
         "early": "default",
@@ -94,7 +94,7 @@
       "stats": {
         "speed": 62,
         "stamina": 74,
-        "kick": 88
+        "kick": 74
       },
       "instructions": {
         "early": "default",
@@ -110,8 +110,8 @@
       "style": "closer",
       "stats": {
         "speed": 66,
-        "stamina": 66,
-        "kick": 82
+        "stamina": 72,
+        "kick": 72
       },
       "instructions": {
         "early": "default",
@@ -128,7 +128,7 @@
       "stats": {
         "speed": 58,
         "stamina": 84,
-        "kick": 76
+        "kick": 70
       },
       "instructions": {
         "early": "default",

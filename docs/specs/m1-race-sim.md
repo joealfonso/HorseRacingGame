@@ -93,7 +93,7 @@ M1 sim ships in six steps. Each leaves the repo green and can merge on its own.
   - a **wire frame**: every horse's distance and lane at the exact moment the winner reaches the wire, for the photo-finish still;
   - each horse's exact finish moment;
   - the **events list** (empty until M1.5): type, horse, other horse for a bump, and the race time it happened.
-- **O9. Replay sanity, tested over 500 seeds (starting guess):** each horse's distance never goes down between samples; no horse moves faster than a ceiling from tuning between two samples; lanes stay within bounds; the replay finish moments and the result's times agree to the hundredth; the order at the wire frame matches the finish order.
+- **O9. Replay sanity, tested over 500 seeds (starting guess):** each horse's distance never goes down between samples; no horse moves faster than a ceiling from tuning between two samples; lanes stay within bounds; the replay finish moments and the result's times agree to the hundredth; in the wire frame no horse is ahead of the winner. The rest of the wire frame's order does not have to match the finish order, because horses behind the winner can still pass each other before they reach the wire (decided 2026-11-12 after the first build showed this in 28 percent of races).
 
 **Behaviors.** Each runs over many seeds in `npm test` with a fixed seed range, so results do not flake. Starting guess: 500 seeds per check, with a tolerance in tuning. If M1.6 is approved, the same checks also run at 10,000 seeds in the batch runner.
 
@@ -189,7 +189,13 @@ Decided 2026-11-11 by the lead session. Joseph delegated all of them ("You decid
 9. **Playback speed:** accepted. The race clock reads real time and the renderer plays it back faster. The designer picks the speed.
 10. **Browser determinism:** not proven in M1. Node on the Mac and on CI Linux is the bar. Revisit when the debug panel can force a seed in the browser.
 11. **Instruction slots:** the three slots as specced. The on-screen word for "no instruction" is the designer's call.
-12. **Goings:** the shipped race is fast. The model still reads going from data and applies it to times only (B8).
+12. **Goings:** the shipped race is fast. The model still reads going from data. Going slows every horse by the same share, so over many seeds it favors no horse (B8). The same seed on a different going is a different race, and that is fine.
+
+Added 2026-11-12 after the first build and its tests:
+
+- **Seed counts.** Post and style fairness (B7, F2, F3) need 2,000 seeds in `npm test`, because one post's share moves about 1.5 points at 500 seeds and the band is 2.5. The other behavior checks stay at 500.
+- **B7 and front-runners.** The paired post test holds for stalkers and closers. For front-runners it does not yet, see "Known gap" in docs/DECISIONS.md. It is retested in M1.4 with "stay inside".
+- **V1 covers every file under `src/sim/`,** including test data, so the golden inputs use a made-up track and race name.
 13. **Length of a horse:** stays 8 feet, a starting guess in tuning.
 
 ## Open questions (answered above)

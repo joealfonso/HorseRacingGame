@@ -43,6 +43,8 @@ Two or three lines for each non-obvious choice.
 
 **Distances in feet.** Track data is in feet. The replay distance unit is the M1.3 engineer's call.
 
+**Known limit: whole furlongs only, 5 to 12.** Validation rejects any other race distance, naming `distanceFurlongs` in race.json. Pace pars and the furlong calls are laid out per whole furlong, and B2 only asks for 5 to 12. Real races run at half furlongs too (8.5, 9.5); that arrives with the calendar in M5.
+
 ## M1 sim
 
 **sfc32 seeded by cyrb128.** Each stream hashes the text `seed/name` or `seed/name/subKey` with cyrb128 (bryc's 128-bit string hash) into the four words of an sfc32 state (Chris Doty-Humphrey's generator from PractRand). Both use only 32-bit integer math and Math.imul, so every engine gives the same numbers, and a stream depends on nothing but its own key. A float is the output divided by 2^32, which is exact.
@@ -52,3 +54,29 @@ Two or three lines for each non-obvious choice.
 **Sim tests are exempt from the determinism lint bans.** Files ending `.test.ts` under `src/sim/` may use Date, performance, Math.random and the inexact Math functions, because they are not part of a race and the T3 timing checks need a clock. They still get the Phaser ban.
 
 **Known limit until M5.** Only dirt goings have time effects in tuning. A turf or synthetic race passes the surface and going check, then fails with a "goingTimeAddedPercent.<going> missing" message from tuning. That message is misleading, and turf support is not built.
+
+**Result numbers are whole numbers in fixed units (the renderer contract).** Times in hundredths of a second, distances in hundredths of a foot, lanes in hundredths of a lane (0 is the rail), lengths in thousandths of a length. The units are also written into every result's `units` field. Floats would serialize the same on every engine too (ECMAScript fixes number-to-text exactly, and + - * / and sqrt are exactly rounded), so the real cross-engine risk is the banned Math functions. The whole numbers are for a short, readable result, a unit the renderer can rely on, and so a margin's label is worked out from the same rounded number that is shown.
+
+**Replay distance is progress along the rail.** Every horse's wire is at the race distance, whatever lane it ran in. The renderer places a horse with distance plus lane. Ground lost by running wide shows as slower progress, and each horse's total is in `extraGround`. `replay.course` lists the straights and turns in the same unit so the renderer does not have to lay out the course again.
+
+**One sim tick per replay sample.** The model steps at `replayStepSeconds`, so changing that value changes results. Finish moments, margins and calls are found by straight-line interpolation between ticks, the same way everywhere, which keeps them consistent with the replay.
+
+**Every random number is drawn before the race starts.** Four streams, each keyed by horse id, each a fixed count of draws: `form` (two bell-shaped numbers, speed and reserve), `gateBreak` (one), `kick` (two: when the rider asks, how much it has), `rhythm` (one per furlong of the race). Nothing in the race decides whether to draw, so a later system, an instruction or a ninth horse cannot shift anyone's numbers. Add new randomness on a new stream, or at the end of an existing stream's fixed list.
+
+**Order never comes from the input.** Horses are sorted by post before anything happens, ties in position or finish time go to the lower post, and the echoed inputs have their keys sorted. The field can be listed in any order with the same bytes out.
+
+**Charts follow racing convention.** Fractions are named from the gate (the quarter, the half), poles from the wire (the quarter pole is 2 furlongs out). Calls are taken as the leader reaches each pole. A margin is measured when the horse one place ahead reaches the wire, and beaten lengths are the sum of the margins above.
+
+**Turns are half circles.** Radius is `turnFeet / pi`, so a horse one lane out on a turn runs `pi * laneWidthFeet` more per turn. `laneWidthFeet` is 1.5, a guess picked so 8 identical horses stay within the post fairness tolerance; at 2 feet the inside posts won about 2.5 points too often. `runUpFeet` is not used by the model yet (it is 0).
+
+**Pace pars were moved to fit the sim.** The 10 furlong fast par was 46/48 seconds, and almost every sim race read slow against it. All pars for 5 to 12 furlongs are now near the 25th and 75th percentile of the leader's half on the shipped card, scaled for the other goings. The sim's halves run one to two seconds slower than real charts, because its clock starts at a standing gate and its horses slow less through a race than real ones. Final times are close to real.
+
+**Known limit: kick below about 41 buys no late boost.** The kick boost line is floored at zero, and on the current tuning it reaches zero near kick 40. Every horse from kick 1 to 40 gets the same boost of nothing, and only its acceleration differs. No shipped horse is in that range (the card runs 60 to 74). M2 has to settle this before it generates low-stat horses.
+
+**Known gap: a wide front-runner is not slower (B7).** A front-runner breaking from post 8 covers about 4.6 feet more than the same horse from post 1 and finishes no worse (500 and 2,000 seed paired runs). Stalkers and closers do pay for the ground. The likely cause is the pressure a rail leader gets from company, which is real racing, but it has not been traced. The test is marked as an expected failure so it cannot be forgotten. M1.4's "stay inside" gives a clean lane lever to test it properly, and the model gets fixed there if the gap is still present.
+
+**Going changes the race, not only the clock.** Going is a speed divisor, so the same seed on sloppy is a different race from the same seed on fast (a different winner about 28 percent of the time). Over many seeds no horse is favored, which is what B8 asks for.
+
+**Known limit: early fractions run slow.** The sim's half-mile times are 1 to 2 seconds slower than real charts, because the clock starts from a standing gate (run-up is 0) and its horses slow less through a race than real ones do. Final times are realistic. Fixing it means modeling the run-up and a steeper late fade, a tuning task for after the batch runner exists.
+
+**Kick is steep and floored at zero.** Each kick point adds 0.22 percent to the gear a horse shifts into when asked, so a +10 kick edge is worth about as much as +10 speed or stamina. A kick-70 horse still gets 6.5 percent. The line goes negative below kick 41, and the sim floors it at zero, so a horse with very little kick simply has no extra gear instead of slowing when asked.

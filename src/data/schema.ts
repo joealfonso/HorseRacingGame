@@ -19,6 +19,10 @@ export const INSTRUCTIONS = {
   path: ['default', 'stayInside'],
 } as const;
 
+// The distances the M1 model runs: whole furlongs, so every pace par and furlong pole
+// lines up. Half furlongs arrive with the calendar in M5.
+export const MIN_FURLONGS = 5;
+export const MAX_FURLONGS = 12;
 export const MIN_FIELD = 2;
 export const MAX_FIELD = 20;
 export const MAX_NAME_LENGTH = 18;
@@ -70,7 +74,9 @@ export const trackSchema = z.strictObject({
 export const raceSchema = z.strictObject({
   name: text,
   track: text,
-  distanceFurlongs: z.number().positive(),
+  distanceFurlongs: z.int({ error: `must be a whole number of furlongs from ${MIN_FURLONGS} to ${MAX_FURLONGS}` })
+    .min(MIN_FURLONGS, { error: `must be at least ${MIN_FURLONGS} furlongs` })
+    .max(MAX_FURLONGS, { error: `must be at most ${MAX_FURLONGS} furlongs` }),
   surface: z.enum(SURFACES),
   going: z.string(),
   trackBias: z.strictObject({
@@ -133,6 +139,69 @@ export function cardSchema(statMin: number, statMax: number) {
 }
 
 const luckRate = marked(share);
+const byStyle = (n: z.ZodNumber) => z.strictObject({ frontRunner: n, stalker: n, closer: n });
+const linear = z.strictObject({ base: z.number(), perPoint: z.number() });
+
+// The numbers that shape a race in src/sim/. Units are in the key names.
+const modelSchema = z.strictObject({
+  // Cruising speed is base + perPoint * speed stat, before distance, going and form.
+  cruiseFeetPerSecond: marked(linear),
+  // How much faster horses go per furlong shorter than the reference distance.
+  distanceSpeed: marked(z.strictObject({ referenceFurlongs: positive, sharePerFurlong: z.number().min(0) })),
+  // Seconds a horse can hold its cruising speed before its reserve is empty: base + perPoint * stamina.
+  enduranceSeconds: marked(linear),
+  // Below aerobicShare of cruise the reserve does not drain. Above it, it drains at the excess
+  // (as a share of the gap from aerobicShare to cruise) to drainPower, so a little extra pace costs a lot.
+  aerobicShare: marked(z.number().min(0).max(0.99)),
+  drainPower: marked(z.int().min(1).max(8)),
+  // Below this share of the reserve a horse tires, down to emptySpeedShare of cruise when it is empty.
+  tireBelowReserveShare: marked(share),
+  emptySpeedShare: marked(share),
+  // Kick: extra speed when asked, as a share of cruise, and how fast it builds. Once asked,
+  // the reserve drains against the kicked speed instead of cruise.
+  kickBoostShare: marked(linear),
+  kickAccelFeetPerSecondSquared: marked(linear),
+  // Feet before the wire where the rider asks, by style.
+  askFeetToGo: marked(byStyle(positive)),
+  // Pre-kick effort, a share of cruise, by style.
+  earlyEffort: marked(byStyle(positive)),
+  // A front-runner within pressLengths of the leader presses at its effort plus duelEffort.
+  // A leader is pushed up to that same effort by company at its side, easing to
+  // loneLeadEffort as it gets loneLeadLengths clear.
+  frontRunnerPace: marked(z.strictObject({
+    pressLengths: positive, loneLeadLengths: positive, duelEffort: z.number().min(0), loneLeadEffort: positive,
+  })),
+  // Stalkers try to sit between min and max lengths off the leader, closers no further back
+  // than closerMaxLengths. Outside that they add or drop effortStep.
+  positionPace: marked(z.strictObject({
+    stalkerMinLengths: z.number().min(0), stalkerMaxLengths: positive, closerMaxLengths: positive, effortStep: z.number().min(0),
+  })),
+  // Random spread, each the most it can move a number either way, as a share.
+  // Today's form moves cruising speed and the reserve, each by its own draw.
+  formSpeedShare: marked(share),
+  formReserveShare: marked(share),
+  rhythmSpreadShare: marked(share),
+  kickSpreadShare: marked(share),
+  askSpreadFeet: marked(z.number().min(0)),
+  gateBreakMaxSeconds: marked(z.number().min(0)),
+  // Acceleration limits. Settling is a mid-race speed change that is not the kick.
+  startAccelFeetPerSecondSquared: marked(positive),
+  settleAccelFeetPerSecondSquared: marked(positive),
+  fadeFeetPerSecondSquared: marked(positive),
+  gallopOutFeetPerSecondSquared: marked(positive),
+  // For traffic a lane is one horse wide. For ground, each lane out from the rail adds
+  // laneWidthFeet to a turn's radius.
+  laneWidthFeet: marked(positive),
+  lanesPerSecond: marked(positive),
+  // A horse alongside within clearLengths stops a move across. A horse ahead within
+  // passLookLengths that is more than passMarginShare slower than this one wants to go
+  // makes it go around, and one within blockLengths holds it up.
+  traffic: marked(z.strictObject({
+    clearLengths: positive, passLookLengths: positive, blockLengths: positive, passMarginShare: z.number().min(0),
+  })),
+  // How much a horse caught wide eases, as a share of its speed, to drop in behind.
+  tuckInEffortDrop: marked(share),
+});
 const goingEffects = Object.fromEntries(dirtGoings.map((g) => [g, marked(z.number().min(0))])) as
   Record<(typeof dirtGoings)[number], ReturnType<typeof marked<z.ZodNumber>>>;
 
@@ -155,6 +224,7 @@ export const tuningSchema = z.strictObject({
   goingTimeAddedPercent: z.strictObject(goingEffects),
   speedCeilingFeetPerSecond: marked(positive),
   laneMax: marked(z.int().positive()),
+  model: modelSchema,
   luck: z.strictObject({
     blockedPerHorse: luckRate,
     steadiedPerHorse: luckRate,
@@ -173,6 +243,29 @@ export const tuningSchema = z.strictObject({
     leaderAtEighthLosesPercentBand: marked(percentBand),
     cardWinSharePercentBand: marked(percentBand),
   }),
+}).superRefine((t, ctx) => {
+  // The stat lines are checked where they are used, at both ends of the stat range,
+  // not by bounding base and slope: kickBoostShare has a negative base on purpose.
+  const { min, max } = t.statRange.value;
+  const m = t.model;
+  const at = (l: { base: number; perPoint: number }, stat: number) => l.base + l.perPoint * stat;
+  const mustBePositive = (key: 'cruiseFeetPerSecond' | 'enduranceSeconds' | 'kickAccelFeetPerSecondSquared', why: string) => {
+    for (const stat of [min, max]) {
+      const v = at(m[key].value, stat);
+      if (!(v > 0)) {
+        ctx.addIssue({ code: 'custom', path: ['model', key, 'value'], message: `is ${v} at stat ${stat}; must be above 0 across the stat range ${min} to ${max}, ${why}` });
+        return;
+      }
+    }
+  };
+  mustBePositive('cruiseFeetPerSecond', 'or a horse cannot run');
+  mustBePositive('enduranceSeconds', 'or the reserve never drains properly and the horse never tires');
+  mustBePositive('kickAccelFeetPerSecondSquared', 'or the kick slows a horse down');
+  // Below zero the sim floors the boost, so only the top of the range must give a kick.
+  const top = at(m.kickBoostShare.value, max);
+  if (!(top > 0)) {
+    ctx.addIssue({ code: 'custom', path: ['model', 'kickBoostShare', 'value'], message: `is ${top} at stat ${max}; must be above 0 at the top of the stat range, or the kick stat does nothing` });
+  }
 });
 
 export type Track = z.infer<typeof trackSchema>;

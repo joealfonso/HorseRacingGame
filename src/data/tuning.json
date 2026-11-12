@@ -28,13 +28,276 @@
     "status": "starting guess"
   },
   "paceParHalfMile": {
+    "5": {
+      "fast": {
+        "value": {
+          "hotUnderSeconds": 45.8,
+          "slowOverSeconds": 46.4
+        },
+        "status": "starting guess",
+        "note": "Quartiles of the leader's half on the shipped card run at this distance in the M1.3 sim."
+      },
+      "good": {
+        "value": {
+          "hotUnderSeconds": 46.03,
+          "slowOverSeconds": 46.63
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      },
+      "muddy": {
+        "value": {
+          "hotUnderSeconds": 46.26,
+          "slowOverSeconds": 46.86
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      },
+      "sloppy": {
+        "value": {
+          "hotUnderSeconds": 46.49,
+          "slowOverSeconds": 47.1
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      }
+    },
+    "6": {
+      "fast": {
+        "value": {
+          "hotUnderSeconds": 46.8,
+          "slowOverSeconds": 47.4
+        },
+        "status": "starting guess",
+        "note": "Quartiles of the leader's half on the shipped card run at this distance in the M1.3 sim."
+      },
+      "good": {
+        "value": {
+          "hotUnderSeconds": 47.03,
+          "slowOverSeconds": 47.64
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      },
+      "muddy": {
+        "value": {
+          "hotUnderSeconds": 47.27,
+          "slowOverSeconds": 47.87
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      },
+      "sloppy": {
+        "value": {
+          "hotUnderSeconds": 47.5,
+          "slowOverSeconds": 48.11
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      }
+    },
+    "7": {
+      "fast": {
+        "value": {
+          "hotUnderSeconds": 47.4,
+          "slowOverSeconds": 48.2
+        },
+        "status": "starting guess",
+        "note": "Quartiles of the leader's half on the shipped card run at this distance in the M1.3 sim."
+      },
+      "good": {
+        "value": {
+          "hotUnderSeconds": 47.64,
+          "slowOverSeconds": 48.44
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      },
+      "muddy": {
+        "value": {
+          "hotUnderSeconds": 47.87,
+          "slowOverSeconds": 48.68
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      },
+      "sloppy": {
+        "value": {
+          "hotUnderSeconds": 48.11,
+          "slowOverSeconds": 48.92
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      }
+    },
+    "8": {
+      "fast": {
+        "value": {
+          "hotUnderSeconds": 47.7,
+          "slowOverSeconds": 48.6
+        },
+        "status": "starting guess",
+        "note": "Quartiles of the leader's half on the shipped card run at this distance in the M1.3 sim."
+      },
+      "good": {
+        "value": {
+          "hotUnderSeconds": 47.94,
+          "slowOverSeconds": 48.84
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      },
+      "muddy": {
+        "value": {
+          "hotUnderSeconds": 48.18,
+          "slowOverSeconds": 49.09
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      },
+      "sloppy": {
+        "value": {
+          "hotUnderSeconds": 48.42,
+          "slowOverSeconds": 49.33
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      }
+    },
+    "9": {
+      "fast": {
+        "value": {
+          "hotUnderSeconds": 48.1,
+          "slowOverSeconds": 48.9
+        },
+        "status": "starting guess",
+        "note": "Quartiles of the leader's half on the shipped card run at this distance in the M1.3 sim."
+      },
+      "good": {
+        "value": {
+          "hotUnderSeconds": 48.34,
+          "slowOverSeconds": 49.14
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      },
+      "muddy": {
+        "value": {
+          "hotUnderSeconds": 48.58,
+          "slowOverSeconds": 49.39
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      },
+      "sloppy": {
+        "value": {
+          "hotUnderSeconds": 48.82,
+          "slowOverSeconds": 49.63
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      }
+    },
     "10": {
       "fast": {
         "value": {
-          "hotUnderSeconds": 46,
-          "slowOverSeconds": 48
+          "hotUnderSeconds": 48.5,
+          "slowOverSeconds": 49.3
         },
-        "status": "starting guess"
+        "status": "starting guess",
+        "note": "Was 46/48. Set near the 25th and 75th percentile of the leader's half on the shipped card in the M1.3 sim, so about a quarter of races read hot and a quarter slow. The sim's clock starts at the gate with no run-up and its horses slow less through a race than real ones, so its halves run one to two seconds slower than real charts."
+      },
+      "good": {
+        "value": {
+          "hotUnderSeconds": 48.74,
+          "slowOverSeconds": 49.55
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      },
+      "muddy": {
+        "value": {
+          "hotUnderSeconds": 48.98,
+          "slowOverSeconds": 49.79
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      },
+      "sloppy": {
+        "value": {
+          "hotUnderSeconds": 49.23,
+          "slowOverSeconds": 50.04
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      }
+    },
+    "11": {
+      "fast": {
+        "value": {
+          "hotUnderSeconds": 48.9,
+          "slowOverSeconds": 49.7
+        },
+        "status": "starting guess",
+        "note": "Quartiles of the leader's half on the shipped card run at this distance in the M1.3 sim."
+      },
+      "good": {
+        "value": {
+          "hotUnderSeconds": 49.14,
+          "slowOverSeconds": 49.95
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      },
+      "muddy": {
+        "value": {
+          "hotUnderSeconds": 49.39,
+          "slowOverSeconds": 50.2
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      },
+      "sloppy": {
+        "value": {
+          "hotUnderSeconds": 49.63,
+          "slowOverSeconds": 50.45
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      }
+    },
+    "12": {
+      "fast": {
+        "value": {
+          "hotUnderSeconds": 49.2,
+          "slowOverSeconds": 50.1
+        },
+        "status": "starting guess",
+        "note": "Quartiles of the leader's half on the shipped card run at this distance in the M1.3 sim."
+      },
+      "good": {
+        "value": {
+          "hotUnderSeconds": 49.45,
+          "slowOverSeconds": 50.35
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      },
+      "muddy": {
+        "value": {
+          "hotUnderSeconds": 49.69,
+          "slowOverSeconds": 50.6
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
+      },
+      "sloppy": {
+        "value": {
+          "hotUnderSeconds": 49.94,
+          "slowOverSeconds": 50.85
+        },
+        "status": "starting guess",
+        "note": "The fast par plus this going's goingTimeAddedPercent."
       }
     }
   },
@@ -63,6 +326,160 @@
   "laneMax": {
     "value": 8,
     "status": "starting guess"
+  },
+  "model": {
+    "cruiseFeetPerSecond": {
+      "value": {
+        "base": 54.421,
+        "perPoint": 0.012
+      },
+      "status": "starting guess",
+      "note": "Set so the shipped card's median winning time at 10 furlongs on fast dirt is about 2:01.5."
+    },
+    "distanceSpeed": {
+      "value": {
+        "referenceFurlongs": 10,
+        "sharePerFurlong": 0.008
+      },
+      "status": "starting guess"
+    },
+    "enduranceSeconds": {
+      "value": {
+        "base": 45,
+        "perPoint": 1.2
+      },
+      "status": "starting guess"
+    },
+    "aerobicShare": {
+      "value": 0.93,
+      "status": "starting guess"
+    },
+    "drainPower": {
+      "value": 2,
+      "status": "starting guess"
+    },
+    "tireBelowReserveShare": {
+      "value": 0.5,
+      "status": "starting guess"
+    },
+    "emptySpeedShare": {
+      "value": 0.78,
+      "status": "starting guess"
+    },
+    "kickBoostShare": {
+      "value": {
+        "base": -0.089,
+        "perPoint": 0.0022
+      },
+      "status": "starting guess",
+      "note": "Steep on purpose so +10 kick is worth about as much as +10 speed or stamina; a kick-70 horse still gets 6.5 percent. Below kick 41 the line goes negative and the sim treats it as no extra gear."
+    },
+    "kickAccelFeetPerSecondSquared": {
+      "value": {
+        "base": 1.5,
+        "perPoint": 0.02
+      },
+      "status": "starting guess"
+    },
+    "askFeetToGo": {
+      "value": {
+        "frontRunner": 1815,
+        "stalker": 1650,
+        "closer": 1650
+      },
+      "status": "starting guess",
+      "note": "Stalkers and closers ask at about the 5/16 pole, so an M1.4 move at the 3/8 pole is a real change. Front-runners kick on a little earlier, which kept the three styles within the fairness tolerance."
+    },
+    "earlyEffort": {
+      "value": {
+        "frontRunner": 1,
+        "stalker": 0.99,
+        "closer": 0.98
+      },
+      "status": "starting guess"
+    },
+    "frontRunnerPace": {
+      "value": {
+        "pressLengths": 1.5,
+        "loneLeadLengths": 3,
+        "duelEffort": 0.035,
+        "loneLeadEffort": 0.98
+      },
+      "status": "starting guess",
+      "note": "Short presses and a costly duel, so a hot half usually means front-runners fought and paid for it."
+    },
+    "positionPace": {
+      "value": {
+        "stalkerMinLengths": 2,
+        "stalkerMaxLengths": 6,
+        "closerMaxLengths": 10,
+        "effortStep": 0.015
+      },
+      "status": "starting guess"
+    },
+    "formSpeedShare": {
+      "value": 0.01,
+      "status": "starting guess",
+      "note": "Kept small: when form moved speed a lot, a hot half mostly meant a front-runner having a good day."
+    },
+    "formReserveShare": {
+      "value": 0.1,
+      "status": "starting guess"
+    },
+    "rhythmSpreadShare": {
+      "value": 0.025,
+      "status": "starting guess"
+    },
+    "kickSpreadShare": {
+      "value": 0.25,
+      "status": "starting guess"
+    },
+    "askSpreadFeet": {
+      "value": 165,
+      "status": "starting guess"
+    },
+    "gateBreakMaxSeconds": {
+      "value": 0.6,
+      "status": "starting guess"
+    },
+    "startAccelFeetPerSecondSquared": {
+      "value": 20,
+      "status": "starting guess"
+    },
+    "settleAccelFeetPerSecondSquared": {
+      "value": 1,
+      "status": "starting guess"
+    },
+    "fadeFeetPerSecondSquared": {
+      "value": 1.5,
+      "status": "starting guess"
+    },
+    "gallopOutFeetPerSecondSquared": {
+      "value": 4,
+      "status": "starting guess"
+    },
+    "laneWidthFeet": {
+      "value": 1.5,
+      "status": "starting guess",
+      "note": "Narrower than a horse on purpose: at 2 feet, 8 identical horses showed the inside posts winning about 2.5 points too often."
+    },
+    "lanesPerSecond": {
+      "value": 0.5,
+      "status": "starting guess"
+    },
+    "traffic": {
+      "value": {
+        "clearLengths": 0.9,
+        "passLookLengths": 1.5,
+        "blockLengths": 1,
+        "passMarginShare": 0.005
+      },
+      "status": "starting guess"
+    },
+    "tuckInEffortDrop": {
+      "value": 0.02,
+      "status": "starting guess"
+    }
   },
   "luck": {
     "blockedPerHorse": {
