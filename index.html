@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bluegrass Dynasty</title>
+    <style>
+      html, body { margin: 0; min-height: 100%; }
+      /* Letterbox color (spec C3). Placeholder until DESIGN.md is approved. It lives
+         here, not in JS, so the page has it from first paint. main.ts reads it
+         back for Phaser's backgroundColor. */
+      body { background-color: #1b1b1e; }
+      /* auto margins center the canvas but, unlike justify-content, never push
+         the top-left of an overflowing canvas out of scroll reach (spec D3). */
+      body { display: flex; min-height: 100vh; }
+      #game { margin: auto; line-height: 0; }
+      canvas { display: block; image-rendering: pixelated; }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
