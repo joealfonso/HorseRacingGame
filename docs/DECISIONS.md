@@ -26,3 +26,27 @@ Two or three lines for each non-obvious choice.
 - Branch protection on red: it is a GitHub setting and needs the remote.
 
 **gitleaks via the official action.** Simplest while the repo is under a personal account. If it moves to an organization, switch to the binary (spec question 4).
+
+## M1 data
+
+**zod for validation.** Approved as the one new M1 dependency (`^4.6.7`). Types are inferred from the schemas, never written twice.
+
+**Schemas live apart from the JSON.** `src/data/schema.ts` and `src/data/validate.ts` import no JSON and hold no real names, so the sim can import their types and the sim never reads `src/data/*.json`. Only `src/data/load.ts` imports the JSON, and the sim gets the validated result as an argument. A test that real names never appear under `src/sim/` still guards the rest.
+
+**Every uncertain number carries a mark.** Track and tuning values are `{ value, status, note? }` with status `starting guess` or `confirmed`. Grouped numbers that only make sense together (a min and max band, the margin label bounds) share one mark. All tuning is a starting guess today.
+
+**Track geometry (V2).** Only one primary source was found: Churchill Downs publishes a one-mile dirt oval (https://www.churchilldowns.com/about/), so `lapFeet` is `confirmed`. Everything else is a starting guess: stretch 1,234.5 feet (from memory, no primary source), a backstretch equal to the stretch, two equal turns for the remainder, no run-up, and a 10 furlong start 1,320 feet before the wire (past the wire once, then one full lap, with the gate just behind the head of the stretch). The gap is open until someone finds the track's own measurements.
+
+**The race is fictional.** "Old Fence Row Stakes", 10 furlongs, dirt, fast, neutral bias. It is not the Derby (20 starters, its own milestone in M7). Horse and jockey names are made up, and could not be checked against the real registry.
+
+**Lane maximum lives in tuning only.** The spec puts it there (O8), so the track file does not repeat it as a lane count.
+
+**Distances in feet.** Track data is in feet. The replay distance unit is the M1.3 engineer's call.
+
+## M1 sim
+
+**sfc32 seeded by cyrb128.** Each stream hashes the text `seed/name` or `seed/name/subKey` with cyrb128 (bryc's 128-bit string hash) into the four words of an sfc32 state (Chris Doty-Humphrey's generator from PractRand). Both use only 32-bit integer math and Math.imul, so every engine gives the same numbers, and a stream depends on nothing but its own key. A float is the output divided by 2^32, which is exact.
+
+**Stream names may not contain "/".** That keeps the hashed key unambiguous. The name list starts empty in M1.1: no system draws yet, and a name cannot be renamed once races depend on it, so M1.3 picks the first ones.
+
+**Sim tests are exempt from the determinism lint bans.** Files ending `.test.ts` under `src/sim/` may use Date, performance, Math.random and the inexact Math functions, because they are not part of a race and the T3 timing checks need a clock. They still get the Phaser ban.
