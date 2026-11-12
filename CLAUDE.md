@@ -14,7 +14,7 @@ A single-player thoroughbred racing management sim with RPG progression, in 8-bi
 ## Key directories
 
 - `src/sim/`: pure TypeScript game rules. No Phaser imports, runs headless.
-- `src/render/` and `src/scenes/`: Phaser only. Reads sim state, never owns it.
+- `src/render/` and `src/scenes/`: drawing and display. The only places Phaser may be imported. Reads sim state, never owns it.
 - `src/data/`: all content and tuning values, validated by schemas. Real race, track and venue names live here so they can be swapped.
 - `docs/`: BRIEF.md, DECISIONS.md, ASSETS.md, PERF.md, specs/.
 - `DESIGN.md` (repo root): the visual source of truth. Read it before any art or UI work.
