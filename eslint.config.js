@@ -63,4 +63,9 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // The batch command line wrapper runs in Node and may keep time and write files.
+    files: ['scripts/**'],
+    languageOptions: { globals: { process: 'readonly', console: 'readonly', performance: 'readonly' } },
+  },
 );

@@ -104,3 +104,19 @@ Two or three lines for each non-obvious choice.
 **A horse takes part in at most one bump a race, on either side.** A horse that has been in a bump, whether it started it or was run into, cannot be the other horse of a later one, and its own bump luck is used up. Before this, only the horse whose luck started a bump was limited, so one horse could be hit several times and lose up to a quarter of its speed each time. The other horse is still the nearest eligible one, the lower post if two are as close. `maxEventsPerRace` is a whole number from 0 to 20, the largest field.
 
 **Known: an early bump can help a front-runner.** On the shipped card a bump in the first ten seconds gains the bumped horse 1.2 lengths on average (19 cases in 2,000 races), up to 14 lengths for the fastest front-runner. It drops back from the speed duel and saves itself, the same cause as "B7 traced" above. Left for the M1.6 tuning pass on the duel, not patched in luck.
+
+**Batch runner (M1.6) loads TypeScript through Vite.** `npm run batch` runs `scripts/batch.mjs`, which starts Vite in middleware mode with no socket and no file watcher, loads `scripts/batchCli.ts` with `ssrLoadModule`, runs it and closes the server. Node cannot run the repo's TypeScript as is (parameter properties, imports without extensions), and Vite is already a dependency, so no new package. Loading the code writes nothing to disk. The only file the command can write is the one named by `--out`.
+
+**The counting is in `src/sim/batch.ts`, the printing is in `scripts/`.** The sim side only calls `runRace` and counts, so it follows the sim lint bans and cannot change a race. The clock, file reads, `--out` and text layout live in `scripts/`. All bands come from `tuning.checks` and nothing was added to tuning or the schema, so the golden files and `SIM_VERSION` are untouched.
+
+**The fairness fields are rebuilt in `batch.ts`, not imported from `testkit.ts`.** `testkit.ts` is test support that nothing in the sim imports. The field is the same as the tests use (equal stats of 70, ids `t1..`, posts 1.., styles rotated front-runner, stalker, closer), with two differences made on purpose: default instructions are set on every horse and the track bias is forced to neutral, so a card or race file with instructions or a bias cannot leak into F2 and F3. Luck, going and distance stay as loaded, as in the tests.
+
+**One check per bar, measured at the worst case.** F2 reports the post farthest from 1 in N for each style, F3 the style farthest from it, and F5 the lowest and highest horse. F3 divides a style's win share by its number of horses (3, 3 and 2 on eight posts). The batch runs five sets of races per seed (the loaded card, three post fields, one rotated field), so 10,000 races means 50,000 sim runs.
+
+**F2 and F3 bands scale with the field.** For a field of n horses the band is 100/n plus or minus `fairnessTolerancePoints`, in points. At 8 horses that is the spec's band. At other sizes it is only a rough guide, since the spec did not set one.
+
+**A style with no horse in the rotation is not measured.** On a card of 2 horses the closer has none, so F3 leaves it out and the report prints "no horses" for it, not 0 percent.
+
+**`--out` is checked before any race runs.** A 10,000 race run takes minutes, so a path that cannot be written fails first, as a normal argument error: a missing folder, a folder in place of a file, a path ending in a slash, or a path that is one of the data files the run reads (it would have been replaced by the report). Write permission is not checked ahead, so a read-only folder still fails after the run, with one line and exit code 1.
+
+**A race result with no call at one furlong to go stops the batch.** The sim always makes that call today. If the call layout ever changes, the "leader at the 1/8 pole loses" number would read low with no warning, so the batch throws with the seed.
