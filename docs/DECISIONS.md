@@ -35,7 +35,7 @@ Two or three lines for each non-obvious choice.
 
 **Every uncertain number carries a mark.** Track and tuning values are `{ value, status, note? }` with status `starting guess` or `confirmed`. Grouped numbers that only make sense together (a min and max band, the margin label bounds) share one mark. All tuning is a starting guess today.
 
-**Track geometry (V2).** Only one primary source was found: Churchill Downs publishes a one-mile dirt oval (https://www.churchilldowns.com/about/), so `lapFeet` is `confirmed`. Everything else is a starting guess: stretch 1,234.5 feet (from memory, no primary source), a backstretch equal to the stretch, two equal turns for the remainder, no run-up, and a 10 furlong start 1,320 feet before the wire (past the wire once, then one full lap, with the gate just behind the head of the stretch). The gap is open until someone finds the track's own measurements.
+**Track geometry (V2).** Only one primary source was found: Churchill Downs publishes a one-mile dirt oval (https://www.churchilldowns.com/about/), so `lapFeet` is marked `confirmed`. That means the lead checked it on 2026-11-11 against the track's own site, which describes a one-mile dirt oval. Joseph has not confirmed it yet. Everything else is a starting guess: stretch 1,234.5 feet (from memory, no primary source), a backstretch equal to the stretch, two equal turns for the remainder, no run-up, and a 10 furlong start 1,320 feet before the wire (past the wire once, then one full lap, with the gate just behind the head of the stretch). The gap is open until someone finds the track's own measurements.
 
 **The race is fictional.** "Old Fence Row Stakes", 10 furlongs, dirt, fast, neutral bias. It is not the Derby (20 starters, its own milestone in M7). Horse and jockey names are made up, and could not be checked against the real registry.
 
@@ -50,3 +50,5 @@ Two or three lines for each non-obvious choice.
 **Stream names may not contain "/".** That keeps the hashed key unambiguous. The name list starts empty in M1.1: no system draws yet, and a name cannot be renamed once races depend on it, so M1.3 picks the first ones.
 
 **Sim tests are exempt from the determinism lint bans.** Files ending `.test.ts` under `src/sim/` may use Date, performance, Math.random and the inexact Math functions, because they are not part of a race and the T3 timing checks need a clock. They still get the Phaser ban.
+
+**Known limit until M5.** Only dirt goings have time effects in tuning. A turf or synthetic race passes the surface and going check, then fails with a "goingTimeAddedPercent.<going> missing" message from tuning. That message is misleading, and turf support is not built.

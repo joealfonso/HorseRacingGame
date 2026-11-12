@@ -1,0 +1,30 @@
+{
+  "name": "Churchill Downs",
+  "location": "Louisville, Kentucky",
+  "surface": "dirt",
+  "lapFeet": {
+    "value": 5280,
+    "status": "confirmed",
+    "note": "One-mile dirt oval. Marked confirmed because the lead checked it on 2026-11-11 against the track's own site, https://www.churchilldowns.com/about/, which describes a one-mile dirt oval. Joseph has not confirmed it yet."
+  },
+  "stretchFeet": {
+    "value": 1234.5,
+    "status": "starting guess",
+    "note": "From memory, not confirmed by a primary source. Measured from the end of the last turn to the wire."
+  },
+  "backstretchFeet": {
+    "value": 1234.5,
+    "status": "starting guess",
+    "note": "Assumed equal to the stretch."
+  },
+  "turnFeet": {
+    "value": 1405.5,
+    "status": "starting guess",
+    "note": "Each of the two turns: what is left of the mile after both straights, split evenly. A 10 furlong race (6600 ft) starts 1320 ft before the wire, so the field passes the wire once and then runs one full lap. That puts the gate in the last turn, just behind the head of the stretch. All of this layout is a guess."
+  },
+  "runUpFeet": {
+    "value": 0,
+    "status": "starting guess",
+    "note": "No run-up modeled yet. Distance is measured from the gate."
+  }
+}

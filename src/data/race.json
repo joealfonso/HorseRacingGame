@@ -1,0 +1,8 @@
+{
+  "name": "Old Fence Row Stakes",
+  "track": "Churchill Downs",
+  "distanceFurlongs": 10,
+  "surface": "dirt",
+  "going": "fast",
+  "trackBias": { "lane": "neutral", "style": "neutral" }
+}

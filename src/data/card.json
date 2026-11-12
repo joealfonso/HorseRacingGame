@@ -1,0 +1,140 @@
+{
+  "horses": [
+    {
+      "id": "h1",
+      "name": "Hold My Oats",
+      "jockey": "Marisol Dunne",
+      "post": 2,
+      "style": "frontRunner",
+      "stats": {
+        "speed": 86,
+        "stamina": 60,
+        "kick": 45
+      },
+      "instructions": {
+        "early": "default",
+        "move": "default",
+        "path": "default"
+      }
+    },
+    {
+      "id": "h2",
+      "name": "Reply All",
+      "jockey": "Walt Pettibone",
+      "post": 6,
+      "style": "frontRunner",
+      "stats": {
+        "speed": 80,
+        "stamina": 68,
+        "kick": 52
+      },
+      "instructions": {
+        "early": "default",
+        "move": "default",
+        "path": "default"
+      }
+    },
+    {
+      "id": "h3",
+      "name": "Legally A Horse",
+      "jockey": "Dani Ferreira",
+      "post": 4,
+      "style": "stalker",
+      "stats": {
+        "speed": 72,
+        "stamina": 78,
+        "kick": 64
+      },
+      "instructions": {
+        "early": "default",
+        "move": "default",
+        "path": "default"
+      }
+    },
+    {
+      "id": "h4",
+      "name": "Gravy Subpoena",
+      "jockey": "Cal Broussard",
+      "post": 1,
+      "style": "stalker",
+      "stats": {
+        "speed": 76,
+        "stamina": 70,
+        "kick": 70
+      },
+      "instructions": {
+        "early": "default",
+        "move": "default",
+        "path": "default"
+      }
+    },
+    {
+      "id": "h5",
+      "name": "Mint Julep Lawsuit",
+      "jockey": "Imogen Pruitt",
+      "post": 8,
+      "style": "stalker",
+      "stats": {
+        "speed": 68,
+        "stamina": 82,
+        "kick": 60
+      },
+      "instructions": {
+        "early": "default",
+        "move": "default",
+        "path": "default"
+      }
+    },
+    {
+      "id": "h6",
+      "name": "Left On Read",
+      "jockey": "Hollis Tran",
+      "post": 5,
+      "style": "closer",
+      "stats": {
+        "speed": 62,
+        "stamina": 74,
+        "kick": 88
+      },
+      "instructions": {
+        "early": "default",
+        "move": "default",
+        "path": "default"
+      }
+    },
+    {
+      "id": "h7",
+      "name": "Decaf By Mistake",
+      "jockey": "Rosa Kettering",
+      "post": 3,
+      "style": "closer",
+      "stats": {
+        "speed": 66,
+        "stamina": 66,
+        "kick": 82
+      },
+      "instructions": {
+        "early": "default",
+        "move": "default",
+        "path": "default"
+      }
+    },
+    {
+      "id": "h8",
+      "name": "Mostly Legs",
+      "jockey": "Anselm Voss",
+      "post": 7,
+      "style": "closer",
+      "stats": {
+        "speed": 58,
+        "stamina": 84,
+        "kick": 76
+      },
+      "instructions": {
+        "early": "default",
+        "move": "default",
+        "path": "default"
+      }
+    }
+  ]
+}

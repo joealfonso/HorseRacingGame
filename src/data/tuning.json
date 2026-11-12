@@ -1,0 +1,145 @@
+{
+  "statRange": {
+    "value": {
+      "min": 1,
+      "max": 100
+    },
+    "status": "starting guess"
+  },
+  "replayStepSeconds": {
+    "value": 0.1,
+    "status": "starting guess"
+  },
+  "horseLengthFeet": {
+    "value": 8,
+    "status": "starting guess"
+  },
+  "marginLabelBounds": {
+    "value": {
+      "noseBelow": 0.1,
+      "headBelow": 0.2,
+      "neckBelow": 0.375,
+      "wholeLengthsFrom": 10
+    },
+    "status": "starting guess"
+  },
+  "photoFinishThresholdLengths": {
+    "value": 0.25,
+    "status": "starting guess"
+  },
+  "paceParHalfMile": {
+    "10": {
+      "fast": {
+        "value": {
+          "hotUnderSeconds": 46,
+          "slowOverSeconds": 48
+        },
+        "status": "starting guess"
+      }
+    }
+  },
+  "goingTimeAddedPercent": {
+    "fast": {
+      "value": 0,
+      "status": "starting guess"
+    },
+    "good": {
+      "value": 0.5,
+      "status": "starting guess"
+    },
+    "muddy": {
+      "value": 1,
+      "status": "starting guess"
+    },
+    "sloppy": {
+      "value": 1.5,
+      "status": "starting guess"
+    }
+  },
+  "speedCeilingFeetPerSecond": {
+    "value": 70,
+    "status": "starting guess"
+  },
+  "laneMax": {
+    "value": 8,
+    "status": "starting guess"
+  },
+  "luck": {
+    "blockedPerHorse": {
+      "value": 0.025,
+      "status": "starting guess"
+    },
+    "steadiedPerHorse": {
+      "value": 0.017,
+      "status": "starting guess"
+    },
+    "bumpedPerHorse": {
+      "value": 0.012,
+      "status": "starting guess"
+    },
+    "maxEventsPerRace": {
+      "value": 3,
+      "status": "starting guess"
+    },
+    "raceShareBandPercent": {
+      "value": {
+        "min": 25,
+        "max": 45
+      },
+      "status": "starting guess"
+    }
+  },
+  "checks": {
+    "behaviorSeedCount": {
+      "value": 500,
+      "status": "starting guess"
+    },
+    "behaviorTolerancePoints": {
+      "value": 2,
+      "status": "starting guess"
+    },
+    "fairnessTolerancePoints": {
+      "value": 2.5,
+      "status": "starting guess"
+    },
+    "batchSeedCount": {
+      "value": 10000,
+      "status": "starting guess"
+    },
+    "winningTimeBandSeconds": {
+      "value": {
+        "min": 119.5,
+        "max": 125
+      },
+      "status": "starting guess"
+    },
+    "closeWinPercentBand": {
+      "value": {
+        "min": 30,
+        "max": 60
+      },
+      "status": "starting guess"
+    },
+    "photoFinishPercentBand": {
+      "value": {
+        "min": 5,
+        "max": 15
+      },
+      "status": "starting guess"
+    },
+    "leaderAtEighthLosesPercentBand": {
+      "value": {
+        "min": 25,
+        "max": 50
+      },
+      "status": "starting guess"
+    },
+    "cardWinSharePercentBand": {
+      "value": {
+        "min": 3,
+        "max": 35
+      },
+      "status": "starting guess"
+    }
+  }
+}
