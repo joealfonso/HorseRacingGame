@@ -66,7 +66,7 @@ export interface Replay {
   horses: ReplayHorse[];
   /** Every horse at the moment the winner reaches the wire. */
   wireFrame: { time: number; horses: { id: string; distance: number; lane: number }[] };
-  /** Empty until luck events are built. */
+  /** Luck events in the order they happened, each at the replay sample it was seen in. */
   events: RaceEvent[];
 }
 

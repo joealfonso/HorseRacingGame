@@ -1,6 +1,7 @@
 import type { Tuning } from '../data/schema';
 import { furlongsToFeet, isTurnAt, type Course } from './course';
 import { steer } from './lanes';
+import { makeLuck, type LuckEvent } from './luck';
 import type { Profile } from './profile';
 import { earlyEffort, ratedEffort } from './tactics';
 import type { Bias } from './trackBias';
@@ -24,6 +25,13 @@ interface Runner extends Run {
   away: boolean;
   asked: boolean;
   finished: boolean;
+  blockedUntil: number;
+}
+
+export interface Simulated {
+  runs: Run[];
+  /** In the order they happened. */
+  events: LuckEvent[];
 }
 
 const power = (x: number, n: number): number => {
@@ -35,7 +43,7 @@ const power = (x: number, n: number): number => {
 // Front first, then by post, so ties and input order never decide anything.
 const byPosition = (a: Runner, b: Runner): number => b.d - a.d || a.profile.post - b.profile.post;
 
-export function simulate(profiles: readonly Profile[], course: Course, tuning: Tuning, bias: Bias): Run[] {
+export function simulate(profiles: readonly Profile[], course: Course, tuning: Tuning, bias: Bias): Simulated {
   const m = tuning.model;
   const dt = tuning.replayStepSeconds.value;
   const length = tuning.horseLengthFeet.value;
@@ -52,9 +60,11 @@ export function simulate(profiles: readonly Profile[], course: Course, tuning: T
       const lane = (profile.post - 1) * gateSpacing;
       return {
         profile, distances: [0], lanes: [lane], finishSeconds: 0, extraGround: 0,
-        d: 0, v: 0, lane, reserve: 1, away: false, asked: false, finished: false,
+        d: 0, v: 0, lane, reserve: 1, away: false, asked: false, finished: false, blockedUntil: 0,
       };
     });
+  const luck = makeLuck(runners, tuning, length);
+  const events: LuckEvent[] = [];
 
   // Nothing in the model lets a horse stop, so this only trips on a bug. Better an
   // error than a race that never ends or a partial result.
@@ -66,6 +76,9 @@ export function simulate(profiles: readonly Profile[], course: Course, tuning: T
     const running = runners.filter((r) => !r.finished).sort(byPosition);
     const leader = running[0];
     const second = running.length > 1 ? running[1] : null;
+    // Luck looks at the field as it stands at the start of this step, which is the last
+    // replay sample, so every event can be checked against the replay at its time.
+    if (luck !== null) events.push(...luck.at(running, (k - 1) * dt));
 
     for (const r of running) {
       const p = r.profile;
@@ -89,9 +102,11 @@ export function simulate(profiles: readonly Profile[], course: Course, tuning: T
       }
       // After the tiring cap, so tired horses still differ from stride to stride.
       target *= rhythmAt(p.rhythm, r.d);
+      const blocked = luck !== null && t <= r.blockedUntil;
+      if (blocked) target *= luck.blockedSpeedShare;
 
       const others = running.filter((o) => o !== r);
-      const s = steer(r, others, target, tuning, length, p.stayInside && !r.asked);
+      const s = steer(r, others, target, tuning, length, (p.stayInside && !r.asked) || blocked);
       r.lane = s.lane;
       // Caught wide on a turn with a horse alongside on the inside, a rider takes back a
       // touch to drop in behind it, which costs less than going round wide. Not on a
@@ -144,8 +159,9 @@ export function simulate(profiles: readonly Profile[], course: Course, tuning: T
     }
   }
 
-  return runners.map(({ profile, distances, lanes, finishSeconds, extraGround }) =>
+  const runs = runners.map(({ profile, distances, lanes, finishSeconds, extraGround }) =>
     ({ profile, distances, lanes, finishSeconds, extraGround }));
+  return { runs, events };
 }
 
 function rhythmAt(points: readonly number[], feet: number): number {

@@ -234,7 +234,30 @@ const trackBiasSchema = z.strictObject({
   frontLengths: marked(positive),
 });
 
-const goingEffects = Object.fromEntries(dirtGoings.map((g) => [g, marked(z.number().min(0))])) as
+// When a luck event can happen and what it costs. Luck waits windowFeet past the point
+// each horse drew for a situation to arise, then passes. Blocked and steadied need a horse
+// ahead within aheadLengths and within sameLaneWithinLanes of this one's lane. A bump
+// needs a horse alongside, within alongsideLengths either way and adjacentWithinLanes
+// across. Each cost is a share of the horse's speed. A steadied or bumped horse loses
+// it at once and builds back up; a blocked one is held to that much less for
+// blockedSeconds and cannot go around. The caps keep an event a setback: no cost can
+// bring a horse anywhere near a stop.
+const luckEventsSchema = z.strictObject({
+  // Up to two furlongs: much longer and nearly every unlucky horse finds a situation,
+  // so where a horse runs would stop mattering.
+  windowFeet: marked(z.number().gt(0).max(1320)),
+  aheadLengths: marked(z.number().gt(0).max(3)),
+  // Under one lane: a horse a full lane across is beside this one, not in front.
+  sameLaneWithinLanes: marked(z.number().gt(0).lt(1)),
+  alongsideLengths: marked(z.number().gt(0).max(1)),
+  adjacentWithinLanes: marked(z.number().gt(0).max(1.5)),
+  blockedSeconds: marked(z.number().gt(0).max(5)),
+  blockedSpeedDropShare: marked(z.number().gt(0).max(0.25)),
+  steadiedSpeedDropShare: marked(z.number().gt(0).max(0.25)),
+  bumpedSpeedDropShare: marked(z.number().gt(0).max(0.25)),
+});
+
+const goingEffects =Object.fromEntries(dirtGoings.map((g) => [g, marked(z.number().min(0))])) as
   Record<(typeof dirtGoings)[number], ReturnType<typeof marked<z.ZodNumber>>>;
 
 export const tuningSchema = z.strictObject({
@@ -261,12 +284,20 @@ export const tuningSchema = z.strictObject({
   // still validates. validateData requires each one when the card or race uses it.
   instructions: instructionsSchema.optional(),
   trackBias: trackBiasSchema.optional(),
+  // A rate is the chance a horse is unlucky in that way this race. It only becomes an
+  // event if the race then puts it in that situation, so fewer events happen than the
+  // rates say.
   luck: z.strictObject({
     blockedPerHorse: luckRate,
     steadiedPerHorse: luckRate,
     bumpedPerHorse: luckRate,
-    maxEventsPerRace: marked(z.int().min(0)),
+    maxEventsPerRace: marked(z.int({ error: `must be a whole number from 0 to ${MAX_FIELD}` })
+      .min(0, { error: 'must be at least 0' })
+      .max(MAX_FIELD, { error: `must be at most ${MAX_FIELD}, the largest field` })),
     raceShareBandPercent: marked(percentBand),
+    // Optional so a tuning file with every rate at zero can leave it out. validateData
+    // requires it when any rate is above zero, and the sim checks again for unvalidated data.
+    events: luckEventsSchema.optional(),
   }),
   checks: z.strictObject({
     behaviorSeedCount: marked(z.int().positive()),

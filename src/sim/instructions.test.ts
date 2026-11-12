@@ -88,17 +88,24 @@ describe('I1: off means unchanged', () => {
     expect(runAll(base, SAME).map(rest)).toEqual(runAll(quiet, SAME).map(rest));
   });
 
-  it('the frozen golden inputs, given the two tuning groups, still give the committed golden result (apart from the echoed tuning)', () => {
+  it('the frozen golden inputs give the committed luck-off golden result with the two tuning groups present or removed (apart from the echoed tuning)', () => {
+    // Since M1.5 the frozen inputs carry both groups and the shipped luck rates, so luck is switched
+    // off here (as the luck-off golden set does). The card is all default and the race neutral, so
+    // whether the two groups are there must not change one byte of the race.
     const dir = join(dirname(fileURLToPath(import.meta.url)), 'golden');
     const frozen = JSON.parse(readFileSync(join(dir, 'inputs.json'), 'utf8'));
-    expect(frozen.tuning.instructions).toBeUndefined();
-    expect(frozen.tuning.trackBias).toBeUndefined();
-    frozen.tuning.instructions = structuredClone(base.tuning.instructions);
-    frozen.tuning.trackBias = structuredClone(base.tuning.trackBias);
-    const data = validateData(frozen);
-    for (const seed of [0, 777, 4294967295]) {
-      const committed = JSON.parse(readFileSync(join(dir, `seed-${seed}.json`), 'utf8'));
-      expect(JSON.stringify({ ...runRace(data, seed), inputs: null })).toBe(JSON.stringify({ ...committed, inputs: null }));
+    for (const k of ['blockedPerHorse', 'steadiedPerHorse', 'bumpedPerHorse']) frozen.tuning.luck[k].value = 0;
+    expect(frozen.tuning.instructions).toBeDefined();
+    expect(frozen.tuning.trackBias).toBeDefined();
+    const without = structuredClone(frozen);
+    delete without.tuning.instructions;
+    delete without.tuning.trackBias;
+    for (const raw of [frozen, without]) {
+      const data = validateData(raw);
+      for (const seed of [0, 777, 4294967295]) {
+        const committed = JSON.parse(readFileSync(join(dir, `luck-off-seed-${seed}.json`), 'utf8'));
+        expect(JSON.stringify({ ...runRace(data, seed), inputs: null })).toBe(JSON.stringify({ ...committed, inputs: null }));
+      }
     }
   });
 });

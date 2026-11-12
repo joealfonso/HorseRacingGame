@@ -387,11 +387,11 @@ describe('O8: replay', () => {
     }
   });
 
-  it('the events list is empty in M1.3, even with luck rates at 1 (luck is not built yet)', () => {
-    expect(r0.replay.events).toEqual([]);
-    const lucky = withTuning(data, (t) => {
-      t.luck.blockedPerHorse.value = 1; t.luck.steadiedPerHorse.value = 1; t.luck.bumpedPerHorse.value = 1;
+  it('the events list is an array of plain events, and is empty with every luck rate at zero (the luck tests are in luck.test.ts)', () => {
+    expect(Array.isArray(r0.replay.events)).toBe(true);
+    const unlucky = withTuning(data, (t) => {
+      t.luck.blockedPerHorse.value = 0; t.luck.steadiedPerHorse.value = 0; t.luck.bumpedPerHorse.value = 0;
     });
-    expect(runRace(lucky, 0).replay.events).toEqual([]);
+    for (const seed of SEEDS.slice(0, 20)) expect(runRace(unlucky, seed).replay.events, `seed ${seed}`).toEqual([]);
   });
 });

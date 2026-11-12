@@ -299,7 +299,7 @@ describe('V1: no real track, race or venue name in src/sim/', () => {
     expect(Object.keys(files).length).toBeGreaterThan(0);
     expect(Object.keys(files).some((f) => f.endsWith('rng.ts'))).toBe(true);
     expect(Object.keys(files).some((f) => f.endsWith('golden/inputs.json'))).toBe(true);
-    expect(Object.keys(files).some((f) => /golden\/seed-\d+\.json$/.test(f))).toBe(true);
+    expect(Object.keys(files).some((f) => /golden\/luck-(off|on)-seed-\d+\.json$/.test(f))).toBe(true);
     expect(names.every((n) => n.trim().length >= 4)).toBe(true);
   });
 
@@ -648,5 +648,136 @@ describe('M1.4: the instructions and trackBias tuning groups', () => {
       delete raw.tuning.instructions;
       expect(() => validateData(raw)).not.toThrow();
     });
+  });
+});
+
+// M1.5: luck.events is optional in the schema (so older tuning still parses), and validation asks for it
+// whenever any luck rate is above zero. Bounds are the ones in the luck events schema in schema.ts.
+describe('M1.5: the luck.events tuning group', () => {
+  const tuningFile = 'src/data/tuning.json';
+  const RATES = ['blockedPerHorse', 'steadiedPerHorse', 'bumpedPerHorse'];
+  const setRates = (raw: Raw, values: [number, number, number]) => {
+    RATES.forEach((k, i) => { raw.tuning.luck[k].value = values[i]; });
+  };
+
+  it('the shipped data has the group, and a luck rate above zero for every event type', () => {
+    const raw = fresh();
+    expect(raw.tuning.luck.events).toBeDefined();
+    for (const k of RATES) expect(raw.tuning.luck[k].value, k).toBeGreaterThan(0);
+  });
+
+  describe('a luck rate above zero needs the group', () => {
+    it.each([
+      ['blockedPerHorse', [0.3, 0, 0]],
+      ['steadiedPerHorse', [0, 0.15, 0]],
+      ['bumpedPerHorse', [0, 0, 0.04]],
+      ['all three', [0.3, 0.15, 0.04]],
+    ] as [string, [number, number, number]][])('%s above zero with the group missing is rejected at luck.events', (_n, rates) => {
+      const raw = fresh();
+      setRates(raw, rates);
+      delete raw.tuning.luck.events;
+      expectRejected(raw, tuningFile, 'luck.events');
+    });
+
+    it('a rate of exactly 1 with the group missing is rejected too', () => {
+      const raw = fresh();
+      setRates(raw, [1, 0, 0]);
+      delete raw.tuning.luck.events;
+      expectRejected(raw, tuningFile, 'luck.events');
+    });
+
+    it('with all rates at zero the group may be missing', () => {
+      const raw = fresh();
+      setRates(raw, [0, 0, 0]);
+      delete raw.tuning.luck.events;
+      expect(() => validateData(raw)).not.toThrow();
+    });
+
+    it('with all rates at zero the group may also be present', () => {
+      const raw = fresh();
+      setRates(raw, [0, 0, 0]);
+      expect(() => validateData(raw)).not.toThrow();
+    });
+
+    it('with a rate above zero and the group present, validation passes', () => {
+      expect(() => validateData(fresh())).not.toThrow();
+    });
+  });
+
+  describe('a value in the group out of range is rejected at its path', () => {
+    // [key, largest value allowed, whether that largest value is itself allowed]
+    const BOUNDS: [string, number, boolean][] = [
+      ['windowFeet', 1320, true],
+      ['aheadLengths', 3, true],
+      ['sameLaneWithinLanes', 1, false], // under one lane: a horse a full lane across is beside, not in front
+      ['alongsideLengths', 1, true],
+      ['adjacentWithinLanes', 1.5, true],
+      ['blockedSeconds', 5, true],
+      ['blockedSpeedDropShare', 0.25, true],
+      ['steadiedSpeedDropShare', 0.25, true],
+      ['bumpedSpeedDropShare', 0.25, true],
+    ];
+    const set = (key: string, v: number): Raw => {
+      const raw = fresh();
+      raw.tuning.luck.events[key].value = v;
+      return raw;
+    };
+
+    it('the table covers every key of the shipped group', () => {
+      expect(BOUNDS.map(([k]) => k).sort()).toEqual(Object.keys(fresh().tuning.luck.events).sort());
+    });
+
+    it.each(BOUNDS)('%s: zero, a negative and a value past the top are rejected', (key, top, topAllowed) => {
+      const path = `luck.events.${key}.value`;
+      expectRejected(set(key, 0), tuningFile, path);
+      expectRejected(set(key, -0.5), tuningFile, path);
+      expectRejected(set(key, topAllowed ? top * 1.01 : top), tuningFile, path);
+    });
+
+    it.each(BOUNDS)('%s: a value just above zero and the largest allowed value are accepted', (key, top, topAllowed) => {
+      expect(() => validateData(set(key, 0.001))).not.toThrow();
+      expect(() => validateData(set(key, topAllowed ? top : top - 0.001))).not.toThrow();
+    });
+
+    it.each(BOUNDS)('%s: a missing value is rejected at its path', (key) => {
+      const raw = fresh();
+      delete raw.tuning.luck.events[key];
+      expectRejected(raw, tuningFile, `luck.events.${key}`);
+    });
+
+    it('a key that does not belong in the group is rejected', () => {
+      const raw = fresh();
+      raw.tuning.luck.events.stopsAHorse = { value: 1, status: 'starting guess' };
+      expectRejected(raw, tuningFile, 'luck.events');
+    });
+
+    it('an out of range value is rejected even while all rates are zero (the group is checked whenever it is there)', () => {
+      const raw = set('windowFeet', 1321);
+      setRates(raw, [0, 0, 0]);
+      expectRejected(raw, tuningFile, 'luck.events.windowFeet.value');
+    });
+  });
+});
+
+// maxEventsPerRace is a whole number from 0 to 20 (the largest field), checked in schema.ts.
+describe('M1.5: luck.maxEventsPerRace', () => {
+  const tuningFile = 'src/data/tuning.json';
+  const set = (v: number): Raw => {
+    const raw = fresh();
+    raw.tuning.luck.maxEventsPerRace.value = v;
+    return raw;
+  };
+
+  it.each([
+    ['above 20', 21],
+    ['far above 20', 50],
+    ['a fraction', 2.5],
+    ['a negative', -1],
+  ])('%s is rejected at its path', (_n, v) => {
+    expectRejected(set(v), tuningFile, 'luck.maxEventsPerRace.value');
+  });
+
+  it.each([0, 1, 20])('%i is accepted', (v) => {
+    expect(() => validateData(set(v))).not.toThrow();
   });
 });

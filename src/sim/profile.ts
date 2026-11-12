@@ -1,6 +1,7 @@
 import type { Horse, Race, RunningStyle, Tuning } from '../data/schema';
 import { furlongsToFeet } from './course';
 import { ordersFor, type Orders } from './instructions';
+import { drawLuck, type LuckDraws } from './luck';
 import type { RaceStreams } from './raceStreams';
 
 // What one horse brings to this race: its stats turned into speeds and a reserve,
@@ -24,6 +25,8 @@ export interface Profile {
   /** Moving before its usual point: only this share of the kick's gear until this many feet to go. */
   earlyMove: { untilFeetToGo: number; gearShare: number } | null;
   stayInside: boolean;
+  /** Null when every luck rate is zero. */
+  luck: LuckDraws | null;
 }
 
 // -1 to 1, bell-shaped: the mean of three draws, so form near zero is common.
@@ -77,6 +80,7 @@ export function makeProfile(horse: Horse, race: Race, tuning: Tuning, streams: R
     rate: orders.rate,
     earlyMove: orders.earlyMoveGearShare === null ? null : { untilFeetToGo: usualAsk, gearShare: orders.earlyMoveGearShare },
     stayInside: orders.stayInside,
+    luck: drawLuck(tuning, streams, sub, distanceFeet),
   };
   // Validation should stop bad tuning first. If something gets past it, fail loudly
   // rather than run a race with a NaN reserve or an infinite speed.

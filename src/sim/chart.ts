@@ -1,6 +1,7 @@
 import type { Race, Tuning } from '../data/schema';
 import { furlongsToFeet, type Course } from './course';
 import { marginLabel } from './margins';
+import type { LuckEvent } from './luck';
 import type { Call, FinishEntry, Fraction, PaceLabel, Replay } from './result';
 import type { Run } from './simulate';
 
@@ -21,7 +22,7 @@ export interface Chart {
   replay: Replay;
 }
 
-export function makeChart(runs: readonly Run[], course: Course, race: Race, tuning: Tuning): Chart {
+export function makeChart(runs: readonly Run[], events: readonly LuckEvent[], course: Course, race: Race, tuning: Tuning): Chart {
   const dt = tuning.replayStepSeconds.value;
   const length = tuning.horseLengthFeet.value;
   const D = course.distanceFeet;
@@ -90,7 +91,7 @@ export function makeChart(runs: readonly Run[], course: Course, race: Race, tuni
       time: hundredths(wireSeconds),
       horses: byPost.map((r) => ({ id: r.profile.id, distance: hundredths(at(r, wireSeconds)), lane: hundredths(laneAt(r, wireSeconds, dt)) })),
     },
-    events: [],
+    events: events.map((e) => ({ type: e.type, horse: e.horse, otherHorse: e.otherHorse, time: hundredths(e.seconds) })),
   };
 
   return { finish, photoFinish, fractions, pace: { halfMile, label }, calls, replay };

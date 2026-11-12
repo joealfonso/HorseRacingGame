@@ -10,7 +10,8 @@ import { makeBias } from './trackBias';
 
 // Bump whenever a change means the same inputs and seed give a different result,
 // and say why in the PR. The golden results are pinned to it.
-export const SIM_VERSION = 1;
+// 2: luck events (M1.5). The same inputs with a luck rate above zero now give a different race.
+export const SIM_VERSION = 2;
 
 // One race from validated data and a seed. Reads nothing else, changes nothing it is
 // given and keeps nothing afterwards, so the same call always gives the same result.
@@ -21,7 +22,8 @@ export function runRace(inputs: GameData, seed: number): RaceResult {
   const course = layCourse(track, furlongsToFeet(race.distanceFurlongs));
 
   const profiles = horses.map((h) => makeProfile(h, race, tuning, streams, course.distanceFeet));
-  const chart = makeChart(simulate(profiles, course, tuning, makeBias(race, tuning)), course, race, tuning);
+  const { runs, events } = simulate(profiles, course, tuning, makeBias(race, tuning));
+  const chart = makeChart(runs, events, course, race, tuning);
 
   return {
     simVersion: SIM_VERSION,

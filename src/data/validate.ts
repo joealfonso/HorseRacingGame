@@ -45,5 +45,8 @@ export function validateData(raw: { track: unknown; race: unknown; card: unknown
   if (instructed && !tuning.instructions) fail('tuning', 'instructions', 'missing, the card gives instructions');
   const biased = race.trackBias.lane !== 'neutral' || race.trackBias.style !== 'neutral';
   if (biased && !tuning.trackBias) fail('tuning', 'trackBias', 'missing, the race has a track bias');
+  const { blockedPerHorse, steadiedPerHorse, bumpedPerHorse } = tuning.luck;
+  const lucky = blockedPerHorse.value > 0 || steadiedPerHorse.value > 0 || bumpedPerHorse.value > 0;
+  if (lucky && !tuning.luck.events) fail('tuning', 'luck.events', 'missing, a luck rate is above zero');
   return { track, race, card, tuning };
 }
