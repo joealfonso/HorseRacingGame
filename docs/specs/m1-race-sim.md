@@ -174,7 +174,25 @@ Locked once Joseph approves: the seed range; streams keyed by name and sub-key, 
 
 Likely to change: every tuning number, the card itself, the margin label table, the drama bands, the replay step, the stat set when M2 lands, going and surface handling in M5, jockeys in M2, and the golden files each time the model changes on purpose.
 
-## Open questions
+## Answers to the open questions
+
+Decided 2026-11-11 by the lead session. Joseph delegated all of them ("You decide all"). Any of these can be reopened by him. The numbers match the questions below.
+
+1. **Batch runner:** yes. M1.6 is built, run by hand, not nightly.
+2. **Validation:** zod. The brief names it, so it is the one new dependency M1 adds.
+3. **Stats:** speed, stamina, kick and running style only. Temperament waits for M2, because in M1 it would add a rule before there is a horse the player cares about. M2 extends these four and does not replace them.
+4. **Pace:** it comes from the field and is reported. No forced-pace input in M1.
+5. **Post position:** as specced. A neutral track is fair within tolerance, and posts matter through track bias and ground lost on turns.
+6. **The race:** not the Kentucky Derby. A fictional 10-furlong stakes at Churchill Downs, with its name in data. The Derby has 20 starters and its own milestone (M7).
+7. **Jockeys:** the card carries fictional jockey names for display only, with no stats.
+8. **Dead heats:** none in M1. The order is always strict.
+9. **Playback speed:** accepted. The race clock reads real time and the renderer plays it back faster. The designer picks the speed.
+10. **Browser determinism:** not proven in M1. Node on the Mac and on CI Linux is the bar. Revisit when the debug panel can force a seed in the browser.
+11. **Instruction slots:** the three slots as specced. The on-screen word for "no instruction" is the designer's call.
+12. **Goings:** the shipped race is fast. The model still reads going from data and applies it to times only (B8).
+13. **Length of a horse:** stays 8 feet, a starting guess in tuning.
+
+## Open questions (answered above)
 
 1. **Batch runner in M1?** The brief lists only a determinism test for M1 and defers the nightly harness. I recommend a small headless runner in M1 (M1.6), run by hand, not nightly. It is the only honest way to check F2 to F5, playtester needs it after every tuning change, and the M1 gate is about whether races stay interesting, which a 10,000-race summary shows quickly. Without it, the behavior checks still run in `npm test` at 500 seeds with wider tolerances. Open.
 2. **zod or hand-written validators?** See dependencies, item 2. Open.
