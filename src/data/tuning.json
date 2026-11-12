@@ -481,6 +481,46 @@
       "status": "starting guess"
     }
   },
+  "instructions": {
+    "rateEarlyEffortDrop": {
+      "value": 0.01,
+      "status": "starting guess"
+    },
+    "rateEarlyUntilShare": {
+      "value": 0.5,
+      "status": "starting guess"
+    },
+    "earlyMoveGearShare": {
+      "value": 0.05,
+      "status": "starting guess"
+    },
+    "saveForStretchFeetToGo": {
+      "value": 1320,
+      "status": "starting guess"
+    },
+    "saveForStretchKickShare": {
+      "value": 0.03,
+      "status": "starting guess"
+    }
+  },
+  "trackBias": {
+    "laneSpeedShare": {
+      "value": 0.005,
+      "status": "starting guess"
+    },
+    "laneWidthLanes": {
+      "value": 2,
+      "status": "starting guess"
+    },
+    "drainShare": {
+      "value": 0.15,
+      "status": "starting guess"
+    },
+    "frontLengths": {
+      "value": 3,
+      "status": "starting guess"
+    }
+  },
   "luck": {
     "blockedPerHorse": {
       "value": 0.025,

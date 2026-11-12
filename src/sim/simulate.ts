@@ -2,7 +2,8 @@ import type { Tuning } from '../data/schema';
 import { furlongsToFeet, isTurnAt, type Course } from './course';
 import { steer } from './lanes';
 import type { Profile } from './profile';
-import { earlyEffort } from './tactics';
+import { earlyEffort, ratedEffort } from './tactics';
+import type { Bias } from './trackBias';
 
 // One horse's run, in feet, seconds and lanes, unrounded.
 export interface Run {
@@ -34,7 +35,7 @@ const power = (x: number, n: number): number => {
 // Front first, then by post, so ties and input order never decide anything.
 const byPosition = (a: Runner, b: Runner): number => b.d - a.d || a.profile.post - b.profile.post;
 
-export function simulate(profiles: readonly Profile[], course: Course, tuning: Tuning): Run[] {
+export function simulate(profiles: readonly Profile[], course: Course, tuning: Tuning, bias: Bias): Run[] {
   const m = tuning.model;
   const dt = tuning.replayStepSeconds.value;
   const length = tuning.horseLengthFeet.value;
@@ -73,6 +74,7 @@ export function simulate(profiles: readonly Profile[], course: Course, tuning: T
       r.asked ||= D - r.d <= p.askFeetToGo;
       const effort = r.asked
         ? 1 + p.kickBoost
+        : p.rate !== null && r.d < p.rate.untilFeet ? ratedEffort(p.style, p.rate.effortDrop, tuning)
         : earlyEffort({
           style: p.style,
           isLeader: r === leader,
@@ -89,12 +91,13 @@ export function simulate(profiles: readonly Profile[], course: Course, tuning: T
       target *= rhythmAt(p.rhythm, r.d);
 
       const others = running.filter((o) => o !== r);
-      const s = steer(r, others, target, tuning, length);
+      const s = steer(r, others, target, tuning, length, p.stayInside && !r.asked);
       r.lane = s.lane;
       // Caught wide on a turn with a horse alongside on the inside, a rider takes back a
       // touch to drop in behind it, which costs less than going round wide. Not on a
-      // straight, where wide costs nothing, not on the lead and not once asked.
-      if (s.shutOut && !r.asked && r !== leader && isTurnAt(course, r.d)) target *= 1 - m.tuckInEffortDrop.value;
+      // straight, where wide costs nothing, unless told to stay inside. Not on the lead
+      // and not once asked.
+      if (s.shutOut && !r.asked && r !== leader && (isTurnAt(course, r.d) || p.stayInside)) target *= 1 - m.tuckInEffortDrop.value;
 
       const accel = !r.away ? m.startAccelFeetPerSecondSquared.value
         : r.asked ? p.kickAccel : m.settleAccelFeetPerSecondSquared.value;
@@ -104,16 +107,22 @@ export function simulate(profiles: readonly Profile[], course: Course, tuning: T
       if (s.heldTo !== null) r.v = Math.min(r.v, s.heldTo);
 
       // Once asked, the kick is a higher gear: its extra speed costs no more per second
-      // than cruising did. What it can use is still limited by what is left.
-      const gear = r.asked ? p.cruise * (1 + p.kickBoost) : p.cruise;
+      // than cruising did. What it can use is still limited by what is left. Sent before its
+      // usual point, a horse gets only part of that gear until it gets there.
+      const moveGear = p.earlyMove !== null && D - r.d > p.earlyMove.untilFeetToGo ? p.earlyMove.gearShare : null;
+      const gear = !r.asked ? p.cruise
+        : moveGear === null ? p.cruise * (1 + p.kickBoost)
+        : p.cruise * (1 + p.kickBoost * moveGear);
       const aerobic = m.aerobicShare.value;
       const excess = Math.max(0, r.v / gear - aerobic) / (1 - aerobic);
-      r.reserve = Math.max(0, r.reserve - (dt * power(excess, m.drainPower.value)) / p.endurance);
+      let drain = (dt * power(excess, m.drainPower.value)) / p.endurance;
+      if (bias.drain !== null) drain *= bias.drain((leader.d - r.d) / length);
+      r.reserve = Math.max(0, r.reserve - drain);
     }
 
     for (const r of runners) {
       if (r.finished) r.v = Math.max(0, r.v - m.gallopOutFeetPerSecondSquared.value * dt);
-      const ground = r.v * dt;
+      const ground = bias.ground === null ? r.v * dt : r.v * dt * bias.ground(r.lane);
       // On a turn a horse out from the rail runs a bigger circle for the same progress.
       const progress = isTurnAt(course, r.d) ? (ground * R) / (R + r.lane * laneFeet) : ground;
       const next = r.d + progress;

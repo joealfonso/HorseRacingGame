@@ -394,15 +394,4 @@ describe('O8: replay', () => {
     });
     expect(runRace(lucky, 0).replay.events).toEqual([]);
   });
-
-  it('instructions and track bias are echoed and change nothing else (retire this test in M1.4)', () => {
-    const base = runRace(data, 21);
-    const told = structuredClone(data);
-    told.card.horses[0].instructions = { early: 'rateEarly', move: 'saveForStretch', path: 'stayInside' };
-    told.card.horses[1].instructions = { early: 'default', move: 'moveAtThreeEighths', path: 'default' };
-    told.race.trackBias = { lane: 'inside', style: 'closers' };
-    const r = runRace(told, 21);
-    expect(r.inputs).not.toEqual(base.inputs);
-    expect(JSON.stringify({ ...r, inputs: null })).toBe(JSON.stringify({ ...base, inputs: null }));
-  });
 });

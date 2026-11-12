@@ -149,3 +149,18 @@ export function problems(r: RaceResult): string[] {
   if (!winner || w.horses.some((h) => h.distance > winner.distance)) out.push('a horse is ahead of the winner in the wire frame');
   return out;
 }
+
+export type Instructions = Horse['instructions'];
+
+/** A copy of the data with one horse given instructions (the others keep theirs). */
+export function withInstructions(base: GameData, id: string, instructions: Partial<Instructions>): GameData {
+  const data = structuredClone(base);
+  const horse = data.card.horses.find((h) => h.id === id)!;
+  horse.instructions = { ...horse.instructions, ...instructions };
+  return data;
+}
+
+/** A copy of the data with the race's track bias set. */
+export function withBias(base: GameData, bias: Partial<GameData['race']['trackBias']>): GameData {
+  return withRace(base, (r) => { r.trackBias = { ...r.trackBias, ...bias }; });
+}

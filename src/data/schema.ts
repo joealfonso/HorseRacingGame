@@ -26,6 +26,9 @@ export const MAX_FURLONGS = 12;
 export const MIN_FIELD = 2;
 export const MAX_FIELD = 20;
 export const MAX_NAME_LENGTH = 18;
+// The 3/8 pole is 3 furlongs from the wire. Shared with the sim so the instruction and
+// the check that guards it cannot drift apart.
+export const THREE_EIGHTHS_FEET_TO_GO = 1980;
 
 const STATUS = ['starting guess', 'confirmed'] as const;
 
@@ -202,6 +205,35 @@ const modelSchema = z.strictObject({
   // How much a horse caught wide eases, as a share of its speed, to drop in behind.
   tuckInEffortDrop: marked(share),
 });
+// What the pre-race instructions change. The 3/8 pole is a fixed place, and stay inside
+// uses the model's own tuckInEffortDrop.
+const instructionsSchema = z.strictObject({
+  // A horse told to rate early runs at its style's base effort less this share, with no
+  // pressing or catching up, until it has run this share of the race or its rider asks.
+  rateEarlyEffortDrop: marked(z.number().gt(0).max(0.5)),
+  rateEarlyUntilShare: marked(z.number().gt(0).max(1)),
+  // A horse sent at the 3/8 pole, before its usual point, gets only this share of the
+  // kick's higher gear until it reaches that point, so its extra speed drains the reserve
+  // like any speed above cruise: a long run costs. 1 would make the move free.
+  earlyMoveGearShare: marked(z.number().min(0).lt(1)),
+  // Feet before the wire where a horse saving it for the stretch is asked, and how much
+  // more it kicks with, as a share of cruise, for waiting.
+  saveForStretchFeetToGo: marked(positive),
+  saveForStretchKickShare: marked(z.number().min(0).max(0.2)),
+});
+
+// What a biased track does. Inside: a horse on the rail gains laneSpeedShare in ground
+// per stride, tapering to nothing at laneWidthLanes out. Outside: the mirror, nothing
+// on the rail and the full share from laneWidthLanes out. Speed bias: a horse on the
+// lead drains its reserve drainShare slower, tapering to no change at frontLengths
+// behind the leader. Closers bias: the same horses drain that much faster.
+const trackBiasSchema = z.strictObject({
+  laneSpeedShare: marked(z.number().gt(0).max(0.1)),
+  laneWidthLanes: marked(positive),
+  drainShare: marked(z.number().gt(0).max(0.9)),
+  frontLengths: marked(positive),
+});
+
 const goingEffects = Object.fromEntries(dirtGoings.map((g) => [g, marked(z.number().min(0))])) as
   Record<(typeof dirtGoings)[number], ReturnType<typeof marked<z.ZodNumber>>>;
 
@@ -225,6 +257,10 @@ export const tuningSchema = z.strictObject({
   speedCeilingFeetPerSecond: marked(positive),
   laneMax: marked(z.int().positive()),
   model: modelSchema,
+  // Optional as whole groups only so tuning written before M1.4 (the frozen golden inputs)
+  // still validates. validateData requires each one when the card or race uses it.
+  instructions: instructionsSchema.optional(),
+  trackBias: trackBiasSchema.optional(),
   luck: z.strictObject({
     blockedPerHorse: luckRate,
     steadiedPerHorse: luckRate,
@@ -265,6 +301,27 @@ export const tuningSchema = z.strictObject({
   const top = at(m.kickBoostShare.value, max);
   if (!(top > 0)) {
     ctx.addIssue({ code: 'custom', path: ['model', 'kickBoostShare', 'value'], message: `is ${top} at stat ${max}; must be above 0 at the top of the stat range, or the kick stat does nothing` });
+  }
+  // Saving it for the stretch has to mean asking later than any rider would by default.
+  if (t.instructions) {
+    const save = t.instructions.saveForStretchFeetToGo.value;
+    const earliestDefault = Math.min(...RUNNING_STYLES.map((s) => m.askFeetToGo.value[s])) - m.askSpreadFeet.value;
+    if (!(save < earliestDefault)) {
+      ctx.addIssue({ code: 'custom', path: ['instructions', 'saveForStretchFeetToGo', 'value'], message: `is ${save}; must be below ${earliestDefault}, the latest a rider asks without the instruction, or it saves nothing` });
+    }
+    // The mirror: a move at the 3/8 pole has to mean asking earlier than any rider would by default.
+    const latestDefault = Math.max(...RUNNING_STYLES.map((s) => m.askFeetToGo.value[s])) + m.askSpreadFeet.value;
+    if (!(THREE_EIGHTHS_FEET_TO_GO >= latestDefault)) {
+      ctx.addIssue({ code: 'custom', path: ['model', 'askFeetToGo', 'value'], message: `allows a rider to be asked as early as ${latestDefault} feet to go; must be at most ${THREE_EIGHTHS_FEET_TO_GO}, the 3/8 pole, or a move at the 3/8 pole asks later than the default` });
+    }
+    // Rate early has to leave the horse running faster than a tired one, or the race never finishes.
+    const floor = m.emptySpeedShare.value;
+    for (const s of RUNNING_STYLES) {
+      const rated = m.earlyEffort.value[s] - t.instructions.rateEarlyEffortDrop.value;
+      if (!(rated > floor)) {
+        ctx.addIssue({ code: 'custom', path: ['instructions', 'rateEarlyEffortDrop', 'value'], message: `is ${t.instructions.rateEarlyEffortDrop.value}; ${s} early effort ${m.earlyEffort.value[s]} less this is ${rated}, which must stay above emptySpeedShare ${floor}, or a rated horse never finishes` });
+      }
+    }
   }
 });
 

@@ -41,5 +41,9 @@ export function validateData(raw: { track: unknown; race: unknown; card: unknown
   if (!tuning.paceParHalfMile[String(race.distanceFurlongs)]?.[race.going]) {
     fail('tuning', `paceParHalfMile.${race.distanceFurlongs}.${race.going}`, 'missing, the race needs a pace par for its distance and going');
   }
+  const instructed = card.horses.some((h) => h.instructions.early !== 'default' || h.instructions.move !== 'default' || h.instructions.path !== 'default');
+  if (instructed && !tuning.instructions) fail('tuning', 'instructions', 'missing, the card gives instructions');
+  const biased = race.trackBias.lane !== 'neutral' || race.trackBias.style !== 'neutral';
+  if (biased && !tuning.trackBias) fail('tuning', 'trackBias', 'missing, the race has a track bias');
   return { track, race, card, tuning };
 }

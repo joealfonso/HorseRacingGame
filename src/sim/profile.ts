@@ -1,5 +1,6 @@
 import type { Horse, Race, RunningStyle, Tuning } from '../data/schema';
 import { furlongsToFeet } from './course';
+import { ordersFor, type Orders } from './instructions';
 import type { RaceStreams } from './raceStreams';
 
 // What one horse brings to this race: its stats turned into speeds and a reserve,
@@ -19,6 +20,10 @@ export interface Profile {
   breakSeconds: number;
   /** Speed wobble at each furlong from the gate, interpolated between. */
   rhythm: number[];
+  rate: Orders['rate'];
+  /** Moving before its usual point: only this share of the kick's gear until this many feet to go. */
+  earlyMove: { untilFeetToGo: number; gearShare: number } | null;
+  stayInside: boolean;
 }
 
 // -1 to 1, bell-shaped: the mean of three draws, so form near zero is common.
@@ -50,6 +55,11 @@ export function makeProfile(horse: Horse, race: Race, tuning: Tuning, streams: R
   if (!Object.hasOwn(goings, race.going)) throw new Error(`tuning.goingTimeAddedPercent has no entry for going "${race.going}"`);
   const going = 1 + goings[race.going].value / 100;
   const line = (l: { base: number; perPoint: number }, stat: number) => l.base + l.perPoint * stat;
+  const orders = ordersFor(horse, tuning, distanceFeet);
+
+  const usualAsk = m.askFeetToGo.value[horse.style] + askJitter;
+  // Never below zero: a horse with very little kick has no extra gear, it does not slow when asked.
+  const kickBoost = Math.max(0, line(m.kickBoostShare.value, kick)) * kickJitter;
 
   const profile: Profile = {
     id: horse.id,
@@ -57,20 +67,26 @@ export function makeProfile(horse: Horse, race: Race, tuning: Tuning, streams: R
     style: horse.style,
     cruise: (line(m.cruiseFeetPerSecond.value, speed) * distance * (1 + m.formSpeedShare.value * formSpeed)) / going,
     endurance: line(m.enduranceSeconds.value, stamina) * (1 + m.formReserveShare.value * formReserve),
-    // Never below zero: a horse with very little kick has no extra gear, it does not slow when asked.
-    kickBoost: Math.max(0, line(m.kickBoostShare.value, kick)) * kickJitter,
+    kickBoost: orders.extraKick === null ? kickBoost : kickBoost + orders.extraKick,
     kickAccel: line(m.kickAccelFeetPerSecondSquared.value, kick),
-    askFeetToGo: m.askFeetToGo.value[horse.style] + askJitter,
+    // An order to move or wait replaces the usual point and its jitter: the rider does as told.
+    // The jitter is still drawn above, so the kick stream's count does not change.
+    askFeetToGo: orders.askFeetToGo ?? usualAsk,
     breakSeconds,
     rhythm,
+    rate: orders.rate,
+    earlyMove: orders.earlyMoveGearShare === null ? null : { untilFeetToGo: usualAsk, gearShare: orders.earlyMoveGearShare },
+    stayInside: orders.stayInside,
   };
   // Validation should stop bad tuning first. If something gets past it, fail loudly
   // rather than run a race with a NaN reserve or an infinite speed.
-  for (const [key, value] of Object.entries(profile)) {
-    const numbers = Array.isArray(value) ? value : [value];
-    for (const n of numbers) {
-      if (typeof n === 'number' && !Number.isFinite(n)) throw new Error(`horse ${horse.id}: ${key} is ${n}, check tuning.json`);
+  // Nested objects and arrays too: a NaN inside rate or earlyMove must not pass quietly.
+  const check = (key: string, value: unknown): void => {
+    if (value === undefined || (typeof value === 'number' && !Number.isFinite(value))) {
+      throw new Error(`horse ${horse.id}: ${key} is ${value}, check tuning.json`);
     }
-  }
+    if (typeof value === 'object' && value !== null) Object.entries(value).forEach(([k, v]) => check(`${key}.${k}`, v));
+  };
+  Object.entries(profile).forEach(([key, value]) => check(key, value));
   return profile;
 }

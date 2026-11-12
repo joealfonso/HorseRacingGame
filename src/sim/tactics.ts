@@ -39,3 +39,10 @@ export function earlyEffort(p: Placing, tuning: Tuning): number {
   }
   return p.behindLeader > pos.closerMaxLengths ? base.closer + pos.effortStep : base.closer;
 }
+
+// Told to rate early, a rider settles at the style's base effort less the drop and does
+// not press for the lead or chase position, whatever the others do. The cost comes later:
+// once rating ends, the usual effort above has it make up the ground it gave away.
+export function ratedEffort(style: RunningStyle, effortDrop: number, tuning: Tuning): number {
+  return tuning.model.earlyEffort.value[style] - effortDrop;
+}

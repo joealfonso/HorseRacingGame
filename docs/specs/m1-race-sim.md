@@ -195,6 +195,11 @@ Added 2026-11-12 after the first build and its tests:
 
 - **Seed counts.** Post and style fairness (B7, F2, F3) need 2,000 seeds in `npm test`, because one post's share moves about 1.5 points at 500 seeds and the band is 2.5. The other behavior checks stay at 500.
 - **B7 and front-runners.** The paired post test holds for stalkers and closers. For front-runners it does not yet, see "Known gap" in docs/DECISIONS.md. It is retested in M1.4 with "stay inside".
+- **B7 and front-runners, settled after M1.4.** The cause is the speed duel, not missing ground cost: a rail front-runner in a field of front-runners is pressed for longer and spends more. That is honest racing, so the model stays. The front-runner ground check uses a lone front-runner among stalkers and closers, where post 8 does cost it, and "stay inside" must save it ground and time.
+- **Instruction balance waits for the tuning pass.** After M1.4, "rate early" is close to a free upgrade for front-runners, and the 3/8 move is rarely better than no instruction. Both trace to how hard the lead is taxed in the default model. They get tuned once, with the M1.6 batch runner, and the saved reference results are regenerated on purpose then. The M1 gate does not pass until each instruction is a real choice.
+- **I3 and I4 are about horses that come from off the pace.** The tests assert them for stalkers and closers. A front-runner near the lead has few places to gain, so a late-move instruction does little for it or hurts it. Whether the game should even offer those instructions to a front-runner is the designer's call.
+- **Closers bias follows where a horse runs, not its style label.** On a field of equal horses the stalkers can take the gain instead of the closers. On the shipped card the closers do gain. Left as is.
+- **Tuning groups for instructions and track bias are optional as whole groups** and required when a card or race uses them, so older frozen test inputs stay valid.
 - **V1 covers every file under `src/sim/`,** including test data, so the golden inputs use a made-up track and race name.
 13. **Length of a horse:** stays 8 feet, a starting guess in tuning.
 

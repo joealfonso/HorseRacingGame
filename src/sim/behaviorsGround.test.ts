@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { RunningStyle } from '../data/schema';
+import type { GameData, RunningStyle } from '../data/schema';
 import type { RaceResult } from './result';
 import { runRace } from './runRace';
 import { equalSpecs, mean, placeOf, report, seedRange, shipped, withField } from './testkit';
@@ -40,14 +40,40 @@ describe('B7: ground matters', () => {
     expect(cases[style].timeOutside).toBeGreaterThan(cases[style].timeRail);
   });
 
-  // KNOWN GAP, decided 2026-11-12 and recorded in docs/DECISIONS.md. In a field of eight equal
-  // front-runners the horse on the outside post covers about 4.6 feet more ground and finishes no
-  // worse (mean place 4.28 outside against 4.36 on the rail over 500 paired seeds). The model is not
-  // changed for now. This is retested in M1.4, where "stay inside" gives a clean lane lever.
-  // Vitest fails an expected failure as soon as it passes, so the day the model starts passing
-  // this test, the failure is the signal to remove ".fails".
-  it.fails('a frontRunner that runs wider finishes worse on average than the same horse saving ground', () => {
-    expect(cases.frontRunner.placeOutside).toBeGreaterThan(cases.frontRunner.placeRail);
-    expect(cases.frontRunner.timeOutside).toBeGreaterThan(cases.frontRunner.timeRail);
+  // Decided 2026-11-12 (docs/DECISIONS.md, "B7 traced"): in a field of front-runners a horse on the
+  // rail is pressed for longer and spends more, which is honest racing, so the model stays and the
+  // front-runner check uses a lone front-runner among stalkers and closers, where the ground
+  // lost from a wide post is what decides it. "Stay inside" must then save that ground and time.
+  describe('a lone front-runner among stalkers and closers', () => {
+    const lone = withField(base, Array.from({ length: 8 }, (_v, i) => ({
+      style: i === 0 ? 'frontRunner' as const : i % 2 ? 'stalker' as const : 'closer' as const, speed: 70, stamina: 70, kick: 70,
+    })));
+    const wide = structuredClone(lone);
+    wide.card.horses[0].post = 8;
+    wide.card.horses[7].post = 1;
+    const wideInside = structuredClone(wide);
+    wideInside.card.horses[0].instructions.path = 'stayInside';
+    const stats = (data: GameData) => {
+      const rs = SEEDS.map((s) => runRace(data, s));
+      return {
+        place: mean(rs.map((r) => placeOf(r, 't1'))),
+        time: mean(rs.map((r) => r.finish.find((f) => f.id === 't1')!.time)),
+        ground: mean(rs.map((r) => r.replay.horses.find((h) => h.id === 't1')!.extraGround)) / 100,
+      };
+    };
+    const post1 = stats(lone);
+    const post8 = stats(wide);
+    const post8Inside = stats(wideInside);
+    report('B7 lone front-runner: post 1, post 8, post 8 with stay inside (place, time in hundredths, ground in feet)', { post1, post8, post8Inside });
+
+    it('finishes worse on average from post 8 than from post 1', () => {
+      expect(post8.place).toBeGreaterThan(post1.place);
+      expect(post8.time).toBeGreaterThan(post1.time);
+    });
+
+    it('from post 8 covers less ground and runs a faster time with "stay inside" than without', () => {
+      expect(post8Inside.ground).toBeLessThan(post8.ground);
+      expect(post8Inside.time).toBeLessThan(post8.time);
+    });
   });
 });

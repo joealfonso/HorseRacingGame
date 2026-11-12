@@ -6,6 +6,7 @@ import { makeProfile } from './profile';
 import { createRaceStreams } from './raceStreams';
 import { UNITS, type RaceResult } from './result';
 import { simulate } from './simulate';
+import { makeBias } from './trackBias';
 
 // Bump whenever a change means the same inputs and seed give a different result,
 // and say why in the PR. The golden results are pinned to it.
@@ -20,7 +21,7 @@ export function runRace(inputs: GameData, seed: number): RaceResult {
   const course = layCourse(track, furlongsToFeet(race.distanceFurlongs));
 
   const profiles = horses.map((h) => makeProfile(h, race, tuning, streams, course.distanceFeet));
-  const chart = makeChart(simulate(profiles, course, tuning), course, race, tuning);
+  const chart = makeChart(simulate(profiles, course, tuning, makeBias(race, tuning)), course, race, tuning);
 
   return {
     simVersion: SIM_VERSION,

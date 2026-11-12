@@ -6,7 +6,7 @@ import trackJson from './track.json';
 import tuningJson from './tuning.json';
 import { loadData } from './load';
 import { DataError, validateData } from './validate';
-import { RUNNING_STYLES, MAX_NAME_LENGTH } from './schema';
+import { RUNNING_STYLES, MAX_NAME_LENGTH, THREE_EIGHTHS_FEET_TO_GO } from './schema';
 
 type Raw = { track: any; race: any; card: any; tuning: any }; // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -452,6 +452,201 @@ describe('V4: rules added in review', () => {
       const ok = structuredClone(raw);
       ok.tuning.statRange.value = { min: 1, max: 49 };
       expect(() => validateData(ok)).not.toThrow();
+    });
+  });
+});
+
+// M1.4: the instructions and trackBias tuning groups are optional as whole groups, so the frozen
+// golden inputs (written before M1.4) stay valid, and required once a card or race uses them.
+describe('M1.4: the instructions and trackBias tuning groups', () => {
+  const tuningFile = 'src/data/tuning.json';
+  // The biggest drop that keeps every style's rated effort above emptySpeedShare, with a hair to spare.
+  const largestLegalDrop = (raw: Raw): number =>
+    Math.min(...RUNNING_STYLES.map((st) => raw.tuning.model.earlyEffort.value[st])) - raw.tuning.model.emptySpeedShare.value - 0.001;
+
+  it('the shipped data has both groups, a card with no instructions and a neutral race', () => {
+    const raw = fresh();
+    expect(raw.tuning.instructions).toBeDefined();
+    expect(raw.tuning.trackBias).toBeDefined();
+    expect(raw.card.horses.every((h: any) => Object.values(h.instructions).every((v) => v === 'default'))).toBe(true); // eslint-disable-line @typescript-eslint/no-explicit-any
+    expect(raw.race.trackBias).toEqual({ lane: 'neutral', style: 'neutral' });
+  });
+
+  describe('a card that uses an instruction needs the instructions group', () => {
+    it.each([
+      ['early', 'rateEarly'],
+      ['move', 'moveAtThreeEighths'],
+      ['move', 'saveForStretch'],
+      ['path', 'stayInside'],
+    ])('%s: %s with the group missing is rejected at instructions', (slot, value) => {
+      const raw = fresh();
+      raw.card.horses[3].instructions[slot] = value;
+      delete raw.tuning.instructions;
+      expectRejected(raw, tuningFile, 'instructions');
+    });
+
+    it('the same instruction is accepted when the group is there', () => {
+      const raw = fresh();
+      raw.card.horses[3].instructions = { early: 'rateEarly', move: 'saveForStretch', path: 'stayInside' };
+      expect(() => validateData(raw)).not.toThrow();
+    });
+
+    it('a missing trackBias group does not matter to a card with instructions', () => {
+      const raw = fresh();
+      raw.card.horses[0].instructions.early = 'rateEarly';
+      delete raw.tuning.trackBias;
+      expect(() => validateData(raw)).not.toThrow();
+    });
+  });
+
+  describe('a race with a non-neutral bias needs the trackBias group', () => {
+    it.each([
+      ['lane', 'inside'],
+      ['lane', 'outside'],
+      ['style', 'speed'],
+      ['style', 'closers'],
+    ])('%s: %s with the group missing is rejected at trackBias', (field, value) => {
+      const raw = fresh();
+      raw.race.trackBias[field] = value;
+      delete raw.tuning.trackBias;
+      expectRejected(raw, tuningFile, 'trackBias');
+    });
+
+    it('the same bias is accepted when the group is there', () => {
+      const raw = fresh();
+      raw.race.trackBias = { lane: 'outside', style: 'closers' };
+      expect(() => validateData(raw)).not.toThrow();
+    });
+
+    it('a missing instructions group does not matter to a race with a bias', () => {
+      const raw = fresh();
+      raw.race.trackBias.lane = 'inside';
+      delete raw.tuning.instructions;
+      expect(() => validateData(raw)).not.toThrow();
+    });
+  });
+
+  describe('each group may be absent when unused', () => {
+    it.each(['instructions', 'trackBias'])('without %s', (group) => {
+      const raw = fresh();
+      delete raw.tuning[group];
+      expect(() => validateData(raw)).not.toThrow();
+    });
+    it('without either', () => {
+      const raw = fresh();
+      delete raw.tuning.instructions;
+      delete raw.tuning.trackBias;
+      expect(() => validateData(raw)).not.toThrow();
+    });
+    it('a bias spelled neutral and instructions spelled default count as unused', () => {
+      const raw = fresh();
+      raw.race.trackBias = { lane: 'neutral', style: 'neutral' };
+      raw.card.horses.forEach((h: any) => { h.instructions = { early: 'default', move: 'default', path: 'default' }; }); // eslint-disable-line @typescript-eslint/no-explicit-any
+      delete raw.tuning.instructions;
+      delete raw.tuning.trackBias;
+      expect(() => validateData(raw)).not.toThrow();
+    });
+  });
+
+  describe('a group that is present must be whole and in range', () => {
+    // Bounds from the schema: rateEarlyEffortDrop is above 0 and at most 0.5; drainShare is above 0 and at most 0.9.
+    it('instructions.rateEarlyEffortDrop above 0.5 is rejected at its path', () => {
+      const raw = fresh();
+      raw.tuning.instructions.rateEarlyEffortDrop.value = 0.51;
+      expectRejected(raw, tuningFile, 'instructions.rateEarlyEffortDrop.value');
+    });
+    it('trackBias.drainShare above 0.9 is rejected at its path', () => {
+      const raw = fresh();
+      raw.tuning.trackBias.drainShare.value = 0.91;
+      expectRejected(raw, tuningFile, 'trackBias.drainShare.value');
+    });
+    it('the values at the edge of those bounds are accepted', () => {
+      const raw = fresh();
+      // 0.5 is the schema bound, but the largest legal drop is also held below by the empty-speed rule.
+      raw.tuning.instructions.rateEarlyEffortDrop.value = Math.min(0.5, largestLegalDrop(raw));
+      raw.tuning.trackBias.drainShare.value = 0.9;
+      expect(() => validateData(raw)).not.toThrow();
+    });
+    it('a value of 0 for those two is rejected', () => {
+      const a = fresh();
+      a.tuning.instructions.rateEarlyEffortDrop.value = 0;
+      expectRejected(a, tuningFile, 'instructions.rateEarlyEffortDrop.value');
+      const b = fresh();
+      b.tuning.trackBias.drainShare.value = 0;
+      expectRejected(b, tuningFile, 'trackBias.drainShare.value');
+    });
+    it('a value missing from a present group is rejected, even when nothing uses the group', () => {
+      const a = fresh();
+      delete a.tuning.instructions.saveForStretchKickShare;
+      expectRejected(a, tuningFile, 'instructions.saveForStretchKickShare');
+      const b = fresh();
+      delete b.tuning.trackBias.frontLengths;
+      expectRejected(b, tuningFile, 'trackBias.frontLengths');
+    });
+  });
+
+  describe('rate early must leave a horse faster than an empty one (only when the instructions group is present)', () => {
+    const lowestEffort = (raw: Raw): number => Math.min(...RUNNING_STYLES.map((st) => raw.tuning.model.earlyEffort.value[st]));
+    const floor = (raw: Raw): number => raw.tuning.model.emptySpeedShare.value;
+
+    it('a drop that takes the weakest style\'s effort exactly to the empty-speed share is rejected at its path', () => {
+      const raw = fresh();
+      raw.tuning.instructions.rateEarlyEffortDrop.value = lowestEffort(raw) - floor(raw);
+      expectRejected(raw, tuningFile, 'instructions.rateEarlyEffortDrop.value');
+    });
+    it('a drop that takes any one style below it is rejected', () => {
+      const raw = fresh();
+      raw.tuning.instructions.rateEarlyEffortDrop.value = Math.min(0.5, lowestEffort(raw) - floor(raw) + 0.01);
+      expectRejected(raw, tuningFile, 'instructions.rateEarlyEffortDrop.value');
+    });
+    it('a drop just inside the limit is accepted', () => {
+      const raw = fresh();
+      raw.tuning.instructions.rateEarlyEffortDrop.value = largestLegalDrop(raw);
+      expect(() => validateData(raw)).not.toThrow();
+    });
+    it('the same too-large drop is accepted when the group is absent and the card is all default', () => {
+      const raw = fresh();
+      raw.tuning.instructions.rateEarlyEffortDrop.value = 0.5;
+      expect(lowestEffort(raw) - 0.5).toBeLessThanOrEqual(floor(raw)); // it really is too large
+      delete raw.tuning.instructions; // the group, and with it the value, is gone
+      expect(() => validateData(raw)).not.toThrow();
+    });
+  });
+
+  describe('a move at the 3/8 pole must come before any default ask (only when the instructions group is present)', () => {
+    const POLE = THREE_EIGHTHS_FEET_TO_GO;
+    const latest = (raw: Raw): number =>
+      Math.max(...RUNNING_STYLES.map((st) => raw.tuning.model.askFeetToGo.value[st])) + raw.tuning.model.askSpreadFeet.value;
+    const setLatest = (raw: Raw, feet: number) => { // move the largest ask distance so the latest default ask is `feet`
+      const styles = RUNNING_STYLES.filter((st) => raw.tuning.model.askFeetToGo.value[st] === Math.max(...RUNNING_STYLES.map((x) => raw.tuning.model.askFeetToGo.value[x])));
+      raw.tuning.model.askFeetToGo.value[styles[0]] = feet - raw.tuning.model.askSpreadFeet.value;
+    };
+
+    it('the pole is 1,980 feet to go (3 furlongs)', () => {
+      expect(POLE).toBe(1980);
+    });
+    it('a latest default ask just past the pole is rejected at model.askFeetToGo.value', () => {
+      const raw = fresh();
+      setLatest(raw, POLE + 1);
+      expect(latest(raw)).toBe(POLE + 1);
+      expectRejected(raw, tuningFile, 'model.askFeetToGo.value');
+    });
+    it('a latest default ask exactly at the pole is accepted', () => {
+      const raw = fresh();
+      setLatest(raw, POLE);
+      expect(latest(raw)).toBe(POLE);
+      expect(() => validateData(raw)).not.toThrow();
+    });
+    it('a latest default ask just short of the pole is accepted', () => {
+      const raw = fresh();
+      setLatest(raw, POLE - 1);
+      expect(() => validateData(raw)).not.toThrow();
+    });
+    it('the rule does not apply when the instructions group is absent', () => {
+      const raw = fresh();
+      setLatest(raw, POLE + 1);
+      delete raw.tuning.instructions;
+      expect(() => validateData(raw)).not.toThrow();
     });
   });
 });
