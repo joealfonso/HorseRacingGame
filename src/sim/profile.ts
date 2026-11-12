@@ -25,6 +25,8 @@ export interface Profile {
   /** Moving before its usual point: only this share of the kick's gear until this many feet to go. */
   earlyMove: { untilFeetToGo: number; gearShare: number } | null;
   stayInside: boolean;
+  /** Told to stay inside: how much slower a horse in front must be before it goes around, or null. */
+  stayInsidePassMargin: number | null;
   /** Null when every luck rate is zero. */
   luck: LuckDraws | null;
 }
@@ -80,6 +82,7 @@ export function makeProfile(horse: Horse, race: Race, tuning: Tuning, streams: R
     rate: orders.rate,
     earlyMove: orders.earlyMoveGearShare === null ? null : { untilFeetToGo: usualAsk, gearShare: orders.earlyMoveGearShare },
     stayInside: orders.stayInside,
+    stayInsidePassMargin: orders.stayInsidePassMargin,
     luck: drawLuck(tuning, streams, sub, distanceFeet),
   };
   // Validation should stop bad tuning first. If something gets past it, fail loudly

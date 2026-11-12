@@ -106,7 +106,9 @@ export function simulate(profiles: readonly Profile[], course: Course, tuning: T
       if (blocked) target *= luck.blockedSpeedShare;
 
       const others = running.filter((o) => o !== r);
-      const s = steer(r, others, target, tuning, length, (p.stayInside && !r.asked) || blocked);
+      // Told to stay inside, until asked it goes around only a horse well slower than it wants to go.
+      const passMargin = p.stayInsidePassMargin !== null && !r.asked ? p.stayInsidePassMargin : undefined;
+      const s = steer(r, others, target, tuning, length, blocked, passMargin);
       r.lane = s.lane;
       // Caught wide on a turn with a horse alongside on the inside, a rider takes back a
       // touch to drop in behind it, which costs less than going round wide. Not on a

@@ -33,6 +33,12 @@ import { runRace, SIM_VERSION } from './runRace';
 // Regenerated for M1.5 (luck events, SIM_VERSION 2): inputs.json got the luck.events,
 // instructions and trackBias groups and the shipped luck rates, and the files were renamed
 // into the two sets above.
+//
+// Regenerated for the M1 tuning pass (SIM_VERSION 3): a bump also costs reserve, and stay inside
+// can go around a much slower horse. inputs.json got the two new required values
+// (luck.events.bumpedReserveShare, instructions.stayInsidePassMarginShare); its other values
+// were left as frozen. The frozen stayInsidePassMarginShare is 0.015 on purpose, as a frozen input:
+// it differs from the shipped 0.025, and no golden horse has an instruction, so the value is never read.
 
 const DIR = join(dirname(fileURLToPath(import.meta.url)), 'golden');
 const OFF_SEEDS = [0, 1, 777, 123456789, 4294967295];

@@ -61,6 +61,8 @@ export interface Lucky {
   d: number;
   lane: number;
   v: number;
+  /** Share of its reserve left. A bump costs some of it. */
+  reserve: number;
   /** Race seconds until which it is blocked: held back and unable to go around. */
   blockedUntil: number;
 }
@@ -137,9 +139,12 @@ export function makeLuck(horses: readonly Lucky[], tuning: Tuning, lengthFeet: n
           if (type === 'blocked') r.blockedUntil = seconds + e.blockedSeconds.value;
           if (type === 'steadied') r.v *= 1 - e.steadiedSpeedDropShare.value;
           if (type === 'bumped') {
-            // Both horses come off it a little slower.
+            // Both horses come off it a little slower, and it takes something out of both, so
+            // a bump that knocks a horse out of a speed duel still costs it.
             r.v *= 1 - e.bumpedSpeedDropShare.value;
             other.v *= 1 - e.bumpedSpeedDropShare.value;
+            r.reserve = Math.max(0, r.reserve - e.bumpedReserveShare.value);
+            other.reserve = Math.max(0, other.reserve - e.bumpedReserveShare.value);
             taken.add(other);
             bumped.add(r);
             bumped.add(other);

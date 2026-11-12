@@ -58,7 +58,9 @@ describe('M1.6 command: a normal run (F1)', () => {
     // The numbers printed are the ones the batch counts for this seed range.
     const summary = runBatch(shippedData(), 300, 12);
     for (const h of summary.card.horses) {
-      const line = r.out.split('\n').find((l) => l.includes(h.name));
+      // The table row starts with the name. The F5 check lines also name a horse, so a bare
+      // includes() could land on a check line, which prints the percent to two places.
+      const line = r.out.split('\n').find((l) => l.startsWith(h.name));
       expect(line, h.name).toBeDefined();
       expect(line).toContain(h.winPercent.toFixed(1));
     }

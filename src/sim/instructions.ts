@@ -16,14 +16,16 @@ export interface Orders {
   earlyMoveGearShare: number | null;
   /** Added to the kick, as a share of cruise, for a horse saving it for the stretch. */
   extraKick: number | null;
-  /** Holds the rail until asked: no going around, and takes back to drop in. */
+  /** Holds the rail until asked: takes back to drop in, and goes around only a horse well slower. */
   stayInside: boolean;
+  /** For a horse told to stay inside, how much slower a horse in front must be before it goes around, as a share. */
+  stayInsidePassMargin: number | null;
 }
 
 export function ordersFor(horse: Horse, tuning: Tuning, distanceFeet: number): Orders {
   const { early, move, path } = horse.instructions;
   if (early === 'default' && move === 'default' && path === 'default') {
-    return { askFeetToGo: null, rate: null, earlyMoveGearShare: null, extraKick: null, stayInside: false };
+    return { askFeetToGo: null, rate: null, earlyMoveGearShare: null, extraKick: null, stayInside: false, stayInsidePassMargin: null };
   }
   const t = tuning.instructions;
   if (t === undefined) throw new Error(`horse ${horse.id} has instructions but tuning.instructions is missing`);
@@ -34,5 +36,6 @@ export function ordersFor(horse: Horse, tuning: Tuning, distanceFeet: number): O
     earlyMoveGearShare: move === 'moveAtThreeEighths' ? t.earlyMoveGearShare.value : null,
     extraKick: saved ? t.saveForStretchKickShare.value : null,
     stayInside: path === 'stayInside',
+    stayInsidePassMargin: path === 'stayInside' ? t.stayInsidePassMarginShare.value : null,
   };
 }

@@ -11,7 +11,8 @@ import { makeBias } from './trackBias';
 // Bump whenever a change means the same inputs and seed give a different result,
 // and say why in the PR. The golden results are pinned to it.
 // 2: luck events (M1.5). The same inputs with a luck rate above zero now give a different race.
-export const SIM_VERSION = 2;
+// 3: tuning pass (M1). A bump now also costs reserve and stay inside can go around a much slower horse.
+export const SIM_VERSION = 3;
 
 // One race from validated data and a seed. Reads nothing else, changes nothing it is
 // given and keeps nothing afterwards, so the same call always gives the same result.

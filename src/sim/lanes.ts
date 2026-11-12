@@ -21,8 +21,13 @@ const OVERLAP = 1;
 // when nobody is alongside on its inside, and goes around a horse in front that is
 // clearly slower than it wants to go when nobody is alongside on its outside. Otherwise
 // it sits, and if it is right on that horse's heels it is held to its speed.
-// Holding the rail (told to stay inside) it never goes around: it sits and waits.
-export function steer(me: Body, others: readonly Body[], wantSpeed: number, tuning: Tuning, lengthFeet: number, holdRail = false): Steer {
+// Holding the rail (blocked) it never goes around: it sits and waits. A horse told to stay
+// inside is given a larger passMarginShare, so it goes around only a horse that is well
+// slower than it wants to go, not one it could sit behind.
+export function steer(
+  me: Body, others: readonly Body[], wantSpeed: number, tuning: Tuning, lengthFeet: number,
+  holdRail = false, passMarginShare = tuning.model.traffic.value.passMarginShare,
+): Steer {
   const t = tuning.model.traffic.value;
   const step = tuning.model.lanesPerSecond.value * tuning.replayStepSeconds.value;
   const laneMax = tuning.laneMax.value;
@@ -45,7 +50,7 @@ export function steer(me: Body, others: readonly Body[], wantSpeed: number, tuni
       return gap > (fromLevel ? 0 : -clear) && gap < clear && across > 0 && across < OVERLAP + step;
     });
 
-  if (ahead !== null && !holdRail && wantSpeed > ahead.v * (1 + t.passMarginShare)) {
+  if (ahead !== null && !holdRail && wantSpeed > ahead.v * (1 + passMarginShare)) {
     const out = me.lane < laneMax && !blocked(1) ? Math.min(laneMax, me.lane + step) : me.lane;
     return { lane: out, heldTo, shutOut: false };
   }

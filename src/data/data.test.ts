@@ -716,6 +716,7 @@ describe('M1.5: the luck.events tuning group', () => {
       ['blockedSpeedDropShare', 0.25, true],
       ['steadiedSpeedDropShare', 0.25, true],
       ['bumpedSpeedDropShare', 0.25, true],
+      ['bumpedReserveShare', 0.1, true],
     ];
     const set = (key: string, v: number): Raw => {
       const raw = fresh();
@@ -779,5 +780,84 @@ describe('M1.5: luck.maxEventsPerRace', () => {
 
   it.each([0, 1, 20])('%i is accepted', (v) => {
     expect(() => validateData(set(v))).not.toThrow();
+  });
+});
+
+// The M1 tuning pass: instructions.stayInsidePassMarginShare and its rule against model.traffic.passMarginShare
+// (docs/specs/m1-race-sim.md, last paragraph of "Where the targets stand after the first pass").
+describe('M1 tuning pass: instructions.stayInsidePassMarginShare', () => {
+  const tuningFile = 'src/data/tuning.json';
+  const set = (value: number, traffic?: number): Raw => {
+    const raw = fresh();
+    raw.tuning.instructions.stayInsidePassMarginShare.value = value;
+    if (traffic !== undefined) raw.tuning.model.traffic.value.passMarginShare = traffic;
+    return raw;
+  };
+  const usual = fresh().tuning.model.traffic.value.passMarginShare as number;
+
+  describe('schema bounds: a number from 0 to 1', () => {
+    // Zero is only legal beside a traffic margin of zero, because of the rule below, so those two move together.
+    it('0 is accepted (with a passMarginShare of 0) and 1 is accepted', () => {
+      expect(() => validateData(set(0, 0))).not.toThrow();
+      expect(() => validateData(set(1))).not.toThrow();
+    });
+    it.each([[-0.001], [-0.5], [1.001], [2]])('%s is rejected at its path', (v) => {
+      expectRejected(set(v), tuningFile, 'instructions.stayInsidePassMarginShare.value');
+    });
+    it('a missing value is rejected at its path, even when nothing uses the group', () => {
+      const raw = fresh();
+      delete raw.tuning.instructions.stayInsidePassMarginShare;
+      expectRejected(raw, tuningFile, 'instructions.stayInsidePassMarginShare');
+    });
+  });
+
+  describe('the rule: not below model.traffic.passMarginShare', () => {
+    it('the shipped values obey it', () => {
+      const raw = fresh();
+      expect(raw.tuning.instructions.stayInsidePassMarginShare.value).toBeGreaterThanOrEqual(usual);
+    });
+
+    it.each([
+      ['just below', usual - 0.001, undefined],
+      ['zero, with a larger traffic margin', 0, undefined],
+      ['well below a large traffic margin', 0.025, 0.3],
+    ])('%s is rejected, and the message names both values', (_n, value, traffic) => {
+      const raw = set(value, traffic);
+      const err = failure(raw);
+      expect(err.file).toBe(tuningFile);
+      expect(err.message).toContain('stayInsidePassMarginShare');
+      expect(err.message).toContain('passMarginShare');
+      expect(err.message).toContain(String(value));
+      expect(err.message).toContain(String(traffic ?? usual));
+    });
+
+    it.each([
+      ['equal', usual, undefined],
+      ['just above', usual + 0.001, undefined],
+      ['equal to a large traffic margin', 0.3, 0.3],
+      ['far above', 1, undefined],
+    ])('%s is accepted', (_n, value, traffic) => {
+      expect(() => validateData(set(value, traffic))).not.toThrow();
+    });
+
+    it('the comparison is against the traffic margin in the data, not a fixed number', () => {
+      // 0.025 passes against 0.005 and fails against 0.03; 0.03 passes against 0.03.
+      expect(() => validateData(set(0.025, 0.005))).not.toThrow();
+      expect(() => validateData(set(0.025, 0.03))).toThrow();
+      expect(() => validateData(set(0.03, 0.03))).not.toThrow();
+    });
+
+    it('applies whenever the instructions group is there, whether or not a horse uses it', () => {
+      const raw = set(usual - 0.001);
+      expect(raw.card.horses.every((h: any) => h.instructions.path === 'default')).toBe(true); // eslint-disable-line @typescript-eslint/no-explicit-any
+      expect(() => validateData(raw)).toThrow();
+    });
+
+    it('does not apply when the instructions group is absent (the group is optional for a card that uses none)', () => {
+      const raw = fresh();
+      delete raw.tuning.instructions;
+      raw.tuning.model.traffic.value.passMarginShare = 0.9;
+      expect(() => validateData(raw)).not.toThrow();
+    });
   });
 });

@@ -31,32 +31,32 @@
     "5": {
       "fast": {
         "value": {
-          "hotUnderSeconds": 45.8,
-          "slowOverSeconds": 46.4
+          "hotUnderSeconds": 45.96,
+          "slowOverSeconds": 46.5
         },
         "status": "starting guess",
-        "note": "Quartiles of the leader's half on the shipped card run at this distance in the M1.3 sim."
+        "note": "Quartiles of the leader's half on the shipped card run at this distance, refitted in the M1 tuning pass (3,000 seeds)."
       },
       "good": {
         "value": {
-          "hotUnderSeconds": 46.03,
-          "slowOverSeconds": 46.63
+          "hotUnderSeconds": 46.19,
+          "slowOverSeconds": 46.73
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
       },
       "muddy": {
         "value": {
-          "hotUnderSeconds": 46.26,
-          "slowOverSeconds": 46.86
+          "hotUnderSeconds": 46.42,
+          "slowOverSeconds": 46.97
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
       },
       "sloppy": {
         "value": {
-          "hotUnderSeconds": 46.49,
-          "slowOverSeconds": 47.1
+          "hotUnderSeconds": 46.65,
+          "slowOverSeconds": 47.2
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
@@ -65,32 +65,32 @@
     "6": {
       "fast": {
         "value": {
-          "hotUnderSeconds": 46.8,
-          "slowOverSeconds": 47.4
+          "hotUnderSeconds": 46.95,
+          "slowOverSeconds": 47.5
         },
         "status": "starting guess",
-        "note": "Quartiles of the leader's half on the shipped card run at this distance in the M1.3 sim."
+        "note": "Quartiles of the leader's half on the shipped card run at this distance, refitted in the M1 tuning pass (3,000 seeds)."
       },
       "good": {
         "value": {
-          "hotUnderSeconds": 47.03,
-          "slowOverSeconds": 47.64
+          "hotUnderSeconds": 47.18,
+          "slowOverSeconds": 47.74
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
       },
       "muddy": {
         "value": {
-          "hotUnderSeconds": 47.27,
-          "slowOverSeconds": 47.87
+          "hotUnderSeconds": 47.42,
+          "slowOverSeconds": 47.98
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
       },
       "sloppy": {
         "value": {
-          "hotUnderSeconds": 47.5,
-          "slowOverSeconds": 48.11
+          "hotUnderSeconds": 47.65,
+          "slowOverSeconds": 48.21
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
@@ -99,32 +99,32 @@
     "7": {
       "fast": {
         "value": {
-          "hotUnderSeconds": 47.4,
-          "slowOverSeconds": 48.2
+          "hotUnderSeconds": 47.64,
+          "slowOverSeconds": 48.31
         },
         "status": "starting guess",
-        "note": "Quartiles of the leader's half on the shipped card run at this distance in the M1.3 sim."
+        "note": "Quartiles of the leader's half on the shipped card run at this distance, refitted in the M1 tuning pass (3,000 seeds)."
       },
       "good": {
         "value": {
-          "hotUnderSeconds": 47.64,
-          "slowOverSeconds": 48.44
+          "hotUnderSeconds": 47.88,
+          "slowOverSeconds": 48.55
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
       },
       "muddy": {
         "value": {
-          "hotUnderSeconds": 47.87,
-          "slowOverSeconds": 48.68
+          "hotUnderSeconds": 48.12,
+          "slowOverSeconds": 48.79
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
       },
       "sloppy": {
         "value": {
-          "hotUnderSeconds": 48.11,
-          "slowOverSeconds": 48.92
+          "hotUnderSeconds": 48.35,
+          "slowOverSeconds": 49.03
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
@@ -133,32 +133,32 @@
     "8": {
       "fast": {
         "value": {
-          "hotUnderSeconds": 47.7,
-          "slowOverSeconds": 48.6
+          "hotUnderSeconds": 47.94,
+          "slowOverSeconds": 48.7
         },
         "status": "starting guess",
-        "note": "Quartiles of the leader's half on the shipped card run at this distance in the M1.3 sim."
+        "note": "Quartiles of the leader's half on the shipped card run at this distance, refitted in the M1 tuning pass (3,000 seeds)."
       },
       "good": {
         "value": {
-          "hotUnderSeconds": 47.94,
-          "slowOverSeconds": 48.84
+          "hotUnderSeconds": 48.18,
+          "slowOverSeconds": 48.94
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
       },
       "muddy": {
         "value": {
-          "hotUnderSeconds": 48.18,
-          "slowOverSeconds": 49.09
+          "hotUnderSeconds": 48.42,
+          "slowOverSeconds": 49.19
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
       },
       "sloppy": {
         "value": {
-          "hotUnderSeconds": 48.42,
-          "slowOverSeconds": 49.33
+          "hotUnderSeconds": 48.66,
+          "slowOverSeconds": 49.43
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
@@ -167,32 +167,32 @@
     "9": {
       "fast": {
         "value": {
-          "hotUnderSeconds": 48.1,
-          "slowOverSeconds": 48.9
+          "hotUnderSeconds": 48.35,
+          "slowOverSeconds": 49
         },
         "status": "starting guess",
-        "note": "Quartiles of the leader's half on the shipped card run at this distance in the M1.3 sim."
+        "note": "Quartiles of the leader's half on the shipped card run at this distance, refitted in the M1 tuning pass (3,000 seeds)."
       },
       "good": {
         "value": {
-          "hotUnderSeconds": 48.34,
-          "slowOverSeconds": 49.14
+          "hotUnderSeconds": 48.59,
+          "slowOverSeconds": 49.25
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
       },
       "muddy": {
         "value": {
-          "hotUnderSeconds": 48.58,
-          "slowOverSeconds": 49.39
+          "hotUnderSeconds": 48.83,
+          "slowOverSeconds": 49.49
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
       },
       "sloppy": {
         "value": {
-          "hotUnderSeconds": 48.82,
-          "slowOverSeconds": 49.63
+          "hotUnderSeconds": 49.08,
+          "slowOverSeconds": 49.74
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
@@ -201,32 +201,32 @@
     "10": {
       "fast": {
         "value": {
-          "hotUnderSeconds": 48.5,
-          "slowOverSeconds": 49.3
+          "hotUnderSeconds": 48.72,
+          "slowOverSeconds": 49.33
         },
         "status": "starting guess",
-        "note": "Was 46/48. Set near the 25th and 75th percentile of the leader's half on the shipped card in the M1.3 sim, so about a quarter of races read hot and a quarter slow. The sim's clock starts at the gate with no run-up and its horses slow less through a race than real ones, so its halves run one to two seconds slower than real charts."
+        "note": "Was 46/48, then 48.5/49.3 until the M1 tuning pass refitted it (3,000 seeds, kept to the hundredth so a quarter of races read slow). Set near the 25th and 75th percentile of the leader's half on the shipped card, so about a quarter of races read hot and a quarter slow. The sim's clock starts at the gate with no run-up and its horses slow less through a race than real ones, so its halves run one to two seconds slower than real charts."
       },
       "good": {
         "value": {
-          "hotUnderSeconds": 48.74,
-          "slowOverSeconds": 49.55
+          "hotUnderSeconds": 48.96,
+          "slowOverSeconds": 49.58
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
       },
       "muddy": {
         "value": {
-          "hotUnderSeconds": 48.98,
-          "slowOverSeconds": 49.79
+          "hotUnderSeconds": 49.21,
+          "slowOverSeconds": 49.82
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
       },
       "sloppy": {
         "value": {
-          "hotUnderSeconds": 49.23,
-          "slowOverSeconds": 50.04
+          "hotUnderSeconds": 49.45,
+          "slowOverSeconds": 50.07
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
@@ -235,32 +235,32 @@
     "11": {
       "fast": {
         "value": {
-          "hotUnderSeconds": 48.9,
-          "slowOverSeconds": 49.7
+          "hotUnderSeconds": 49.09,
+          "slowOverSeconds": 49.77
         },
         "status": "starting guess",
-        "note": "Quartiles of the leader's half on the shipped card run at this distance in the M1.3 sim."
+        "note": "Quartiles of the leader's half on the shipped card run at this distance, refitted in the M1 tuning pass (3,000 seeds)."
       },
       "good": {
         "value": {
-          "hotUnderSeconds": 49.14,
-          "slowOverSeconds": 49.95
+          "hotUnderSeconds": 49.34,
+          "slowOverSeconds": 50.02
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
       },
       "muddy": {
         "value": {
-          "hotUnderSeconds": 49.39,
-          "slowOverSeconds": 50.2
+          "hotUnderSeconds": 49.58,
+          "slowOverSeconds": 50.27
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
       },
       "sloppy": {
         "value": {
-          "hotUnderSeconds": 49.63,
-          "slowOverSeconds": 50.45
+          "hotUnderSeconds": 49.83,
+          "slowOverSeconds": 50.52
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
@@ -269,32 +269,32 @@
     "12": {
       "fast": {
         "value": {
-          "hotUnderSeconds": 49.2,
-          "slowOverSeconds": 50.1
+          "hotUnderSeconds": 49.42,
+          "slowOverSeconds": 50.19
         },
         "status": "starting guess",
-        "note": "Quartiles of the leader's half on the shipped card run at this distance in the M1.3 sim."
+        "note": "Quartiles of the leader's half on the shipped card run at this distance, refitted in the M1 tuning pass (3,000 seeds)."
       },
       "good": {
         "value": {
-          "hotUnderSeconds": 49.45,
-          "slowOverSeconds": 50.35
+          "hotUnderSeconds": 49.67,
+          "slowOverSeconds": 50.44
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
       },
       "muddy": {
         "value": {
-          "hotUnderSeconds": 49.69,
-          "slowOverSeconds": 50.6
+          "hotUnderSeconds": 49.91,
+          "slowOverSeconds": 50.69
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
       },
       "sloppy": {
         "value": {
-          "hotUnderSeconds": 49.94,
-          "slowOverSeconds": 50.85
+          "hotUnderSeconds": 50.16,
+          "slowOverSeconds": 50.94
         },
         "status": "starting guess",
         "note": "The fast par plus this going's goingTimeAddedPercent."
@@ -392,21 +392,22 @@
     },
     "earlyEffort": {
       "value": {
-        "frontRunner": 1,
+        "frontRunner": 0.9825,
         "stalker": 0.99,
         "closer": 0.98
       },
-      "status": "starting guess"
+      "status": "starting guess",
+      "note": "Front-runner was 1 (M1 tuning pass). It sets only two things: the duel peak (this plus frontRunnerPace.duelEffort) and a rated front-runner's effort (this less rateEarlyEffortDrop). Lowered with duelEffort raised, so the peak stays at 1.035 and a rated front-runner runs at 0.97, below a lone leader's 0.98: rating hands over the lead instead of being a free saving."
     },
     "frontRunnerPace": {
       "value": {
-        "pressLengths": 1.5,
+        "pressLengths": 1.2,
         "loneLeadLengths": 3,
-        "duelEffort": 0.035,
+        "duelEffort": 0.0525,
         "loneLeadEffort": 0.98
       },
       "status": "starting guess",
-      "note": "Short presses and a costly duel, so a hot half usually means front-runners fought and paid for it."
+      "note": "Short presses and a costly duel, so a hot half usually means front-runners fought and paid for it. The duel still peaks at 1.035 of cruise (earlyEffort.frontRunner plus duelEffort; duelEffort was 0.035 with earlyEffort.frontRunner at 1), because every pressed leader of any style is pushed toward the same peak and a cheaper peak steepened the post slope for stalkers and closers. pressLengths was 1.5 (M1 tuning pass): shorter presses end duels sooner, and at 1.5 three front-runners won 10.7 percent each against a fair 12.5."
     },
     "positionPace": {
       "value": {
@@ -483,34 +484,45 @@
   },
   "instructions": {
     "rateEarlyEffortDrop": {
-      "value": 0.01,
-      "status": "starting guess"
+      "value": 0.0125,
+      "status": "starting guess",
+      "note": "Was 0.01 (M1 tuning pass). With earlyEffort.frontRunner at 0.9825 a rated front-runner runs at 0.97, a stalker at 0.9775 and a closer at 0.9675."
     },
     "rateEarlyUntilShare": {
-      "value": 0.5,
-      "status": "starting guess"
+      "value": 0.45,
+      "status": "starting guess",
+      "note": "Was 0.5 (M1 tuning pass). Shorter rating narrows the gap between a card with two front-runners and one with three."
     },
     "earlyMoveGearShare": {
-      "value": 0.05,
-      "status": "starting guess"
+      "value": 0.12,
+      "status": "starting guess",
+      "note": "Was 0.05 (M1 tuning pass). At 0.05 the first 330 feet of a 3/8 move burned about 0.15 of the reserve, and the move lost for 15 of 16 horses measured."
     },
     "saveForStretchFeetToGo": {
       "value": 1320,
       "status": "starting guess"
     },
     "saveForStretchKickShare": {
-      "value": 0.03,
-      "status": "starting guess"
+      "value": 0.035,
+      "status": "starting guess",
+      "note": "Was 0.03 (M1 tuning pass). Raised so a stalker saving it still gains more after the quarter pole than one given no instruction (I4) once presses got shorter (the duel peak did not change)."
+    },
+    "stayInsidePassMarginShare": {
+      "value": 0.025,
+      "status": "starting guess",
+      "note": "Added in the M1 tuning pass. A horse told to stay inside goes around a horse in front only when that horse is this much slower than it wants to go (everyone else uses traffic.passMarginShare). When it never went around, it lost 2 to 6 points of win share for every horse measured, for about half a length of ground saved."
     }
   },
   "trackBias": {
     "laneSpeedShare": {
-      "value": 0.005,
-      "status": "starting guess"
+      "value": 0.008,
+      "status": "starting guess",
+      "note": "Was 0.005 (M1 tuning pass), raised with laneWidthLanes narrowed so the bias pays the rail itself."
     },
     "laneWidthLanes": {
-      "value": 2,
-      "status": "starting guess"
+      "value": 1,
+      "status": "starting guess",
+      "note": "Was 2 (M1 tuning pass). Horses run at lane 0.4 to 1.2 through the turns on their own, so at 2 lanes most of the field already had most of the bias and holding the rail gained nothing from it."
     },
     "drainShare": {
       "value": 0.15,
@@ -586,8 +598,14 @@
         "note": "Cost rises steeply with this share: in M1.5 tuning runs 0.08 cost a steadied horse about 0.4 lengths at the wire on average, 0.11 about 1.4 and 0.15 about 2.3."
       },
       "bumpedSpeedDropShare": {
-        "value": 0.08,
-        "status": "starting guess"
+        "value": 0.05,
+        "status": "starting guess",
+        "note": "Was 0.08 (M1 tuning pass), lowered when bumpedReserveShare was added so a bump costs about what it did. Bumps find horses with neighbours on both sides more often than the rail horse, so a costlier bump steepened the post slope for stalkers."
+      },
+      "bumpedReserveShare": {
+        "value": 0.02,
+        "status": "starting guess",
+        "note": "Added in the M1 tuning pass. Both horses in a bump lose this share of their reserve. With a speed cost alone, a front-runner bumped early dropped out of the speed duel and finished no worse, sometimes better."
       }
     }
   },

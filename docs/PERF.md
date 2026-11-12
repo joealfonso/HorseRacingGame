@@ -24,6 +24,10 @@ Budget: 10,000 races in under 5 minutes.
 
 Measured 2026-11-12 on the same Apple M4, Node 25.6.0, `npm run batch -- --races 10000` (seeds 0 to 9999): the elapsed time the command printed was 288.3 seconds, inside the 300 second budget but with little room. The machine was under load from another job (load average 3.5 at the start, 15.6 at the end, on 10 cores), so this is a pessimistic figure. A 200-race run earlier in lighter load took 4.4 seconds, which scales to about 220 seconds. One batch "race" is five sets of sim runs (the loaded card, three post-fairness fields and one style-fairness field), so 10,000 races is 50,000 sim runs, about 5.8 ms each under load. Pass, narrowly. Rerun on a quiet machine before relying on the margin.
 
+## T3 after the M1 tuning pass
+
+Measured 2026-11-12 on the same Apple M4, Node 25.6.0, under load from other work (load average 7 to 8 on 10 cores). The T3 test, run alternately on this code and on the commit before it (`ea96466`), two runs each: median 2.59 and 2.76 ms per race here, 2.95 and 2.71 ms before; worst 8.9 and 12.2 ms here, 12.1 and 11.7 before. No change beyond noise, and both well inside the budget. The two 10,000-race batches printed 143.4 seconds (seeds 0 to 9999, load average 12.6 at the start, 5.2 at the end) and 108.0 seconds (seeds 10000 to 19999, 5.2 to 4.1). The batch before the pass printed 142.5 seconds.
+
 ## Not yet measurable
 
 | Budget | First measurable in | Why not now |

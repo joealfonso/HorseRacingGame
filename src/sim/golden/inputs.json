@@ -683,6 +683,10 @@
       "saveForStretchKickShare": {
         "value": 0.03,
         "status": "starting guess"
+      },
+      "stayInsidePassMarginShare": {
+        "value": 0.015,
+        "status": "starting guess"
       }
     },
     "trackBias": {
@@ -768,6 +772,10 @@
         },
         "bumpedSpeedDropShare": {
           "value": 0.08,
+          "status": "starting guess"
+        },
+        "bumpedReserveShare": {
+          "value": 0.02,
           "status": "starting guess"
         }
       }

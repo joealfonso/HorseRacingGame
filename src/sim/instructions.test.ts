@@ -72,6 +72,7 @@ describe('I1: off means unchanged', () => {
         earlyMoveGearShare: { value: 0.9, status: 'starting guess' },
         saveForStretchFeetToGo: { value: 100, status: 'starting guess' },
         saveForStretchKickShare: { value: 0.2, status: 'starting guess' },
+        stayInsidePassMarginShare: { value: 1, status: 'starting guess' },
       };
       t.trackBias = {
         laneSpeedShare: { value: 0.1, status: 'starting guess' },

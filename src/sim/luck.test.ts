@@ -166,6 +166,7 @@ describe('L1: off means unchanged', () => {
         blockedSpeedDropShare: { value: 0.25, status: 'starting guess' },
         steadiedSpeedDropShare: { value: 0.25, status: 'starting guess' },
         bumpedSpeedDropShare: { value: 0.25, status: 'starting guess' },
+        bumpedReserveShare: { value: 0.1, status: 'starting guess' },
       };
     });
     const gone = withTuning(off, (t) => { delete t.luck.events; });
@@ -302,6 +303,7 @@ describe('L4: events cost something, not everything', () => {
     // Pooled on purpose, and not per horse: a known issue on the tuning list (DECISIONS.md, "an early bump
     // can help a front-runner") is that a bump in the first seconds can help the horse that is bumped, because
     // it drops out of the speed duel and saves itself. So the cost of the bumped horse alone is not asserted.
+    // That is fixed now (a bump also costs reserve) and pinned in tuningPass.test.ts (U5); the assertions here are left as they were.
     const p = pairs.bumped;
     report('L4 bumped pooled: n', p.length, 'mean place cost', mean(p.map((x) => x.placeCost)), 'mean time cost', mean(p.map((x) => x.timeCost)));
     expect(p.length).toBeGreaterThan(40);
@@ -401,6 +403,7 @@ describe('welfare: luck never stops, removes or harms a horse', () => {
         blockedSpeedDropShare: { value: 0.25, status: 'starting guess' },
         steadiedSpeedDropShare: { value: 0.25, status: 'starting guess' },
         bumpedSpeedDropShare: { value: 0.25, status: 'starting guess' },
+        bumpedReserveShare: { value: 0.1, status: 'starting guess' },
       };
     });
     for (const data of [withRates(base, 1), extreme]) {

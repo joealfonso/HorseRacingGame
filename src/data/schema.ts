@@ -220,6 +220,11 @@ const instructionsSchema = z.strictObject({
   // more it kicks with, as a share of cruise, for waiting.
   saveForStretchFeetToGo: marked(positive),
   saveForStretchKickShare: marked(z.number().min(0).max(0.2)),
+  // A horse told to stay inside goes around a horse in front only if that horse is this
+  // share slower than it wants to go (the model's passMarginShare for everyone else), so
+  // it sits behind a horse going nearly its own speed but is not stuck behind a tiring one.
+  // Rule (tuning-wide): never below model.traffic.passMarginShare.
+  stayInsidePassMarginShare: marked(z.number().min(0).max(1)),
 });
 
 // What a biased track does. Inside: a horse on the rail gains laneSpeedShare in ground
@@ -240,7 +245,8 @@ const trackBiasSchema = z.strictObject({
 // needs a horse alongside, within alongsideLengths either way and adjacentWithinLanes
 // across. Each cost is a share of the horse's speed. A steadied or bumped horse loses
 // it at once and builds back up; a blocked one is held to that much less for
-// blockedSeconds and cannot go around. The caps keep an event a setback: no cost can
+// blockedSeconds and cannot go around. A bump also takes bumpedReserveShare of the
+// reserve from both horses. The caps keep an event a setback: no cost can
 // bring a horse anywhere near a stop.
 const luckEventsSchema = z.strictObject({
   // Up to two furlongs: much longer and nearly every unlucky horse finds a situation,
@@ -255,6 +261,7 @@ const luckEventsSchema = z.strictObject({
   blockedSpeedDropShare: marked(z.number().gt(0).max(0.25)),
   steadiedSpeedDropShare: marked(z.number().gt(0).max(0.25)),
   bumpedSpeedDropShare: marked(z.number().gt(0).max(0.25)),
+  bumpedReserveShare: marked(z.number().gt(0).max(0.1)),
 });
 
 const goingEffects =Object.fromEntries(dirtGoings.map((g) => [g, marked(z.number().min(0))])) as
@@ -352,6 +359,12 @@ export const tuningSchema = z.strictObject({
       if (!(rated > floor)) {
         ctx.addIssue({ code: 'custom', path: ['instructions', 'rateEarlyEffortDrop', 'value'], message: `is ${t.instructions.rateEarlyEffortDrop.value}; ${s} early effort ${m.earlyEffort.value[s]} less this is ${rated}, which must stay above emptySpeedShare ${floor}, or a rated horse never finishes` });
       }
+    }
+    // Stay inside may go around a horse no more readily than everyone else does, or it is a looser rule, not a stricter one.
+    const stay = t.instructions.stayInsidePassMarginShare.value;
+    const usual = m.traffic.value.passMarginShare;
+    if (!(stay >= usual)) {
+      ctx.addIssue({ code: 'custom', path: ['instructions', 'stayInsidePassMarginShare', 'value'], message: `is ${stay}; must be at least ${usual}, the traffic passMarginShare, or a horse told to stay inside goes around a slower horse sooner than any other horse does` });
     }
   }
 });
