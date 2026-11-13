@@ -1,8 +1,32 @@
 # M1 spec: pace and reserve redesign (the early and move orders)
 
-Status: draft for Joseph's review. Written 2026-11-12, against commit 284bf67 (`SIM_VERSION` 3). It extends `docs/specs/m1-race-sim.md` and changes none of its requirements, except where a second-pass target (V series) is amended below with the reason given.
+Status: Step 1, the feasibility probe, was run on 2026-11-12 and failed its gate. Steps 2 to 5 are not built and the shipped sim is unchanged. See "Probe result" straight below. Written 2026-11-12, against commit 284bf67 (`SIM_VERSION` 3). It extends `docs/specs/m1-race-sim.md` and changes none of its requirements, except where a second-pass target (V series) is amended below with the reason given.
 
 Every number in this spec that is a target, a band, a seed count or a starting value is a starting guess until Joseph confirms it.
+
+## Probe result (2026-11-12)
+
+Joseph approved schema change 1 and Step 1 was built and run. No setting passed the gate, so by the stop rule nothing else was tried.
+
+Reserve at the 3/8 pole, field L minus field H, on seeds 100000 to 101999. The bar is the larger within-field spread.
+
+| Setting | Stalkers' gap | Bar | Closers' gap | Bar |
+|---|---|---|---|---|
+| baseline | 0.012 | 0.071 | 0.009 | 0.078 |
+| a | 0.035 | 0.073 | 0.024 | 0.078 |
+| b | 0.035 | 0.073 | 0.031 | 0.082 |
+| c | 0.046 | 0.076 | 0.033 | 0.082 |
+| d | 0.046 | 0.077 | 0.048 | 0.092 |
+
+- **P6 and P7 failed at every setting.** The largest pull closed about half the distance to the bar.
+- **P9 failed at a to d.** On the shipped card the front-runner half of B6 (front-runners win more slow races than hot ones) shrank from 12.90 points to between 10.27 and 6.50, more than the 1 point allowed. P8 failed at d for the same reason on field H. The existing B6 test still passed at every setting.
+- **The preview went the wrong way.** In field H the 3/8 move minus save it for stalkers went from minus 3.12 to between minus 1.00 and minus 0.20. Pressure moved the speed-heavy field toward the 3/8 move, where V1 wants it to move toward save it.
+- **Rating a front-runner got more valuable,** the risk named below: plus 2.85 to plus 4.75 under pressure for the three front-runners on field H, against U1's limit of 2.
+- **Rate early plus save it on a stalker did not come down:** plus 5.0 to plus 9.3 at settings a and d (the two measured), against plus 7.1 to plus 7.95 at baseline.
+
+What this means: a pull strong enough to pass the reserve bar would need to be about twice the largest setting, and that setting already broke B6. A cost on off-pace horses alone cannot carry V1.
+
+Outcome, by open question 4 as decided: C2 is not built, the move orders and the stalker free upgrade stay known gaps for M1, and V1 reopens when jockeys get pace judgment in M2. The mechanism, the reserve reader and the probe script are kept on branch `m1/pace-redesign`, switched off, and are not merged. The probe is `node scripts/paceProbe.mjs` on that branch.
 
 ## Goal
 
