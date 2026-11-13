@@ -16,6 +16,8 @@ Amended 2026-11-12 by art-director with the M1 race-day answers below: edits to 
 
 Amended 2026-11-12 by art-director after the first art review (P0 batch). Changed: the stand-in saddlecloth box (7x9, so every number has fill above and below), the stand-in leg rule (legs at least as long as the barrel is deep, not longer, because the 32x24 frame cannot hold both), the edge marker (8x9, so it keeps a full Ink outline and gets a center row for its tip), the gate's end posts and outline spelled out, a stroke rule for the main font, the intake checklist file paths (slot path under public/assets/, scripts in scripts/art/), and the saddlecloth and furlong pole sources. One approved-era rule was loosened, the leg rule, and only for the P0 stand-in; the Horses line "long legs" is unchanged.
 
+Amended 2026-11-13 by art-director for Joseph's direction on the Card ("It should all be like a real horse racing book"). Added the Program pages section. Changed: Parchment's job now includes program pages, and saddlecloth boxes on paper get an Ink border, not Ash. Narrowed an approved rule: "Text boxes are built from 8x8 frame tiles ... Navy fill" now covers speech and the world's HUD only, because the printed pages Joseph asked for are paper. Nothing else approved was changed.
+
 Amended 2026-11-13 by art-director after the fourth art review (Card, Orders, paddock art). Added: the 3-color rule for people, with Ink allowed to part two same-color parts (an exception to "interior edges use the shade color", for people only, because a 3-color person has no shade slot), the round-face rule, the scale of people beside race horses, the paddock strip's row order with its Turf far band, and a rule keeping background lines off faces and a horse's back line. No approved rule was removed. The interior-edge exception is a narrow bend of a rule from the approved draft, stated here so Joseph can see it.
 
 Amended 2026-11-13 by art-director after the third art review (photo and result screens). Added: the photo's own vertical layout (lanes 8 px apart, the occupied block centered), Ash flanks on the photo wire, the frozen race view behind the photo, spacing for icons in text rows, and the small font's baseline when it shares a line. Changed: the photo is no longer a literal vertical crop of race-view rows y77-164; horizontal positions are unchanged. No approved rule was loosened.
@@ -86,7 +88,7 @@ No color outside this table goes in the build. Adding one is a DESIGN.md change.
 | K1 | Tan | #D29A68 | skin |
 | K2 | Umber | #9C6440 | skin |
 | K3 | Cocoa | #603A26 | darkest skin |
-| E0 | Parchment | #EEDCAA | pedigree and results pages, paper |
+| E0 | Parchment | #EEDCAA | program, pedigree and results pages, paper |
 | E1 | Dirt | #C99C5E | dirt track fast and good, paths |
 | E2 | Dirt Shade | #9A6E3E | dirt grain, hoof kick, wood |
 | E3 | Mud | #64452A | sloppy and muddy going, wet dirt |
@@ -262,7 +264,7 @@ Reject: a box with legs, a dog or pony shape, a head a third of the body, legs s
 
 - 6 is Coal, not Ink, so the cloth never merges with the Ink outline.
 - On the race sprite the number is drawn from the small font in the tack layer's trim slot, so the layer stays at Ink, cloth and number.
-- Every saddlecloth box on a Navy fill (strip 12x10, card and result 10x10) gets a 1 px Ash border, so 3 and 6 read on Navy. The number is centered in the small font. Edge markers sit on the track and get an Ink outline instead.
+- Every saddlecloth box on a Navy fill (the race HUD's 12x10 strip boxes) gets a 1 px Ash border, so 3 and 6 read on Navy. The number is centered in the small font. Every saddlecloth box on paper (program blocks 16x17, result boxes 10x10) gets a 1 px Ink border instead, so 2 Bone reads on Parchment (see Program pages). Edge markers sit on the track and get an Ink outline.
 - Risks to check by eye: 7 Orange on a chestnut, 1 Red on a bay, 6 Coal on dark coats. The cloth's Ink outline is the defense.
 - Pink: 8 keeps Pink, as the convention has it, and Pink stays the placeholder color. They never look alike. A saddlecloth is always one solid fill with a number. A placeholder is always a checker of 2x2 px Pink and Ink cells. No accepted art uses a Pink and Ink checker, and no placeholder ships.
 - M1 silks: a body color and a cap color per horse from the 18, in `src/data/cardLook.json`, no pattern, so the jacket is solid. No two horses on a card share a body color, and the loader rejects a card that does. M1 results show the 10x10 saddlecloth box. The 16x16 silks line above is unchanged and applies once 16x16 silks exist (M9).
@@ -305,7 +307,7 @@ Layout. The M1 pixel placement is in docs/specs/m1-race-day.md 4.3, and the desi
 
 ## HUD, UI frame and font
 
-- Text boxes are built from 8x8 frame tiles: Bone outer line, Ash inner line, Navy fill. Corners are their own tiles.
+- Navy means speech and the world, and paper means print. Text boxes for speech and the world's HUD (the dialog box, the race HUD and announcer bar, the photo panel, the pause box) are built from 8x8 frame tiles: Bone outer line, Ash inner line, Navy fill. Corners are their own tiles. Pages a fan would read in print (the Card, the top of Orders, the Result) are Parchment pages with no frame tiles (see Program pages). (Narrowed 2026-11-13 from "Text boxes are built from 8x8 frame tiles", on Joseph's direction "It should all be like a real horse racing book".)
 - Dialog box: full width, 3 lines of text, bottom of screen.
 - Announcer bar (race view): y0-15, Navy fill y0-14 and a 1 px Ash line at y15. It is a HUD strip, not a text box, so it has no frame tiles (16 px cannot hold frame tiles and a line of text). One line of Bone text, cell rows y4-11, from x4.
 - Cursor: a small Yellow horseshoe.
@@ -317,6 +319,23 @@ Layout. The M1 pixel placement is in docs/specs/m1-race-day.md 4.3, and the desi
 - No text baked into images, except the game logo. Signs, banners and the tote board take text from data, so it can change and is never gibberish.
 - Money up is Emerald with a plus sign, money down is Red with a minus sign. Color is never the only signal.
 - A horse name is 18 characters max, which is 144px in the main font.
+
+## Program pages
+
+The Card, the top of Orders (y0-143) and the Result are pages of one printed race program (Joseph, 2026-11-13: "It should all be like a real horse racing book"). Layout is the designer's (spec 4.1, 4.2, 4.6). These are the rules it is drawn by.
+
+- **Paper.** Full screen, flat Parchment, x0-255. No border, no texture, no shadow. The screen edge is the paper's edge, and the Ink letterbox around the canvas is the desk. On Orders the paper ends with a 1 px Ink line at y143, its bottom edge, and the paddock strip (the world) starts at y144. Layout keeps 8 px margins at the sides and 4 px at the top and bottom.
+- **Type.** Ink is the body color for both fonts. The one second color on paper is Maroon, used only for the race name, the page's title. Never Yellow text on paper, which vanishes. "Yours" on paper is the highlighter band plus the pencil tick, and on the Result the arrow marker drawn in Ink.
+- **Rules.** 1 px Ink, full width x8-247, only where the layout gives them (Card y44, y56, y210; Orders y55; Result y103, y175). No rules between entries: the saddlecloth blocks and the 2 px gaps carry the rhythm. Column heads sit at y47 so the "p" descender in "Speed" clears the y56 rule.
+- **Saddlecloth blocks on paper.** A 1 px Ink border, the saddlecloth fill inside, and the number in its number color (Jockeys and silks table), centered on its ink. Program blocks are 16x17 with the main font. Result boxes are 10x10 with the small font. The Ink border is what lets 2 (Bone) read on Parchment and 4 (Yellow) read on the Yellow band. 8 stays solid Pink with a number and is never a 2x2 checker, so it cannot be mistaken for a placeholder.
+- **Stat bars.** Each is a 50 px track: a 1 px Ash line on the bar's middle row (+12) with a 1x3 Ash end stop at the track's last column (rows +11 to +13). The fill is solid Ink, 3 px tall (+11 to +13), from the track's first column, covering the track where it runs. Square ends, no cap, no gradient, no color for high or low. In grayscale it is three clear values: Ink fill, Ash track, Parchment paper. Example: a 28 px bar is 28 px of Ink and then 22 px of thin Ash to the stop. A 42 px bar leaves only 8 px of Ash. On screen at 3x the 14 px difference is 42 px, plain at a glance.
+- **Highlighter band.** Yellow, behind the entry: x18-247, from 1 row above the entry to 1 row below (19 rows on the Card). Top and bottom edges are straight. Both ends are cut like a chisel-tip highlighter stroke, slanting the same way. The left end's first Yellow column is x21 on rows 0-4, x20 on rows 5-9, x19 on rows 10-14 and x18 on rows 15-18. The right end mirrors it, ending at x247 on rows 0-4, x246 on rows 5-9, x245 on rows 10-14 and x244 on rows 15-18. Code draws it from these offsets in data. For a band of another height (a Result row, the Orders entry), the rows split into four groups as evenly as possible, extra rows going to the top groups, with the same 0 to 3 px steps. Ink text, small numbers, bars and Ink-bordered blocks all read on it. Yellow and Parchment are almost the same value in grayscale, so the band is the color signal and the tick is the shape signal.
+- **Swipe.** On a pick, the old band and tick go. Frame 1 is the band from x18 to x132, with a chisel end at the right. Frame 2 is the whole band with the tick. Frame 1 shows for 0.1 s, frame 2 holds for 0.25 s, then the cut. These are one-shots, not a loop. (Timings in data, guess.)
+- **Pencil tick (`art.ui.mark.pick`).** 8x8, Slate only, no outline: graphite, so it reads as a hand mark and not as print. A short stroke down to the right, then a long stroke up to the right, 2 px wide where it turns.
+- **Cursor.** The same `art.ui.cursor.horseshoe`. Its Ink outline carries the shape on Parchment, and the Yellow inside reads as the brass of the shoe. No variant unless the mock shows it failing. The fallback is the same shoe with Gold in place of Yellow.
+- **Arrow marker on paper.** `art.ui.marker.yours` with Yellow and Gold swapped to Ink by code, so it prints solid Ink.
+- **Staples (`art.ui.paper.staple`).** 2x8, Ash on the left column and Slate on the right, with Slate on both end rows where the legs go into the paper. Two staples in the left margin at x2-3, on every program page: at y28-35 and y204-211 on the Card and Result, and at y28-35 and y128-135 on Orders, whose paper ends at y143. Job: says this page is bound into a program you are holding. This is the page's one touch of charm. No coffee ring and no circled marks, which a fan reads as a tip.
+- **Nothing on a page animates** except the cursor bob and the swipe. No paper texture, fold line, drop shadow, rounded box or thin vector-looking line. Everything is whole pixels in the master palette, so the page reads as a cartridge's idea of print, not as a web form.
 
 ## Tone
 
