@@ -207,20 +207,25 @@ export function stretchSpans(model: RaceModel): { from: number; to: number }[] {
 /**
  * Screen x of each grandstand tile on the mid layer. A world point w maps to mid x
  * floor(w / divisor) + 64, which puts it at the screen center when w is, so the stand
- * is in view while the stretch is.
+ * is in view while the stretch is. The home stretch's stand runs on past the wire with
+ * no end (FN3), so the gallop out and the winner beat never pass an empty mid layer.
  */
 export function standTiles(model: RaceModel, cam: number, tileW: number): number[] {
   const { midParallaxDivisor: div, midZonePadPx: pad } = model.cfg;
   const scroll = layerScroll(cam, div);
   const out: number[] = [];
-  for (const span of stretchSpans(model)) {
+  const spans = stretchSpans(model);
+  spans.forEach((span, i) => {
     const m0 = Math.floor(span.from / div) + 64 - pad;
-    const m1 = Math.floor(span.to / div) + 64 + pad;
-    for (let m = m0; m < m1; m += tileW) {
+    const m1 = i === spans.length - 1 ? Infinity : Math.floor(span.to / div) + 64 + pad;
+    // Start at the first tile that can be on screen.
+    const first = Math.max(0, Math.floor((scroll - tileW - m0) / tileW));
+    for (let m = m0 + first * tileW; m < m1; m += tileW) {
       const x = m - scroll;
-      if (x + tileW > 0 && x < SCREEN_W) out.push(x);
+      if (x >= SCREEN_W) break;
+      if (x + tileW > 0) out.push(x);
     }
-  }
+  });
   return out;
 }
 
@@ -265,14 +270,17 @@ export interface FinishRun { finishTime: number; speed: number; lane: number }
 /**
  * Per horse by post: its finish time, the speed it crossed the wire with (hundredths of
  * a foot per hundredth of a second, from the last two samples at or before the finish)
- * and its lane at the last of those samples.
+ * and its lane at the finish, interpolated as before it.
  */
 export function finishRuns(result: RaceResult): FinishRun[] {
   const step = result.replay.step;
   return result.replay.horses.map((h) => {
     const i = Math.min(h.distance.length - 1, Math.floor(h.finishTime / step));
     const speed = i > 0 ? Math.max(0, (h.distance[i] - h.distance[i - 1]) / step) : 0;
-    return { finishTime: h.finishTime, speed, lane: h.lane[Math.max(0, i)] };
+    // Held at the replay's interpolated lane at the finish, so the drawn lane does not hop a
+    // pixel there. This reads the sample just after the finish, the one the replay needs to
+    // be where it is at that moment (see DECISIONS).
+    return { finishTime: h.finishTime, speed, lane: sampleAt(h.lane, step, h.finishTime) };
   });
 }
 

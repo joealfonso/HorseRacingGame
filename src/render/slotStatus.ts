@@ -6,48 +6,10 @@ import type { Slot } from '../data/raceDaySchema';
 
 export type SlotState = 'ok' | 'missing' | 'wrongSize';
 
-// The slots the race-day screens draw. The scenes take their ids from here, the loader
-// checks at boot that each one is in slots.json, and so does the release check.
-export const SLOT_IDS = {
-  fontMain: 'font.ui.main',
-  fontSmall: 'font.ui.small',
-  frameBox: 'art.ui.frame.box',
-  placeholderTag: 'art.ui.placeholder_tag',
-  minimap: 'art.ui.minimap.track',
-  markerPlayer: 'art.race.marker.player',
-  markerEdge: 'art.race.marker.edge',
-  gate: 'art.race.gate',
-  poleFurlong: 'art.race.pole.furlong',
-  poleWire: 'art.race.pole.wire',
-  railFar: 'art.race.rail.far',
-  railNear: 'art.race.rail.near',
-  hills: 'art.race.bg.far.hills',
-  grandstand: 'art.race.bg.mid.grandstand',
-  horse: {
-    body: { gallop: 'art.race.horse.body.gallop', stand: 'art.race.horse.body.stand' },
-    tack: { gallop: 'art.race.horse.tack.gallop', stand: 'art.race.horse.tack.stand' },
-    jacket: { gallop: 'art.race.jockey.jacket.gallop', stand: 'art.race.jockey.jacket.stand' },
-    cap: { gallop: 'art.race.jockey.cap.gallop', stand: 'art.race.jockey.cap.stand' },
-  },
-} as const;
-
-/** The track surface slot for a race's surface and going. */
-export const trackSlotId = (surface: string, going: string): string => `art.track.${surface}.${going}`;
-
-/** The slots the error screen draws. It cannot trust slots.json, so it finds them by id. */
-export const ERROR_SCREEN_SLOT_IDS: readonly string[] = [SLOT_IDS.fontMain, SLOT_IDS.fontSmall, SLOT_IDS.frameBox];
-
-/** Every slot id the race-day screens need, the track slot for this race included. */
-export function neededSlotIds(race?: { surface: string; going: string }): string[] {
-  const { horse, ...flat } = SLOT_IDS;
-  const ids: string[] = [...Object.values(flat), ...Object.values(horse).flatMap((p) => [p.gallop, p.stand])];
-  if (race) ids.push(trackSlotId(race.surface, race.going));
-  return ids;
-}
-
-/** Needed ids that slots.json does not list. */
-export const missingNeeded = (slots: readonly Slot[], needed: readonly string[]): string[] =>
-  needed.filter((id) => !slots.some((s) => s.id === id));
+// The needed-slot list lives with the data schemas (src/data/raceDaySchema.ts), so the
+// loader does not depend on the render layer. Re-exported here for the screens.
+export { ERROR_SCREEN_SLOT_IDS, SLOT_IDS, missingNeeded, neededSlotIds, trackSlotId } from '../data/raceDaySchema';
+import { missingNeeded } from '../data/raceDaySchema';
 
 export interface SheetSize { width: number; height: number }
 

@@ -4,13 +4,12 @@ import palette from './palette.json';
 import raceDay from './raceDay.json';
 import slots from './slots.json';
 import {
-  cardLookSchema, paletteSchema, raceDaySchema, slotsSchema,
+  cardLookSchema, missingNeeded, neededSlotIds, paletteSchema, raceDaySchema, sequenceSeconds, slotsSchema,
   type CardLook, type Palette, type RaceDay, type Slots,
 } from './raceDaySchema';
 import { MAX_NAME_LENGTH, type GameData } from './schema';
 import { templateHoles, fillTemplate } from './template';
 import { DataError, type DataIssue } from './validate';
-import { missingNeeded, neededSlotIds } from '../render/slotStatus';
 
 export interface RaceDayData {
   palette: Palette;
@@ -27,6 +26,9 @@ export const MAX_RACE_DAY_FIELD = 8;
 export const MAX_RACE_NAME = 30;
 export const MAX_TRACK_NAME = 30;
 export const MAX_JOCKEY_NAME = 22;
+// "4x" at x224-239 in the top bar; the pause box's inner width from the cursor column.
+export const FAST_TAG_CHARS = 2;
+export const PAUSE_CHARS = 12;
 // The widest value each hole can take, for the fit checks.
 const WIDEST = {
   name: 'M'.repeat(MAX_NAME_LENGTH),
@@ -149,6 +151,19 @@ export function validateRaceDay(
   check('copy.behind', copy.behind, ['place', 'margin'], HUD_LINE_CHARS, { margin });
   check('copy.won', copy.won, ['margin'], HUD_LINE_CHARS, { margin: copy.oneLength.length > margin.length ? copy.oneLength : margin });
   check('copy.finished', copy.finished, ['place'], HUD_LINE_CHARS);
+  check('copy.fastTag', copy.fastTag, [], FAST_TAG_CHARS);
+  for (const k of ['title', 'resume', 'back'] as const) check(`copy.pause.${k}`, copy.pause[k], [], PAUSE_CHARS);
+
+  // RV11: the slowest winning time the sim allows, with a photo, fits the brief's cap.
+  const slowest = game.tuning.checks.winningTimeBandSeconds.value.max;
+  const seq = sequenceSeconds(rd, slowest, true);
+  if (seq > rd.beats.maxSequenceSeconds.value) {
+    add('raceDay', 'beats', `a ${slowest} s race with a photo takes ${seq.toFixed(1)} s of playback; the cap is ${rd.beats.maxSequenceSeconds.value} s`);
+  }
+  if (rd.ambient.fromEighthPole.some((id) => !rd.ambient.order.includes(id))) {
+    add('raceDay', 'ambient.fromEighthPole', 'lists an ambient item that is not in ambient.order');
+  }
+
   const o = copy.orders;
   const longestOrders = [Object.values(o.early), Object.values(o.move), Object.values(o.path)]
     .map((vals) => vals.reduce((a, b) => (b.length > a.length ? b : a), ''))

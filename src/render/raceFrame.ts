@@ -1,15 +1,17 @@
 import type { RaceDay } from '../data/raceDaySchema';
 import type { RaceResult } from '../sim/result';
-import { callSchedule, announcerAt, type ScheduledCall } from './announcer';
+import { ambientState, midZones, turnArt, zoneTiles, type AmbientId, type AmbientState, type MidZone, type TurnArt } from './ambient';
+import { callForBar, callSchedule, announcerAt, type ScheduledCall } from './announcer';
 import { callAt, finishLine, formatClock, ordersShort, positionLine } from './format';
-import { messageAt, messageSchedule, messageTriggers, type Shown } from './messages';
+import { messageAt, messageSchedule, messageTriggers, triggersOnWall, type Shown, type Trigger } from './messages';
 import { minimapDot, minimapGeometry, minimapWire, type MinimapGeometry } from './minimap';
 import { stripAt, stripOrders } from './strip';
-import { makeTimeline, phaseAt, playbackAt, raceTimeAt, type Phase, type Timeline } from './timeline';
+import { clockAt, isPlain, makeTimeline, phaseOf, playbackAt, raceAtWall, wallAtRace, wasSkipped, type Clock, type Phase, type Timeline } from './timeline';
 import {
   SCREEN_W, cameraX, drawOrder, drawnHorsesAt, edgeMarkers, finishRuns, horsesAt, layerScroll, makeRaceModel, polesOf,
-  standTiles, strideFrame, viewConfig, type EdgeMarker, type FinishRun, type PoleKind, type RaceModel,
+  standTiles, strideFrame, viewConfig, hoofY, type EdgeMarker, type FinishRun, type PoleKind, type RaceModel,
 } from './view';
+import { beatPose } from './winnerBeat';
 
 // Everything the race scene draws at one playback moment, worked out from the result,
 // your horse and the time only. The scene turns this into sprites and text, nothing more.
@@ -20,6 +22,15 @@ export interface ArtFacts {
   standTileWidth: number;
   poleWidth: number;
   wirePoleWidth: number;
+  /** Step 2 slots. Left out, the frame has no walk frames (the stride holds frame 0) and no crowd, infield or flag. */
+  walkFrames?: number;
+  crowdTileWidth?: number;
+  infieldTileWidth?: number;
+  /** Width of the infield's repeating pole-free slice, which fills a turn around the one full tile. */
+  infieldFillWidth?: number;
+  /** The flag's top-left inside its infield tile, and its width. */
+  flagAt?: readonly [number, number];
+  flagWidth?: number;
 }
 
 export interface RaceSetup {
@@ -32,6 +43,10 @@ export interface RaceSetup {
   strips: string[][];
   poles: { x: number; kind: PoleKind }[];
   minimap: MinimapGeometry;
+  /** Mid-layer zones: stretches carry the grandstand and crowd, turns the infield and flag. */
+  zones: MidZone[];
+  /** Each turn's infield art after the stretches clip it (CH1), when the art facts allow. */
+  turns: TurnArt[];
   /** Each horse's crossing speed and lane, for the gallop out (RV2b). */
   runs: FinishRun[];
   art: ArtFacts;
@@ -39,6 +54,7 @@ export interface RaceSetup {
 
 export function makeRaceSetup(result: RaceResult, rd: RaceDay, raceNumber: number, art: ArtFacts): RaceSetup {
   const model = makeRaceModel(result, viewConfig(rd));
+  const zones = midZones(model);
   return {
     result,
     rd,
@@ -49,12 +65,16 @@ export function makeRaceSetup(result: RaceResult, rd: RaceDay, raceNumber: numbe
     strips: stripOrders(result, rd.hud.stripHysteresisLengths.value),
     poles: polesOf(model),
     minimap: minimapGeometry(result.inputs.track),
+    zones,
+    turns: art.infieldTileWidth
+      ? zones.filter((z) => z.kind === 'turn').map((z) => turnArt(z, zones.filter((q) => q.kind === 'stretch'), art.standTileWidth, art.infieldFillWidth ?? art.infieldTileWidth!, art.infieldTileWidth!))
+      : [],
     runs: finishRuns(result),
     art,
   };
 }
 
-export interface PlayerView { id: string; post: number; name: string; orders: string; messages: Shown[] }
+export interface PlayerView { id: string; post: number; name: string; orders: string; messages: Shown[]; triggers: Trigger[] }
 
 /** Your horse's part of the view. Rebuilt when the pick changes at the gate. */
 export function playerView(setup: RaceSetup, post: number): PlayerView {
@@ -68,6 +88,7 @@ export function playerView(setup: RaceSetup, post: number): PlayerView {
     name: h.name,
     orders: ordersShort(h.instructions, rd.copy.orders),
     messages: messageSchedule(triggers, rd.hud.messageSeconds.value, rd.hud.messageMaxWaitSeconds.value),
+    triggers,
   };
 }
 
@@ -78,6 +99,10 @@ export interface HorseSprite {
   x: number;
   y: number;
   stand: boolean;
+  /** Which strip the frame is in: stand at the gate, gallop, walk in the winner beat. */
+  pose: 'stand' | 'gallop' | 'walk';
+  /** The jockey layers show the winner frames (the fist) instead of the pose's own. */
+  fist: boolean;
   frame: number;
   yours: boolean;
 }
@@ -85,7 +110,18 @@ export interface HorseSprite {
 export interface RaceFrame {
   phase: Phase;
   raceTime: number;
+  /** The race camera of spec 3.5 (RV3 to RV6). */
   cam: number;
+  /** The camera the world is drawn with: the race camera, or the winner beat's. */
+  drawCam: number;
+  /** Space is holding 4x: the tag shows and the call is cut to 27 characters. */
+  fastTag: string | null;
+  ambient: AmbientState;
+  /** Flipped on odd mid-layer tiles, like the rails, so the strip repeats every two tiles. */
+  crowdTiles: { x: number; frame: number; flip: boolean }[];
+  /** Pole-free fill slices (full false) under the one full tile per turn (full true), which carries the flag. */
+  infieldTiles: { x: number; full: boolean }[];
+  flags: { x: number; y: number; frame: number }[];
   farScroll: number;
   midScroll: number;
   standXs: number[];
@@ -110,40 +146,77 @@ export interface RaceFrame {
 
 const POLE_KIND_WIDTH = (art: ArtFacts, kind: PoleKind) => (kind === 'wire' ? art.wirePoleWidth : art.poleWidth);
 
-export function raceFrame(setup: RaceSetup, me: PlayerView, p: number): RaceFrame {
+/** The world px of the mid layer row the flag sits on: the infield tile's top. */
+const MID_TOP = 56;
+
+/**
+ * The frame at a moment. `at` is a playback second of a race played at normal speed (the
+ * P0 form), or the scene's clock with 4x, skips and pause folded in.
+ */
+export function raceFrame(setup: RaceSetup, me: PlayerView, at: number | Clock): RaceFrame {
   const { model, timeline, rd, result, art } = setup;
   const cfg = model.cfg;
-  const phase = phaseAt(timeline, p);
-  const t = raceTimeAt(timeline, p);
+  const c = typeof at === 'number' ? clockAt(timeline, at) : at;
+  const p = c.wall;
+  const plain = isPlain(c, timeline);
+  const toWall = plain ? (rt: number) => playbackAt(timeline, rt) : (rt: number) => wallAtRace(c, rt);
+  const phase = phaseOf(c);
+  const t = c.race;
   const cam = cameraX(model, me.id, t);
   const horses = horsesAt(result, cfg, t);
   const drawn = drawnHorsesAt(model, setup.runs, t);
   const stand = phase === 'gate';
+  const winner = result.finish[0];
+  const winnerIn = t >= winner.time;
 
-  const sprites: HorseSprite[] = drawOrder(drawn).map((h) => ({
-    id: h.id,
-    post: h.post,
-    x: h.x - art.noseX - cam,
-    y: h.hoofY - cfg.frameTopFromHoof,
-    stand,
-    frame: stand ? 0 : strideFrame(h.distance, h.post, cfg, art.gallopFrames),
-    yours: h.id === me.id,
-  }));
+  // The winner beat, from the end of the wire hold: the winner alone, the camera on it.
+  const beat = c.holdEndWall !== null ? (() => {
+    const k = result.replay.horses.findIndex((h) => h.id === winner.id);
+    const run = setup.runs[k];
+    const raceAtStart = raceAtWall(c, c.holdEndWall!);
+    const start = { distance: model.distance + run.speed * (raceAtStart - run.finishTime), speed: run.speed, lane: run.lane };
+    const pose = beatPose(rd, cfg, start, winner.post, c.wall - c.holdEndWall!, timeline.speed, art.noseX, art.gallopFrames, art.walkFrames ?? 1);
+    return { pose, post: winner.post, id: winner.id, lane: run.lane };
+  })() : null;
+  const drawCam = beat ? beat.pose.cam : cam;
+
+  const sprites: HorseSprite[] = beat
+    ? [{
+      id: beat.id, post: beat.post, x: rd.winnerBeat.frameLeft.value, y: hoofY(beat.lane, cfg) - cfg.frameTopFromHoof,
+      stand: false, pose: beat.pose.walking ? 'walk' : 'gallop', fist: beat.pose.walking, frame: beat.pose.frame, yours: beat.id === me.id,
+    }]
+    : drawOrder(drawn).map((h) => ({
+      id: h.id,
+      post: h.post,
+      x: h.x - art.noseX - cam,
+      y: h.hoofY - cfg.frameTopFromHoof,
+      stand,
+      pose: stand ? 'stand' as const : 'gallop' as const,
+      fist: false,
+      frame: stand ? 0 : strideFrame(h.distance, h.post, cfg, art.gallopFrames),
+      yours: h.id === me.id,
+    }));
   const mine = sprites.find((s) => s.yours);
 
   const poles = setup.poles
-    .map((pl) => ({ x: pl.x - Math.floor(POLE_KIND_WIDTH(art, pl.kind) / 2) - cam, kind: pl.kind }))
+    .map((pl) => ({ x: pl.x - Math.floor(POLE_KIND_WIDTH(art, pl.kind) / 2) - drawCam, kind: pl.kind }))
     .filter((pl) => pl.x + POLE_KIND_WIDTH(art, pl.kind) > 0 && pl.x < SCREEN_W);
 
-  const winnerIn = t >= result.finish[0].time;
   // Markers point at a race still being run: the leader's until the winner is in, yours until you are.
   const myFinish = result.finish.find((f) => f.id === me.id)?.time ?? Infinity;
-  const edges = edgeMarkers(drawn, me.id, cam, art.noseX)
+  const edges = beat ? [] : edgeMarkers(drawn, me.id, cam, art.noseX)
     .filter((e) => (e.side === 'right' ? !winnerIn : t < myFinish))
     .map((e) => ({ ...e, x: e.side === 'right' ? SCREEN_W - 8 : 0 }));
-  const message = phase === 'gate'
-    ? rd.copy.pickPrompt
-    : messageAt(me.messages, p - timeline.doorsAt) ?? (phase === 'done' ? rd.copy.nextRace : '');
+
+  let shownMessage: string | null;
+  if (plain) shownMessage = messageAt(me.messages, p - timeline.doorsAt);
+  else {
+    // FN1: a message from a skipped stretch is dropped, not shown late, and so is the
+    // "Back in stride" that follows it (it carries its event's race time).
+    const onWall = triggersOnWall(me.triggers.filter((tr) => tr.race === undefined || !wasSkipped(c, tr.race)), toWall);
+    shownMessage = messageAt(messageSchedule(onWall, rd.hud.messageSeconds.value, rd.hud.messageMaxWaitSeconds.value), p);
+  }
+  const message = phase === 'gate' ? rd.copy.pickPrompt : shownMessage ?? (phase === 'done' ? rd.copy.nextRace : '');
 
   const laneMax = result.inputs.tuning.laneMax.value;
   const D = model.distance;
@@ -154,19 +227,49 @@ export function raceFrame(setup: RaceSetup, me: PlayerView, p: number): RaceFram
   const postOf = new Map(result.replay.horses.map((h) => [h.id, h.post]));
   const strip = stripAt(setup.strips, result.replay.step, t).map((id) => ({ post: postOf.get(id) ?? 0, yours: id === me.id }));
 
+  // Ambient loops on the mid layer, in wall time, inside the cap (CH1).
+  const midScroll = layerScroll(drawCam, cfg.midParallaxDivisor);
+  const eighth = result.calls.find((x) => x.furlongsToGo === 1);
+  const eighthWall = eighth && t >= eighth.time ? toWall(eighth.time) : Infinity;
+  const zones = setup.zones;
+  const tilesOf = (kind: MidZone['kind'], w: number | undefined) => (w ? zones.filter((z) => z.kind === kind).flatMap((z) => zoneTiles(z, midScroll, w)) : []);
+  const crowdRaw = tilesOf('stretch', art.crowdTileWidth);
+  const fullW = art.infieldTileWidth ?? 0;
+  const fillW = art.infieldFillWidth ?? fullW;
+  const onScreen = (x: number, w: number) => x + w > 0 && x < SCREEN_W;
+  const fullTiles = setup.turns.flatMap((ta) => (ta.full === null ? [] : [{ x: ta.full - midScroll, full: true }]))
+    .filter((f) => onScreen(f.x, fullW));
+  const fills = setup.turns.flatMap((ta) => ta.fills.map((m) => ({ x: m - midScroll, full: false }))).filter((f) => onScreen(f.x, fillW));
+  const infieldTiles = [...fills, ...fullTiles];
+  const flagSpots = art.flagAt
+    ? fullTiles.map((f) => ({ x: f.x + art.flagAt![0], y: MID_TOP + art.flagAt![1] }))
+      .filter((f) => f.x + (art.flagWidth ?? 8) > 0 && f.x < SCREEN_W)
+    : [];
+  const visible = new Set<AmbientId>([...(crowdRaw.length ? ['crowd' as const] : []), ...(flagSpots.length ? ['flag' as const] : [])]);
+  const ambient = ambientState(rd, { wall: p, eighthWall, visible });
+
+  const fastTag = c.fast ? rd.copy.fastTag : null;
+  const call = callForBar(announcerAt(setup.schedule, p, toWall, rd.hud.typeCharsPerSecond.value), c.fast);
+
   return {
     phase,
     raceTime: t,
     cam,
-    farScroll: layerScroll(cam, cfg.farParallaxDivisor),
-    midScroll: layerScroll(cam, cfg.midParallaxDivisor),
-    standXs: standTiles(model, cam, art.standTileWidth),
+    drawCam,
+    fastTag,
+    ambient,
+    crowdTiles: crowdRaw.map(({ x, k }) => ({ x, frame: ((ambient.crowdSwaps + k) % 2 + 2) % 2, flip: ((k % 2) + 2) % 2 === 1 })),
+    infieldTiles,
+    flags: flagSpots.map((f) => ({ ...f, frame: ambient.flagFrame })),
+    farScroll: layerScroll(drawCam, cfg.farParallaxDivisor),
+    midScroll,
+    standXs: standTiles(model, drawCam, art.standTileWidth),
     poles,
-    gate: { startX: -cam, open: phase !== 'gate' },
+    gate: { startX: -drawCam, open: phase !== 'gate' },
     horses: sprites,
     arrow: mine ? { x: mine.x + cfg.playerArrowDx, y: mine.y + cfg.playerArrowDy } : null,
     edges,
-    call: announcerAt(setup.schedule, p, (rt) => playbackAt(timeline, rt), rd.hud.typeCharsPerSecond.value),
+    call,
     strip,
     dots,
     wireTick: minimapWire(setup.minimap),
@@ -174,7 +277,7 @@ export function raceFrame(setup: RaceSetup, me: PlayerView, p: number): RaceFram
     position: finishLine(result.finish, me.id, t, rd.copy)
       ?? positionLine(callAt(result.calls, t), me.id, me.post, result.inputs.tuning.marginLabelBounds.value, rd.copy),
     orders: me.orders,
-    clock: winnerIn ? formatClock(result.finish[0].time, true) : formatClock(t, false),
+    clock: winnerIn ? formatClock(winner.time, true) : formatClock(t, false),
     message,
   };
 }

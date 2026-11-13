@@ -593,7 +593,7 @@ Each step is one reviewable change. Joseph can watch after every step.
 ### Race view
 - **RV1 [T]** World x is `floor(distance * pxPerFoot / 100)` and hoof y is `116 + floor(lane * pxPerLane / 100)`, both whole numbers for every sample and every interpolated time, using values from data.
 - **RV2 [T]** At a time equal to sample i's time, a horse's position equals sample i's, for every sample up to that horse's finish. No position is NaN.
-- **RV2b [T]** Gallop out. After its own finish time a horse keeps going at the speed it crossed the wire with, as whole pixels, so nothing freezes on screen. This is drawn by the renderer only: it reads no sample after the horse's finish, changes nothing in the result, and the strip, the clock, the calls and the photo do not use it. World x never decreases for any horse at any time.
+- **RV2b [T]** Gallop out. After its own finish time a horse keeps going at the speed it crossed the wire with, as whole pixels, so nothing freezes on screen. Its lane is held where it was drawn at the finish moment, so there is no vertical hop. This is drawn by the renderer only. It may read the one sample that brackets the finish (the first sample at or after the finish time), which is the same allowance AN3 gives every drawn thing, and nothing later. It changes nothing in the result, and the strip, the clock, the calls and the photo do not use it. World x never decreases for any horse at any time. From the end of the wire hold the winner beat takes over and only the winner is drawn.
 - **RV3 [T]** Camera x is a pure function of the result, the player's horse and time: same inputs, same whole number.
 - **RV4 [T]** Over 500 seeds and every player's horse, before the leader reaches the 1/16 pole the player's nose is between screen x 56 and 200.
 - **RV5 [T]** Camera x never decreases. At default speed it moves at most 32 px between frames 1/60 s apart.
@@ -624,8 +624,10 @@ Each step is one reviewable change. Joseph can watch after every step.
 - **AN4 [T]** Every call template fits 30 characters with an 18-character name, and 27 while "4x" shows.
 
 ### Finish and photo
-- **FN1 [T]** Enter during the race before the 1/4 pole jumps to the time the leader reaches it; after it, to the winner's finish time.
+- **FN1 [T]** Enter during the race before the 1/4 pole jumps to the time the leader reaches it; after it, to the winner's finish time. A message whose trigger falls inside a skipped stretch of the race is dropped, not shown late: after a skip the message line shows only what happens from the new race time on. The announcer shows the latest call reached.
 - **FN2 [E]** The winner beat shows the winner alone easing to a walk with the fist pose, never a crop raised.
+- **FN3 [T]** The winner beat starts from the winner's gallop-out distance, speed and stride phase at the end of the wire hold, so the horse does not jump: only the camera moves, to put its frame at screen x112-143. The background's scroll slows in whole pixels over `winnerBeat.slowSeconds` and never runs backward. While it slows the winner still gallops with no fist. Once it is down to the walk, the body and tack use the walk frames and the jacket and cap use the winner frames, paired by frame index, to the end of the beat and under "Enter: next race". Nothing in the beat reads the result before the winner's finish time. The mid layer is never empty during the gallop out or the beat: the stand and its crowd continue past the wire.
+- **PA1 [T]** While the pause box is open nothing advances: race time, wall-timed calls and messages, and ambient loops all hold, and only the box's cursor bobs. Esc, or Enter on Resume, resumes from the same frame. Focus moves between Resume and Back to card and wraps.
 - **PH1 [T]** The photo shows only when `result.photoFinish` is true.
 - **PH2 [T]** In the photo, the winner's nose pixel is strictly ahead of every other horse's, for every photo-finish seed in 0 to 9999.
 - **PH3 [T]** Photo positions come from `replay.wireFrame` only and are whole numbers.
@@ -659,7 +661,7 @@ Each step is one reviewable change. Joseph can watch after every step.
 - **IN2 [T]** A key held when a screen opens is ignored until it is released.
 - **AX1 [E]** With reduced motion on, the far and mid layers and ambient loops hold still.
 - **AX2 [T]** The `aria-live` region holds the result and error text.
-- **CH1 [T]** While the field runs, at most 3 ambient things animate at once; from the 1/8 pole only the crowd strip does; ambient swap rates are in wall time and at most 4 a second.
+- **CH1 [T]** While the field runs, at most 3 ambient things animate at once; from the 1/8 pole only the crowd strip does; ambient swap rates are in wall time and at most 4 a second. Each screen pixel of the mid layer belongs to one zone's art: where a stretch zone and a turn zone would overlap, the stretch wins and the turn's art is clipped. In step 2 the flag flies on the turns only; a flag for the stretch and the backstretch waits for the art-director to place one (step 6).
 - **CH2 [E]** The charm test from DESIGN, on a 10-second clip of the race, the paddock and the winner's circle.
 
 ## 11. Needs from the sim

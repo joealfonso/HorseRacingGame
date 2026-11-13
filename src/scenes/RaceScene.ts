@@ -6,22 +6,32 @@ import { simErrorLines } from '../render/format';
 import { makeRaceSetup, playerView, raceFrame, type PlayerView, type RaceFrame, type RaceSetup } from '../render/raceFrame';
 import { nextRace, seedFor, type Session } from '../render/session';
 import { PLACEHOLDER_TAG_AT, SLOT_IDS, neededSlotIds, showPlaceholderTag, standIns, trackSlotId } from '../render/slotStatus';
-import { advance } from '../render/timeline';
+import { beatBegan, keyDown, keyState, keyUp, type KeyState } from '../render/keys';
+import { PAUSE_BOX, PAUSE_ITEMS, PAUSE_LAYOUT, closedPause, cursorFrame, moveFocus, openPause, type PauseState } from '../render/pause';
+import { phaseOf, skip, startClock, tick, type Clock } from '../render/timeline';
 import { railTiles, type PoleKind } from '../render/view';
 import { runRace } from '../sim/runRace';
 import type { RaceResult } from '../sim/result';
 import { Art, type ArtInfo } from './art';
 
-// P0, the placeholder race (spec section 8): one race from the gate to the wire, played
-// from the sim's replay, with the HUD. Every position, word and color comes from
-// src/render/raceFrame.ts; this file only places sprites and text where it says.
+// The race-day sequence (spec 4.3): the gate, the race, the wire hold and the winner
+// beat, played from the sim's replay, with the HUD, 4x, skips and the pause box. Every
+// position, word and color comes from src/render/raceFrame.ts and the pure modules beside
+// it; this file keeps the clock and the keys and places sprites and text where they say.
 
-export interface RaceData { game: GameData; rd: RaceDayData; art: ArtInfo; session: Session }
+export interface RaceData {
+  game: GameData; rd: RaceDayData; art: ArtInfo; session: Session;
+  /** Keys still down from the race before, ignored until released (IN2). */
+  held?: string[];
+}
 
 const LAYERS = ['body', 'tack', 'jacket', 'cap'] as const;
 const SLOT = SLOT_IDS.horse;
 
-const DEPTH = { back: 0, far: 10, mid: 20, track: 30, poles: 35, gate: 40, horses: 100, markers: 400, hud: 500, hudTop: 510 } as const;
+const DEPTH = { back: 0, far: 10, mid: 20, track: 30, poles: 35, gate: 40, horses: 100, markers: 400, hud: 500, hudTop: 510, pause: 600 } as const;
+const MID_Y = 56;
+const FAST_TAG_AT = { x: 224, y: 4 } as const;
+type Pose = 'stand' | 'gallop' | 'walk' | 'winner';
 const STRIP = { x: 8, y: 168, w: 12, h: 10, gap: 2 } as const;
 // The strip's Yellow arrow: 4 rows from y179, 1 px clear of the box above and the name below.
 const STRIP_ARROW_Y = 179;
@@ -30,7 +40,8 @@ const RAIL_Y = { far: 84, near: 152 } as const;
 const MINIMAP_AT = { x: 160, y: 168 } as const;
 
 interface HorseObjects {
-  keys: Record<(typeof LAYERS)[number], { gallop: string; stand: string }>;
+  /** Recolored texture per layer and pose, made on first use. */
+  key: (layer: (typeof LAYERS)[number], pose: Pose) => string;
   layers: Phaser.GameObjects.Image[];
   number: Phaser.GameObjects.Image;
 }
@@ -41,7 +52,12 @@ export class RaceScene extends Phaser.Scene {
   private setup!: RaceSetup;
   private me!: PlayerView;
   private session!: Session;
-  private p = 0;
+  private clock: Clock = startClock();
+  private keys: KeyState = keyState();
+  private pause: PauseState = closedPause();
+  private uiSeconds = 0;
+  /** Set once this race hands over to the next, so a second Enter in the same frame does nothing. */
+  private leaving = false;
   private hills!: Phaser.GameObjects.TileSprite;
   private dirt!: Phaser.GameObjects.TileSprite;
   private rails: Record<'far' | 'near', Phaser.GameObjects.Image[]> = { far: [], near: [] };
@@ -55,7 +71,12 @@ export class RaceScene extends Phaser.Scene {
   private stripG!: Phaser.GameObjects.Graphics;
   private stripNums: Phaser.GameObjects.Image[] = [];
   private dotsG!: Phaser.GameObjects.Graphics;
-  private texts!: Record<'call' | 'name' | 'position' | 'orders' | 'clock' | 'message', Phaser.GameObjects.BitmapText>;
+  private texts!: Record<'call' | 'name' | 'position' | 'orders' | 'clock' | 'message' | 'fast', Phaser.GameObjects.BitmapText>;
+  private crowd: Phaser.GameObjects.Image[] = [];
+  private infield: Phaser.GameObjects.Image[] = [];
+  private flags: Phaser.GameObjects.Image[] = [];
+  private pauseObjects: Phaser.GameObjects.GameObject[] = [];
+  private pauseCursor!: Phaser.GameObjects.Image;
 
   constructor() {
     super('race');
@@ -64,7 +85,15 @@ export class RaceScene extends Phaser.Scene {
   create(data: RaceData): void {
     this.data0 = data;
     this.session = data.session;
-    this.p = 0;
+    this.clock = startClock();
+    this.keys = keyState(data.held ?? []);
+    this.pause = closedPause();
+    this.uiSeconds = 0;
+    this.leaving = false;
+    this.crowd = [];
+    this.infield = [];
+    this.flags = [];
+    this.pauseObjects = [];
     this.horses.clear();
     this.stands = [];
     this.poles = { furlong: [], wire: [] };
@@ -91,20 +120,41 @@ export class RaceScene extends Phaser.Scene {
       standTileWidth: this.art.slot(SLOT_IDS.grandstand).frameWidth ?? 32,
       poleWidth: this.art.slot(SLOT_IDS.poleFurlong).frameWidth ?? 4,
       wirePoleWidth: this.art.slot(SLOT_IDS.poleWire).frameWidth ?? 8,
+      walkFrames: this.art.slot(SLOT.body.walk).frames ?? 1,
+      crowdTileWidth: this.art.slot(SLOT_IDS.crowd).frameWidth ?? 16,
+      infieldTileWidth: this.art.slot(SLOT_IDS.infield).frameWidth ?? 32,
+      infieldFillWidth: this.art.slot(SLOT_IDS.infield).fillSlice?.[1],
+      flagAt: this.art.slot(SLOT_IDS.flag).attachAt ?? [0, 0],
+      flagWidth: this.art.slot(SLOT_IDS.flag).frameWidth ?? 8,
     });
     this.me = playerView(this.setup, this.session.pickPost);
 
     this.buildWorld();
     this.buildHorses(result);
     this.buildHud();
+    this.buildPause();
     this.bindKeys();
-    this.draw(raceFrame(this.setup, this.me, this.p));
+    this.draw(raceFrame(this.setup, this.me, this.clock));
   }
 
   update(_time: number, delta: number): void {
     if (!this.setup) return;
-    this.p = advance(this.p, delta, this.data0.rd.raceDay.playback.maxFrameMs.value);
-    this.draw(raceFrame(this.setup, this.me, this.p));
+    const dt = Math.min(Math.max(0, delta), this.data0.rd.raceDay.playback.maxFrameMs.value) / 1000;
+    if (this.pause.open) {
+      // Nothing in the race advances while paused, ambient loops included; only the cursor bobs.
+      this.uiSeconds += dt;
+      this.drawPause();
+      return;
+    }
+    const fast = this.keys.down.has('Space') && !this.keys.stale.has('Space');
+    this.setClock(tick(this.clock, this.setup.timeline, dt, fast));
+    this.draw(raceFrame(this.setup, this.me, this.clock));
+  }
+
+  /** Every clock change goes through here, so a new beat makes held keys stale (IN2). */
+  private setClock(next: Clock): void {
+    if (phaseOf(next) !== phaseOf(this.clock)) this.keys = beatBegan(this.keys);
+    this.clock = next;
   }
 
   private color(name: string): number {
@@ -128,8 +178,19 @@ export class RaceScene extends Phaser.Scene {
 
     this.hills = this.add.tileSprite(0, 40, 256, 24, SLOT_IDS.hills, '0').setOrigin(0, 0).setDepth(DEPTH.far);
     for (let i = 0; i < 12; i++) {
-      this.stands.push(this.add.image(0, 56, SLOT_IDS.grandstand, '0').setOrigin(0, 0).setDepth(DEPTH.mid).setVisible(false));
+      this.stands.push(this.add.image(0, MID_Y, SLOT_IDS.grandstand, '0').setOrigin(0, 0).setDepth(DEPTH.mid).setVisible(false));
     }
+    const crowdY = this.art.slot(SLOT_IDS.crowd).atY ?? MID_Y;
+    const pool = (n: number, id: string, y: number, depth: number) =>
+      Array.from({ length: n }, () => this.add.image(0, y, id, '0').setOrigin(0, 0).setDepth(depth).setVisible(false));
+    this.crowd = pool(Math.ceil(256 / (this.art.slot(SLOT_IDS.crowd).frameWidth ?? 16)) + 2, SLOT_IDS.crowd, crowdY, DEPTH.mid + 1);
+    // The infield's pole-free slice is its own frame, 'fill', cut from the tile's columns.
+    const infield = this.art.slot(SLOT_IDS.infield);
+    const slice = infield.fillSlice ?? [0, infield.frameWidth ?? 32];
+    const tex = this.textures.get(SLOT_IDS.infield);
+    if (!tex.has('fill')) tex.add('fill', 0, slice[0], 0, slice[1], infield.frameHeight ?? 32);
+    this.infield = pool(Math.ceil(256 / slice[1]) + 4, SLOT_IDS.infield, MID_Y, DEPTH.mid);
+    this.flags = pool(3, SLOT_IDS.flag, MID_Y, DEPTH.mid + 2);
     this.dirt = this.add.tileSprite(0, 92, 256, 60, this.trackSlot, '0').setOrigin(0, 0).setDepth(DEPTH.track);
     // Rail tiles as drawn: far rail y84-91 (bar on top, Grass behind the posts), near rail
     // y152-159. One image per 16 px of world, flipped on odd tiles so posts pair every 32 px.
@@ -154,19 +215,21 @@ export class RaceScene extends Phaser.Scene {
       const look = looks[h.id];
       const coat = coats[look.coat];
       const cloth = this.cloth(h.post);
-      const pair = (layer: keyof typeof SLOT, second: string, third: string) => ({
-        gallop: this.art.recolor(SLOT[layer].gallop, second, third),
-        stand: this.art.recolor(SLOT[layer].stand, second, third),
-      });
-      const keys = {
-        body: pair('body', coat.base, coat.second),
-        tack: pair('tack', cloth.fill, cloth.number),
-        jacket: pair('jacket', look.silks.body, look.silks.body),
-        cap: pair('cap', look.silks.cap, look.silks.cap),
+      const tones: Record<(typeof LAYERS)[number], [string, string]> = {
+        body: [coat.base, coat.second],
+        tack: [cloth.fill, cloth.number],
+        jacket: [look.silks.body, look.silks.body],
+        cap: [look.silks.cap, look.silks.cap],
       };
-      const layers = LAYERS.map((l) => this.add.image(0, 0, keys[l].stand, '0').setOrigin(0, 0));
+      const key = (layer: (typeof LAYERS)[number], pose: Pose) => {
+        const ids = SLOT[layer] as Record<string, string>;
+        // Only the jockey layers have winner frames; the horse layers walk under them.
+        const id = ids[pose] ?? ids[pose === 'winner' ? 'walk' : pose];
+        return this.art.recolor(id, tones[layer][0], tones[layer][1]);
+      };
+      const layers = LAYERS.map((l) => this.add.image(0, 0, key(l, 'stand'), '0').setOrigin(0, 0));
       const number = this.art.glyph(0, 0, String(h.post % 10), cloth.number);
-      this.horses.set(h.id, { keys, layers, number });
+      this.horses.set(h.id, { key, layers, number });
     }
     this.arrow = this.add.image(0, 0, SLOT_IDS.markerPlayer, '0').setOrigin(0, 0).setDepth(DEPTH.markers);
     for (let i = 0; i < 2; i++) {
@@ -200,27 +263,100 @@ export class RaceScene extends Phaser.Scene {
       orders: t(8, LINES.orders),
       clock: t(192, 210),
       message: t(8, 221),
+      fast: t(FAST_TAG_AT.x, FAST_TAG_AT.y).setDepth(DEPTH.hudTop),
     };
+  }
+
+  private buildPause(): void {
+    const copy = this.data0.rd.raceDay.copy.pause;
+    const o: Phaser.GameObjects.GameObject[] = [];
+    const before = this.children.list.length;
+    this.art.box(PAUSE_BOX.x, PAUSE_BOX.y, PAUSE_BOX.tilesW, PAUSE_BOX.tilesH, DEPTH.pause);
+    o.push(...this.children.list.slice(before));
+    o.push(this.art.text(PAUSE_LAYOUT.title.x, PAUSE_LAYOUT.title.y, copy.title).setDepth(DEPTH.pause + 1));
+    PAUSE_ITEMS.forEach((item, i) => {
+      const at = PAUSE_LAYOUT.items[i];
+      o.push(this.art.text(at.x, at.y, item === 'resume' ? copy.resume : copy.back).setDepth(DEPTH.pause + 1));
+    });
+    this.pauseCursor = this.add.image(PAUSE_LAYOUT.cursorX, PAUSE_LAYOUT.items[0].y, SLOT_IDS.cursor, '0').setOrigin(0, 0).setDepth(DEPTH.pause + 1);
+    o.push(this.pauseCursor);
+    this.pauseObjects = o;
+    this.drawPause();
+  }
+
+  private drawPause(): void {
+    for (const g of this.pauseObjects) (g as unknown as Phaser.GameObjects.Components.Visible).setVisible(this.pause.open);
+    if (!this.pause.open) return;
+    const frames = this.art.frames(SLOT_IDS.cursor);
+    const bob = cursorFrame(this.uiSeconds - this.pause.openedAt, this.data0.rd.raceDay.ambient.cursorSwapsPerSecond.value);
+    this.pauseCursor.setY(PAUSE_LAYOUT.items[this.pause.focus].y).setFrame(String(frames > 1 ? bob : 0));
+  }
+
+  private setPause(next: PauseState): void {
+    if (next.open !== this.pause.open) this.keys = beatBegan(this.keys);
+    this.pause = next;
+    this.drawPause();
+  }
+
+  private nextRace(): void {
+    if (this.leaving) return;
+    this.leaving = true;
+    this.scene.restart({ ...this.data0, session: nextRace(this.session), held: [...this.keys.down] });
   }
 
   private bindKeys(): void {
     const kb = this.input.keyboard;
     if (!kb) return;
-    const onKey = (e: KeyboardEvent) => {
-      const digit = /^(Digit|Numpad)([1-9])$/.exec(e.code);
-      const phase = raceFrame(this.setup, this.me, this.p).phase;
-      if (digit && phase === 'gate') {
-        const post = Number(digit[2]);
-        if (this.setup.result.inputs.card.horses.some((h) => h.post === post)) {
-          this.session = { ...this.session, pickPost: post };
-          this.me = playerView(this.setup, post);
-        }
-      } else if ((e.code === 'Enter' || e.code === 'NumpadEnter') && phase === 'done') {
-        this.scene.restart({ ...this.data0, session: nextRace(this.session) });
-      }
+    kb.addCapture('SPACE,ENTER,UP,DOWN,ESC');
+    const onDown = (e: KeyboardEvent) => {
+      const r = keyDown(this.keys, e.code, e.repeat);
+      this.keys = r.state;
+      if (r.act && !this.leaving) this.act(e.code);
     };
-    kb.on('keydown', onKey);
-    this.events.once('shutdown', () => kb.off('keydown', onKey));
+    const onUp = (e: KeyboardEvent) => { this.keys = keyUp(this.keys, e.code); };
+    // A key let go while the window is unfocused never sends keyup, so forget them all.
+    const onBlur = () => { this.keys = keyState(); };
+    kb.on('keydown', onDown);
+    kb.on('keyup', onUp);
+    this.game.events.on(Phaser.Core.Events.BLUR, onBlur);
+    this.events.once('shutdown', () => {
+      kb.off('keydown', onDown);
+      kb.off('keyup', onUp);
+      this.game.events.off(Phaser.Core.Events.BLUR, onBlur);
+    });
+  }
+
+  /** One key press, already filtered for repeats and keys held over from the last beat. */
+  private act(code: string): void {
+    const enter = code === 'Enter' || code === 'NumpadEnter';
+    if (this.pause.open) {
+      if (code === 'Escape') this.setPause(closedPause());
+      else if (code === 'ArrowUp') this.setPause(moveFocus(this.pause, -1));
+      else if (code === 'ArrowDown') this.setPause(moveFocus(this.pause, 1));
+      else if (enter && PAUSE_ITEMS[this.pause.focus] === 'resume') this.setPause(closedPause());
+      // No card screen yet: Back to card abandons this race and its seed is spent.
+      else if (enter) this.nextRace();
+      return;
+    }
+    if (code === 'KeyP' || code === 'Escape') {
+      this.setPause(openPause(this.uiSeconds));
+      return;
+    }
+    const phase = phaseOf(this.clock);
+    const digit = /^(Digit|Numpad)([1-9])$/.exec(code);
+    if (digit && phase === 'gate') {
+      const post = Number(digit[2]);
+      if (this.setup.result.inputs.card.horses.some((h) => h.post === post)) {
+        this.session = { ...this.session, pickPost: post };
+        this.me = playerView(this.setup, post);
+      }
+    } else if (enter && phase === 'done') {
+      this.nextRace();
+    } else if (enter) {
+      const quarter = this.setup.result.calls.find((c) => c.furlongsToGo === 2)?.time ?? this.setup.timeline.winnerTime;
+      this.setClock(skip(this.clock, this.setup.timeline, quarter));
+      this.draw(raceFrame(this.setup, this.me, this.clock));
+    }
   }
 
   private setText(key: keyof RaceScene['texts'], value: string): void {
@@ -230,10 +366,10 @@ export class RaceScene extends Phaser.Scene {
 
   private draw(f: RaceFrame): void {
     this.hills.tilePositionX = f.farScroll;
-    this.dirt.tilePositionX = f.cam;
+    this.dirt.tilePositionX = f.drawCam;
     for (const side of ['far', 'near'] as const) {
       const pool = this.rails[side];
-      const tiles = railTiles(f.cam, this.art.slot(side === 'far' ? SLOT_IDS.railFar : SLOT_IDS.railNear).frameWidth ?? 16);
+      const tiles = railTiles(f.drawCam, this.art.slot(side === 'far' ? SLOT_IDS.railFar : SLOT_IDS.railNear).frameWidth ?? 16);
       pool.forEach((img, i) => {
         const tile = tiles[i];
         img.setVisible(tile !== undefined);
@@ -245,6 +381,21 @@ export class RaceScene extends Phaser.Scene {
       img.setVisible(x !== undefined);
       if (x !== undefined) img.setX(x);
     });
+    const place = (pool: Phaser.GameObjects.Image[], items: { x: number; y?: number; frame?: number }[]) => pool.forEach((img, i) => {
+      const it = items[i];
+      img.setVisible(it !== undefined);
+      if (it) img.setX(it.x).setFrame(String(it.frame ?? 0));
+      if (it && it.y !== undefined) img.setY(it.y);
+    });
+    place(this.crowd, f.crowdTiles);
+    this.crowd.forEach((img, i) => { const t = f.crowdTiles[i]; if (t) img.setFlipX(t.flip); });
+    this.infield.forEach((img, i) => {
+      const it = f.infieldTiles[i];
+      img.setVisible(it !== undefined);
+      // Full tiles draw over the fill slices, so the pole sits on unbroken lawn.
+      if (it) img.setX(it.x).setFrame(it.full ? '0' : 'fill').setDepth(DEPTH.mid + (it.full ? 1 : 0));
+    });
+    place(this.flags, f.flags);
 
     const used = { furlong: 0, wire: 0 };
     for (const pole of f.poles) {
@@ -261,21 +412,25 @@ export class RaceScene extends Phaser.Scene {
     this.gate.setX(gateX).setFrame(f.gate.open && this.art.frames(SLOT_IDS.gate) > 1 ? '1' : '0')
       .setVisible(gateX > -(gateSlot.frameWidth ?? 40) && gateX < 256);
 
-    const tack = this.art.slot(SLOT.tack.gallop).numberAt;
-    const tackStand = this.art.slot(SLOT.tack.stand).numberAt;
+    const shown = new Set(f.horses.map((s) => s.id));
+    for (const [id, o] of this.horses) {
+      if (shown.has(id)) continue;
+      o.layers.forEach((img) => img.setVisible(false));
+      o.number.setVisible(false);
+    }
     f.horses.forEach((s, rank) => {
       const o = this.horses.get(s.id);
       if (!o) return;
-      const pose = s.stand ? 'stand' : 'gallop';
       LAYERS.forEach((layer, i) => {
         const img = o.layers[i];
-        const key = o.keys[layer][pose];
+        const jockey = layer === 'jacket' || layer === 'cap';
+        const key = o.key(layer, jockey && s.fist ? 'winner' : s.pose);
         if (img.texture.key !== key) img.setTexture(key, String(s.frame));
         else img.setFrame(String(s.frame));
-        img.setPosition(s.x, s.y).setDepth(DEPTH.horses + rank * 10 + i);
+        img.setVisible(true).setPosition(s.x, s.y).setDepth(DEPTH.horses + rank * 10 + i);
       });
-      const at = (s.stand ? tackStand : tack)?.[s.frame] ?? [10, 10];
-      o.number.setPosition(s.x + at[0], s.y + at[1]).setDepth(DEPTH.horses + rank * 10 + LAYERS.length);
+      const at = this.art.slot(SLOT.tack[s.pose]).numberAt?.[s.frame] ?? [10, 10];
+      o.number.setVisible(true).setPosition(s.x + at[0], s.y + at[1]).setDepth(DEPTH.horses + rank * 10 + LAYERS.length);
     });
     if (f.arrow) this.arrow.setVisible(true).setPosition(f.arrow.x, f.arrow.y);
     else this.arrow.setVisible(false);
@@ -302,6 +457,7 @@ export class RaceScene extends Phaser.Scene {
     this.setText('orders', f.orders);
     this.setText('message', f.message);
     this.setText('clock', f.clock);
+    this.setText('fast', f.fastTag ?? '');
     this.texts.clock.setX(248 - 8 * f.clock.length);
   }
 

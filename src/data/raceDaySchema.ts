@@ -47,6 +47,59 @@ export const paletteSchema = z.strictObject({
 
 // Slots ------------------------------------------------------------------------------
 
+// The slots the race-day screens draw. The scenes take their ids from here, the loader
+// checks at boot that each one is in slots.json, and so does the release check.
+export const SLOT_IDS = {
+  fontMain: 'font.ui.main',
+  fontSmall: 'font.ui.small',
+  frameBox: 'art.ui.frame.box',
+  cursor: 'art.ui.cursor.horseshoe',
+  placeholderTag: 'art.ui.placeholder_tag',
+  minimap: 'art.ui.minimap.track',
+  markerPlayer: 'art.race.marker.player',
+  markerEdge: 'art.race.marker.edge',
+  gate: 'art.race.gate',
+  poleFurlong: 'art.race.pole.furlong',
+  poleWire: 'art.race.pole.wire',
+  railFar: 'art.race.rail.far',
+  railNear: 'art.race.rail.near',
+  hills: 'art.race.bg.far.hills',
+  grandstand: 'art.race.bg.mid.grandstand',
+  crowd: 'art.race.bg.mid.crowd',
+  infield: 'art.race.bg.mid.infield',
+  flag: 'art.race.ambient.flag',
+  horse: {
+    body: { gallop: 'art.race.horse.body.gallop', stand: 'art.race.horse.body.stand', walk: 'art.race.horse.body.walk' },
+    tack: { gallop: 'art.race.horse.tack.gallop', stand: 'art.race.horse.tack.stand', walk: 'art.race.horse.tack.walk' },
+    jacket: {
+      gallop: 'art.race.jockey.jacket.gallop', stand: 'art.race.jockey.jacket.stand',
+      walk: 'art.race.jockey.jacket.walk', winner: 'art.race.jockey.jacket.winner',
+    },
+    cap: {
+      gallop: 'art.race.jockey.cap.gallop', stand: 'art.race.jockey.cap.stand',
+      walk: 'art.race.jockey.cap.walk', winner: 'art.race.jockey.cap.winner',
+    },
+  },
+} as const;
+
+/** The track surface slot for a race's surface and going. */
+export const trackSlotId = (surface: string, going: string): string => `art.track.${surface}.${going}`;
+
+/** The slots the error screen draws. It cannot trust slots.json, so it finds them by id. */
+export const ERROR_SCREEN_SLOT_IDS: readonly string[] = [SLOT_IDS.fontMain, SLOT_IDS.fontSmall, SLOT_IDS.frameBox];
+
+/** Every slot id the race-day screens need, the track slot for this race included. */
+export function neededSlotIds(race?: { surface: string; going: string }): string[] {
+  const { horse, ...flat } = SLOT_IDS;
+  const ids: string[] = [...Object.values(flat), ...Object.values(horse).flatMap((poses) => Object.values(poses) as string[])];
+  if (race) ids.push(trackSlotId(race.surface, race.going));
+  return ids;
+}
+
+/** Needed ids that a slot list does not have. */
+export const missingNeeded = (slots: readonly { id: string }[], needed: readonly string[]): string[] =>
+  needed.filter((id) => !slots.some((s) => s.id === id));
+
 export const SLOT_KINDS = ['art', 'font', 'sfx', 'music'] as const;
 // DESIGN.md: <kind>.<area>.<subject>[.<part>][.<variant>], lowercase, dots between
 // segments, underscores inside one.
@@ -65,6 +118,13 @@ const slot = z.strictObject({
   noseX: whole.min(0).optional(),
   // The gate's column that stands on the start line.
   startX: whole.min(0).optional(),
+  // Screen row of a mid-layer strip's top (the crowd over the grandstand).
+  atY: whole.min(0).max(239).optional(),
+  // Top-left of this sprite inside its host tile (the flag on the infield tile).
+  attachAt: z.tuple([whole.min(0), whole.min(0)]).optional(),
+  // Columns [x, width] of a tile that repeat without its one-off detail (the infield's
+  // pole-free lawn), to fill a zone around the one full tile.
+  fillSlice: z.tuple([whole.min(0), whole.positive()]).optional(),
   // Per frame, where the saddlecloth number's 4x6 small-font cell goes inside the frame.
   numberAt: z.array(z.tuple([whole.min(0), whole.min(0)])).optional(),
   recolor: z.boolean().optional(),
@@ -147,12 +207,39 @@ export const raceDaySchema = z.strictObject({
   }),
   playback: z.strictObject({
     speed: marked(positive),
+    // Hold Space (spec 3.4).
+    fastSpeed: marked(positive),
     maxFrameMs: marked(positive),
   }),
   beats: z.strictObject({
     pickSeconds: marked(z.number().min(0)),
     gateStillSeconds: marked(z.number().min(0)),
     wireHoldSeconds: marked(z.number().min(0)),
+    // Step 3 shows the photo; counted now so the sequence check (RV11) includes it.
+    photoSeconds: marked(z.number().min(0)),
+    winnerBeatSeconds: marked(z.number().min(0)),
+    // The brief's cap on one race from the gate to the end of the finish beats.
+    maxSequenceSeconds: marked(positive),
+  }),
+  // The winner beat (DESIGN Charm): the winner alone, its frame's left column at frameLeft,
+  // the background slowing over slowSeconds from its speed at the wire to a walk.
+  winnerBeat: z.strictObject({
+    frameLeft: marked(whole.min(0).max(255)),
+    slowSeconds: marked(positive),
+    walkPxPerSecond: marked(positive),
+    walkStrideFeet: marked(positive),
+  }),
+  // Ambient loops (DESIGN Charm cap, CH1). Swap rates are per wall second, at most 4.
+  ambient: z.strictObject({
+    cap: marked(whole.min(0).max(3, { error: 'must be at most 3, DESIGN\'s cap on ambient things' })),
+    // Highest priority first when more are visible than the cap allows.
+    order: z.array(z.enum(['crowd', 'flag'])).min(1),
+    // The only ones that keep moving from the 1/8 pole to the wire.
+    fromEighthPole: z.array(z.enum(['crowd', 'flag'])),
+    crowdSwapsPerSecond: marked(positive.max(4, { error: 'must be at most 4 swaps a second' })),
+    crowdStretchSwapsPerSecond: marked(positive.max(4, { error: 'must be at most 4 swaps a second' })),
+    flagSwapsPerSecond: marked(positive.max(4, { error: 'must be at most 4 swaps a second' })),
+    cursorSwapsPerSecond: marked(positive.max(4, { error: 'must be at most 4 swaps a second' })),
   }),
   hud: z.strictObject({
     stripHysteresisLengths: marked(z.number().min(0)),
@@ -169,6 +256,8 @@ export const raceDaySchema = z.strictObject({
   copy: z.strictObject({
     pickPrompt: text,
     nextRace: text,
+    fastTag: text,
+    pause: z.strictObject({ title: text, resume: text, back: text }),
     beforeFirstCall: text,
     leads: text,
     behind: text,
@@ -196,6 +285,25 @@ export const raceDaySchema = z.strictObject({
     }),
   }),
 });
+
+/**
+ * The race-day beats in playback seconds at normal speed, from the gate: the one place
+ * they are added up. The timeline and the sequence check (RV11) both read it. The photo
+ * (step 3) sits between the hold and the winner beat once it is shown; the post parade and
+ * call to the post join in step 6.
+ */
+export function beatTimes(rd: RaceDay, winnerSeconds: number) {
+  const b = rd.beats;
+  const doorsAt = b.pickSeconds.value + b.gateStillSeconds.value;
+  const winnerAt = doorsAt + winnerSeconds / rd.playback.speed.value;
+  const holdEndAt = winnerAt + b.wireHoldSeconds.value;
+  return { doorsAt, winnerAt, holdEndAt, beatEndAt: holdEndAt + b.winnerBeatSeconds.value };
+}
+
+/** Playback seconds of one whole sequence, the photo included when there is one (RV11). */
+export function sequenceSeconds(rd: RaceDay, winnerSeconds: number, photo: boolean): number {
+  return beatTimes(rd, winnerSeconds).beatEndAt + (photo ? rd.beats.photoSeconds.value : 0);
+}
 
 export type Palette = z.infer<typeof paletteSchema>;
 export type Slots = z.infer<typeof slotsSchema>;

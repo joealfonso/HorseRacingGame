@@ -11,7 +11,14 @@ import { firstReachBy, raceDistance } from './view';
 
 export const PRIORITY = { yours: 0, other: 1, orders: 2 } as const;
 
-export interface Trigger { at: number; priority: number; text: string }
+export interface Trigger {
+  at: number;
+  priority: number;
+  text: string;
+  /** The race time it belongs to (hundredths) and the wall seconds after that it shows, for 4x and skips. */
+  race?: number;
+  delay?: number;
+}
 export interface Shown { from: number; to: number; text: string }
 
 /** Every message this race can show, for this player's horse, at playback speed `speed`. */
@@ -32,8 +39,8 @@ export function messageTriggers(result: RaceResult, rd: RaceDay, playerId: strin
     } else {
       text = fillTemplate(e.type === 'blocked' ? copy.blocked : copy.steadied, { name: name(e.horse) });
     }
-    out.push({ at: play(e.time), priority: yours ? PRIORITY.yours : PRIORITY.other, text });
-    if (yours) out.push({ at: play(e.time) + rd.hud.backInStrideSeconds.value, priority: PRIORITY.yours, text: copy.backInStride });
+    out.push({ at: play(e.time), priority: yours ? PRIORITY.yours : PRIORITY.other, text, race: e.time, delay: 0 });
+    if (yours) out.push({ at: play(e.time) + rd.hud.backInStrideSeconds.value, priority: PRIORITY.yours, text: copy.backInStride, race: e.time, delay: rd.hud.backInStrideSeconds.value });
   }
 
   const mine = horses.find((h) => h.id === playerId);
@@ -41,13 +48,13 @@ export function messageTriggers(result: RaceResult, rd: RaceDay, playerId: strin
     const D = raceDistance(result);
     const asked = (feetToGo: number) => {
       const t = firstReachBy(result, playerId, D - feetToGo * 100);
-      if (Number.isFinite(t)) out.push({ at: play(t), priority: PRIORITY.orders, text: fillTemplate(copy.asked, { name: mine.name }) });
+      if (Number.isFinite(t)) out.push({ at: play(t), priority: PRIORITY.orders, text: fillTemplate(copy.asked, { name: mine.name }), race: t, delay: 0 });
     };
     if (mine.instructions.move === 'moveAtThreeEighths') asked(THREE_EIGHTHS_FEET_TO_GO);
     const save = result.inputs.tuning.instructions?.saveForStretchFeetToGo.value;
     if (mine.instructions.move === 'saveForStretch' && save !== undefined) asked(save);
     const fin = result.finish.find((f) => f.id === playerId);
-    if (fin) out.push({ at: play(fin.time), priority: PRIORITY.yours, text: fillTemplate(copy.home, { name: mine.name, place: ordinal(fin.place) }) });
+    if (fin) out.push({ at: play(fin.time), priority: PRIORITY.yours, text: fillTemplate(copy.home, { name: mine.name, place: ordinal(fin.place) }), race: fin.time, delay: 0 });
   }
   return out.sort((a, b) => a.at - b.at || a.priority - b.priority);
 }
@@ -73,4 +80,18 @@ export function messageSchedule(triggers: readonly Trigger[], showSeconds: numbe
 export function messageAt(shown: readonly Shown[], p: number): string | null {
   for (const s of shown) if (s.from <= p && p < s.to) return s.text;
   return null;
+}
+
+/**
+ * Triggers moved onto wall seconds through `toWall` (race time to the wall second it was
+ * reached; Infinity if not yet), for a clock with 4x or skips. Not yet reached ones drop out.
+ */
+export function triggersOnWall(triggers: readonly Trigger[], toWall: (race: number) => number): Trigger[] {
+  const out: Trigger[] = [];
+  for (const t of triggers) {
+    if (t.race === undefined) continue;
+    const w = toWall(t.race);
+    if (Number.isFinite(w)) out.push({ ...t, at: w + (t.delay ?? 0) });
+  }
+  return out.sort((a, b) => a.at - b.at || a.priority - b.priority);
 }
