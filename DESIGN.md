@@ -14,6 +14,8 @@ Amended 2026-11-12 by art-director after Joseph's note on charm: added the charm
 
 Amended 2026-11-12 by art-director with the M1 race-day answers below: edits to (guess) items and additions only. No approved rule was removed or loosened. Two answers touch approved lines (4 and 6) and are left for Joseph.
 
+Amended 2026-11-12 by art-director after the first art review (P0 batch). Changed: the stand-in saddlecloth box (7x9, so every number has fill above and below), the stand-in leg rule (legs at least as long as the barrel is deep, not longer, because the 32x24 frame cannot hold both), the edge marker (8x9, so it keeps a full Ink outline and gets a center row for its tip), the gate's end posts and outline spelled out, a stroke rule for the main font, the intake checklist file paths (slot path under public/assets/, scripts in scripts/art/), and the saddlecloth and furlong pole sources. One approved-era rule was loosened, the leg rule, and only for the P0 stand-in; the Horses line "long legs" is unchanged.
+
 ## M1 race-day answers (2026-11-12)
 
 Answers to section 12 of docs/specs/m1-race-day.md. Where this list and the spec disagree, this list wins.
@@ -205,14 +207,14 @@ A committed script draws it. Frames: gallop A (reach), gallop B (gather), stand.
 |---|---|---|---|
 | horse | body | barrel x8-22, y9-16 in A and stand, y8-15 in B; legs from the belly to the hoof line y23 | Ink outline, coat base only |
 | nose | body | rightmost opaque column is x31 in every frame, so `nose_x` = 31. Nose y: A 10, B 9, stand 6 | |
-| saddlecloth | tack | x8-14, y9-15 (y8-14 in B, it rides with the body). Number 3x5 at x10-12, y10-14 (y9-13 in B), inside the cloth's 5x5 fill | Ink, cloth fill, number in the trim slot |
+| saddlecloth | tack | A closed 7x9 Ink box at x8-14, y8-16 (y7-15 in B, it rides with the body), fill 5x7 at x9-13, y9-15 (y8-14 in B). Number 3x5 at x10-12, y10-14 (y9-13 in B), so it has a fill row above and below and an Ink number never touches the Ink outline. The top row sits 1 px above the back line behind the rider: that bump is the cloth's top edge under the saddle. The bottom row lies on the belly line and also closes the 2 px flank gap at x9-10, so the cloth never depends on the body layer for its outline | Ink, cloth fill, number in the trim slot |
 | jacket | jacket | x12-20, y2-8, the same in every frame. Ink arm from x21 y6 to the hands on the crest. Ink leg from the seat down to a bent knee and the boot at x15-16 y11-12 | Ink, silks body |
 | cap | cap | x20-24, y0-3, the same in every frame. 1 px Ink peak at x25 y3 | Ink, cap color |
 | arrow | marker | 7x4, centered over the cap, bottom row 2 px above the frame top | Yellow |
 
 Accepted only if, filled with Ink, each frame reads as a horse with a rider:
 
-- Four legs, at least 8 px from belly to hoof (longer than the barrel is deep). Daylight under the belly in every frame. Front knees fold back, hocks point back.
+- Four legs, at least 8 px from belly to hoof, and at least as long as the barrel is deep (8 rows against an 8-row barrel in gallop A and stand, 9 in gallop B). Shorter is a reject. (Was "longer than the barrel is deep", which the 32x24 frame cannot hold with a barrel deep enough for the saddlecloth number.) Daylight under the belly in every frame. Front knees fold back, hocks point back.
 - Gallop A has the forelegs reaching forward and the hinds reaching back. Gallop B has them folded under. Stand has four straight legs in two pairs, the far leg of each pair 1 px behind.
 - A neck that rises forward from the withers and is longer than the head. A head small for the body, with a throat notch, tapering to the muzzle.
 - A tail as its own stroke off the croup.
@@ -233,9 +235,10 @@ Reject: a box with legs, a dog or pony shape, a head a third of the body, legs s
 - Results show the full 16x16 silks beside each finisher.
 - 20 starters and 18 colors means body colors can repeat in a field. No two stables in one race may share the same body color, pattern color and pattern. Rival and generated silks are picked to avoid clashes. The player is warned on a clash.
 - Two horses from the same stable wear the same jacket and are told apart by cap color, as in real racing.
-- Saddlecloth color follows the program number, modeled on the US saddlecloth convention. The 1 to 20 color list lives in data and must be checked against a primary source before it ships. Numbers 1 to 8, for M1, are below. 9 to 20 wait for a race with more than 8 starters.
+- Saddlecloth color follows the program number, modeled on the US saddlecloth convention. The 1 to 20 color list lives in data and must be checked against a primary source before it ships. Numbers 1 to 8, for M1, are below. 9 to 20 wait for a race with more than 8 starters and are still to check.
+- Source for 1 to 8: Oregon racing rule OAR 462-150-0060 (8)(i), https://oregon.public.law/rules/oar_462-150-0060, lists these eight colors as the table has them (looked up by the artist on 2026-11-12, not reopened by art-director). No Kentucky rule assigning saddlecloth colors was found, so the game follows the Oregon list as the US convention. Still to check: whether Kentucky tracks use the same colors in practice.
 
-| # | fill | number | US convention (from memory, to check against a primary source) |
+| # | fill | number | US convention (checked: OAR 462-150-0060 (8)(i)) |
 |---|---|---|---|
 | 1 | Red | Bone | red, white number |
 | 2 | Bone | Ink | white, black number |
@@ -264,10 +267,10 @@ Layout. The M1 pixel placement is in docs/specs/m1-race-day.md 4.3, and the desi
 - Far rail, then the track band, then the near rail. Rails are Bone. Furlong poles and the wire post stand on the far rail, which is the inside rail as at a US track, and draw behind the horses.
 - Paths sit 4px apart vertically, so the cap and shoulders of the horse one path inside always show. Inner paths draw first.
 - Camera is side-on and favors the player's horse: the leader at screen x200 while yours is close enough, yours held at screen x56 when it is not, handing over to the leaders at the 1/16 pole. The exact rule is spec 3.5.
-- Edge marker for a horse off screen: 8x8 at the screen edge, at the horse's lane height, never over the leading pack. 1 px Ink outline, saddlecloth fill, number in the small font in its number color, a 1 px notch on the pointing side.
+- Edge marker for a horse off screen: 8x9 at the screen edge, at the horse's lane height, never over the leading pack. A 7x9 box with a full 1 px Ink outline (x0-6 pointing right), fill 5x7 at x1-5 y1-7, the number in the small font at x2-4 y2-6 in its number color, and a 1 px Ink tip at x7 y4 on the pointing side. Flip it for the left edge. (Was 8x8: an 8-row box leaves 6 fill rows, so an Ink number touches the outline, and has no center row for the tip.)
 - The player's horse has a small Yellow arrow above the cap, on by default.
-- Starting gate (`art.race.gate`, 40x88, 2 frames): drawn behind the horses, so every horse shows at the start. Columns x0-31 are the stalls and header, x32-39 the front doors, standing just ahead of the noses. Gate column x31 sits on the start line, top at screen y64. Closed: the door column filled. Open: the column clear except its two end posts. Slate, Ash and Bone. (colors guess)
-- Furlong poles: Bone posts with a colored band. Band colors come from data and follow the US quarter, eighth and sixteenth pole convention once checked against a primary source. (guess)
+- Starting gate (`art.race.gate`, 40x88, 2 frames): drawn behind the horses, so every horse shows at the start. Columns x0-31 are the stalls and header, x32-39 the front doors, standing just ahead of the noses. Gate column x31 sits on the start line, top at screen y64. Closed: the door column filled. Open: the column clear except its two end posts, the far end (above the field) and the near end (below it). Slate, Ash and Bone. (colors guess) The gate is scenery behind the horses and, like a background tile, takes no Ink outline, so it never competes with the horses' outlines. Poles keep theirs because they are thin.
+- Furlong poles: Bone posts with one solid colored band, not stripes. The Bone post is the "white" half. At 2 px wide, stripes would read as dither. Band colors come from data: quarter poles Red, eighth poles Emerald, sixteenth poles Coal (black, but Coal, not Ink, so the band never merges with the Ink outline, as with saddlecloth 6). Source: Kentucky 810 KAR 2:070 Section 6(1), https://apps.legislature.ky.gov/law/kar/titles/810/002/070/, requires red and white quarter poles, green and white eighth poles, and black and white sixteenth poles (looked up by the artist on 2026-11-12, not reopened by art-director).
 - Track surface tiles per going: fast and good dirt use Dirt and Dirt Shade, sloppy and muddy use Dirt Shade and Mud with Sky Pale glints. Firm turf uses Turf and Grass in mowing stripes, yielding uses Turf and Pine. Synthetic uses Synthetic and Synthetic Light.
 - Hoof kick is 1 to 2 pixel clods in Dirt Shade or Mud, as sprites on the grid.
 - Mini map: a top-down oval in the bottom HUD. The oval band is 4 px wide in Dirt Shade on the Navy fill, so dots pushed out by lane stay on it. Each horse is a 2x2 dot in its saddlecloth color. The player's horse is a 3x3 dot with a Yellow ring. No blinking.
@@ -286,7 +289,7 @@ Layout. The M1 pixel placement is in docs/specs/m1-race-day.md 4.3, and the desi
 - Dialog box: full width, 3 lines of text, bottom of screen.
 - Announcer bar (race view): y0-15, Navy fill y0-14 and a 1 px Ash line at y15. It is a HUD strip, not a text box, so it has no frame tiles (16 px cannot hold frame tiles and a line of text). One line of Bone text, cell rows y4-11, from x4.
 - Cursor: a small Yellow horseshoe.
-- Main font (`font.ui.main`): original, drawn by the artist. Pixel bitmap, 8x8 cell, monospaced at 8 px advance, so numerals are tabular and odds and times line up. Glyphs: printable ASCII 32 to 126, all 95. Each glyph uses columns 0-6, column 7 is blank. Capitals and digits use rows 0-6. Descenders may use row 7.
+- Main font (`font.ui.main`): original, drawn by the artist. Pixel bitmap, 8x8 cell, monospaced at 8 px advance, so numerals are tabular and odds and times line up. Glyphs: printable ASCII 32 to 126, all 95. Each glyph uses columns 0-6, column 7 is blank. Capitals and digits use rows 0-6. Descenders may use row 7. A bold cartridge cut: vertical stems 2 px, horizontal strokes 1 px, most capitals, digits and lowercase 6 px wide (columns 0-5), wide letters (M, W, m, w) up to 7. Drawn fresh, not traced from any game's font.
 - Small font (`font.ui.small`): original, drawn by the artist. 4x6 cell, monospaced at 4 px advance, each glyph 3x5 in columns 0-2 and rows 0-4. Glyphs: `0 1 2 3 4 5 6 7 8 9 : . / # -` and space, 16 in all. No letters. For saddlecloth numbers (strip, boxes, edge markers, the race sprite), splits, the seed, the mini map and the tote board.
 - All text uses Phaser BitmapText. No system fonts, no anti-aliased canvas text.
 - No text baked into images, except the game logo. Signs, banners and the tote board take text from data, so it can change and is never gibberish.
@@ -393,15 +396,15 @@ art-director checks every item before an asset counts as done. A missing item is
 
 1. Row in docs/ASSETS.md with every column filled: name, file, source URL (or "original"), license, date added, what was changed, AI used and how.
 2. License read on the source page itself. CC0 preferred. Kenney first.
-3. File name: `assets/art/<area>/<area>_<subject>_<layer>_<anim>_<w>x<h>.png`, lowercase snake_case. Drop parts that do not apply. Example: `assets/art/race/race_horse_body_gallop_32x24.png`.
-4. Audio files: `assets/audio/<kind>/<area>_<subject>_<event>.<ext>`. The format is the engineer's call, logged in docs/DECISIONS.md.
+3. File path: the slot id with its dots as slashes, under `public/assets/`, plus the extension. Lowercase, underscores inside a segment. Example: `art.race.horse.body.gallop` is `public/assets/art/race/horse/body/gallop.png`. Frame size, frame count and anchor live in the slot data, not in the file name. The engineer loads by slot path, so the path and the id never disagree.
+4. Audio files: the same rule. Example: `sfx.race.gate_open` is `public/assets/sfx/race/gate_open.<ext>`. The format is the engineer's call, logged in docs/DECISIONS.md.
 5. Authored at 1x, never upscaled in the file. Frame size matches the grid rules. Frames sit in one horizontal row, left to right, no padding.
 6. Only master palette colors. At most 3 opaque colors per sprite layer, 4 per tile. Alpha is 0 or 255 only. ICC and gamma chunks stripped so browsers do not shift colors.
 7. Recolorable layers use the key colors (Ink, Ash, Slate). All layers of a set share size, frame count, frame order and anchor.
 8. A slot id exists in data and points to the file.
 9. Checked in context: 20-horse field at speed on all three surfaces for race art, next to the reference asset.
 10. Any third-party asset (Kenney included) is remapped to the master palette and regridded to 16x16 before use, and the row says so.
-11. If a script drew it, the script is committed next to the output. If an editor drew it, the editable source sits next to the PNG with the same base name.
+11. If a script drew it, the script is committed in `scripts/art/` and the ASSETS.md row names it. One script may draw many assets. If an editor drew it, the editable source is committed under `art-src/` at the same path as the PNG, with the editor's extension (for example `art-src/art/race/gate.aseprite`), never under `public/`, which ships as is.
 12. AI-generated images may be used as rough reference or silhouette studies only. Final pixels are placed by hand or by a committed script, and the AI use is logged. (approved 2026-11-12)
 13. Nothing from the banned looks list.
 
