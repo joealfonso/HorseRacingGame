@@ -8,7 +8,8 @@ import * as fontSmall from './font_small.mjs';
 import * as ui from './ui.mjs';
 import * as track from './track.mjs';
 import * as horse from './horse.mjs';
+import * as mid from './mid.mjs';
 
-const written = [fontMain, fontSmall, ui, track, horse].flatMap((m) => m.build());
+const written = [fontMain, fontSmall, ui, track, mid, horse].flatMap((m) => m.build());
 for (const p of written) console.log(relative(REPO, p));
 console.log(`${written.length} files`);

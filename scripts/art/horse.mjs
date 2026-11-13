@@ -162,21 +162,151 @@ function cloth(top) {
   return c;
 }
 
+// ---- Walk (step 2): four-beat, legs under the body, no reach. Barrel y9-16 in both
+// frames, like gallop A and stand, so the rider and the saddlecloth do not move. The
+// head is carried at about withers height and nods: nose (31,8) in walk 1, (31,9) in walk 2.
+function setRow(rows, y, x0, x1, ch) {
+  const r = [...rows[y]];
+  for (let x = x0; x <= x1; x++) r[x] = ch;
+  rows[y] = r.join('');
+}
+function walkBody(frame) {
+  const rows = BODY_A.slice(0, 16).map((r) => r);
+  // Tail hangs from the croup, as on the stand frame.
+  for (let y = 10; y <= 15; y++) rows[y] = BODY_STAND[y].slice(0, 3) + rows[y].slice(3);
+  // Head carried at about withers height and nodding 1 px: nose (31,8) in walk 1,
+  // (31,9) in walk 2. Rows 5-11, columns 22-31; the rest is gallop A's barrel.
+  const head = frame === 0
+    ? [
+      [5, '......K...'],
+      [6, '....KKK...'],
+      [7, '..KKaaaKK.'],
+      [8, 'KKaaaaKaaK'],
+      [9, 'aaaaaKKKK.'],
+      [10, 'aaaaK.....'],
+      [11, 'aaaK......'],
+    ]
+    : [
+      [5, '..........'],
+      [6, '.....K....'],
+      [7, '..KKKKK...'],
+      [8, 'KKaaaaaKK.'],
+      [9, 'aaaaaaKaaK'],
+      [10, 'aaaaaKKKK.'],
+      [11, 'aaaKK.....'],
+    ];
+  for (const [y, cols] of head) rows[y] = rows[y].slice(0, 22) + cols;
+  // A slimmer neck than the gallop: the underside runs x24 y12, x23 y13 into the chest.
+  rows[12] = rows[12].slice(0, 24) + 'K.......';
+  rows[13] = rows[13].slice(0, 23) + 'K........';
+  rows.push('....KKKKK..KKKKKKKKKKKK.........'); // belly y16, as on the stand frame
+  for (let y = 17; y < 24; y++) rows.push('................................');
+  // Legs, 2 px, all Ink: [row, x0] per leg, left to right.
+  const legs = frame === 0
+    ? [
+      // near hind back and planted, hock back
+      [[17, 6], [18, 5], [19, 4], [20, 4], [21, 4], [22, 3], [23, 3, 5]],
+      // far hind forward under the belly
+      [[17, 7], [18, 7], [19, 7], [20, 8], [21, 8], [22, 9], [23, 9, 11]],
+      // far fore lifted, knee forward, cannon folded back
+      [[17, 18], [18, 19], [19, 19], [20, 18], [21, 17]],
+      // near fore planted just ahead of vertical
+      [[17, 21], [18, 21], [19, 21], [20, 22], [21, 22], [22, 22], [23, 22, 24]],
+    ]
+    : [
+      // far hind back and planted
+      [[17, 4], [18, 3], [19, 3], [20, 3], [21, 2], [22, 2], [23, 2, 4]],
+      // near hind forward under the belly, hock back
+      [[17, 6], [18, 6], [19, 5], [20, 6], [21, 7], [22, 8], [23, 8, 10]],
+      // far fore planted
+      [[17, 17], [18, 17], [19, 17], [20, 17], [21, 17], [22, 17], [23, 17, 19]],
+      // near fore lifted, knee forward, cannon folded back
+      [[17, 21], [18, 22], [19, 22], [20, 21], [21, 20]],
+    ];
+  for (const leg of legs) for (const [y, x, x1] of leg) setRow(rows, y, x, x1 ?? x + 1, 'K');
+  return rows;
+}
+
+// Walk rider: sits up at the walk, same pixels in both frames. Cap x15-19, y1-4, peak x20 y4;
+// torso x13-19, y5-8; Ink arm to the hands on the crest at x22 y7; leg as at the gallop.
+const JACKET_WALK = [
+  '................................',
+  '................................',
+  '................................',
+  '................................',
+  '................................',
+  '..............JjjjjJ............',
+  '.............JjjjjjJJ...........',
+  '.............JjjjjJ..JJ.........',
+  '..............JJJJ..............',
+  '................JJ..............',
+  '..................J.............',
+  '...............JJJ..............',
+  '...............JJ...............',
+  ...Array(11).fill('................................'),
+];
+const CAP_WALK = [
+  '................................',
+  '................CCC.............',
+  '...............CpppC............',
+  '...............CpppC............',
+  '...............CCCCCC...........',
+  ...Array(19).fill('................................'),
+];
+
+// Winner: standing in the irons on the walk, one fist up. Same pixels in both frames.
+// Cap x15-19, y0-3 (1 px higher than the walk cap, no peak: the head is up). Upright torso
+// x14-19, y4-7, its top closed by the cap's brim; legs straighter down to the boot.
+// Raised arm: a 3 px sleeve in the silks color (x21-23, y2-4) rising from the shoulder,
+// with a 3x2 Ink fist at x21-23, y0-1. x20 stays clear at y0-2, so there is daylight
+// between arm and cap. A sleeve, not an Ink stroke, so it can never read as a crop.
+const JACKET_WINNER = [
+  '.....................JJJ........', // 3x2 Ink fist
+  '.....................JJJ........',
+  '.....................JjJ........', // sleeve in the silks color
+  '....................JJjJ........',
+  '..............JjjjjjjjJ.........', // shoulder runs into the sleeve
+  '..............JjjjjJJJJJ........', // armpit line
+  '..............JjjjjJ............',
+  '...............JjjJ.............',
+  '...............JJJJ.............', // hips, standing
+  '................JJ..............',
+  '.................JJ.............', // knee
+  '................JJ..............',
+  '...............JJJ..............', // boot
+  ...Array(11).fill('................................'),
+];
+const CAP_WINNER = [
+  '................CCC.............',
+  '...............CpppC............',
+  '...............CpppC............',
+  '...............CCCCC............',
+  ...Array(20).fill('................................'),
+];
+
 export const frames = {
-  body: { gallop: [grid(BODY_A, KEY), grid(BODY_B, KEY)], stand: [grid(BODY_STAND, KEY)] },
-  tack: { gallop: [cloth(9), cloth(8)], stand: [cloth(9)] },
+  body: {
+    gallop: [grid(BODY_A, KEY), grid(BODY_B, KEY)],
+    stand: [grid(BODY_STAND, KEY)],
+    walk: [grid(walkBody(0), KEY), grid(walkBody(1), KEY)],
+  },
+  tack: { gallop: [cloth(9), cloth(8)], stand: [cloth(9)], walk: [cloth(9), cloth(9)] },
   jacket: {
     gallop: [grid(JACKET, { J: 'Ink', j: 'Ash' }), grid(JACKET, { J: 'Ink', j: 'Ash' })],
     stand: [grid(JACKET, { J: 'Ink', j: 'Ash' })],
+    walk: [grid(JACKET_WALK, { J: 'Ink', j: 'Ash' }), grid(JACKET_WALK, { J: 'Ink', j: 'Ash' })],
+    winner: [grid(JACKET_WINNER, { J: 'Ink', j: 'Ash' }), grid(JACKET_WINNER, { J: 'Ink', j: 'Ash' })],
   },
   cap: {
     gallop: [grid(CAP, { C: 'Ink', p: 'Ash' }), grid(CAP, { C: 'Ink', p: 'Ash' })],
     stand: [grid(CAP, { C: 'Ink', p: 'Ash' })],
+    walk: [grid(CAP_WALK, { C: 'Ink', p: 'Ash' }), grid(CAP_WALK, { C: 'Ink', p: 'Ash' })],
+    winner: [grid(CAP_WINNER, { C: 'Ink', p: 'Ash' }), grid(CAP_WINNER, { C: 'Ink', p: 'Ash' })],
   },
 };
 
 // Where code draws the saddlecloth number (top-left of the 3x5 digit), per frame.
-export const NUMBER_AT = { gallop: [[10, 10], [10, 9]], stand: [[10, 10]] };
+export const NUMBER_AT = { gallop: [[10, 10], [10, 9]], stand: [[10, 10]], walk: [[10, 10], [10, 10]] };
 export const NOSE_X = 31;
 
 const SLOTS = {
@@ -189,7 +319,7 @@ const SLOTS = {
 export function build() {
   const out = [];
   for (const [layer, base] of Object.entries(SLOTS)) {
-    for (const anim of ['gallop', 'stand']) {
+    for (const anim of Object.keys(frames[layer])) {
       out.push(writeSlot(`${base}.${anim}`, strip(frames[layer][anim])));
     }
   }

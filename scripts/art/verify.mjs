@@ -36,7 +36,16 @@ const EXPECTED = [
   ['art.race.gate', 40, 88, 2, 'sprite', false],
   ['art.race.bg.far.hills', 128, 24, 1, 'tile', false],
   ['art.race.bg.mid.grandstand', 32, 32, 1, 'tile', false],
+  ['art.race.bg.mid.crowd', 16, 16, 2, 'tile', false],
+  ['art.race.bg.mid.infield', 32, 32, 1, 'tile', false],
+  ['art.race.ambient.flag', 8, 8, 2, 'sprite', false],
   ['art.race.horse.body.gallop', 32, 24, 2, 'sprite', true],
+  ['art.race.horse.body.walk', 32, 24, 2, 'sprite', true],
+  ['art.race.horse.tack.walk', 32, 24, 2, 'sprite', true],
+  ['art.race.jockey.jacket.walk', 32, 24, 2, 'sprite', true],
+  ['art.race.jockey.cap.walk', 32, 24, 2, 'sprite', true],
+  ['art.race.jockey.jacket.winner', 32, 24, 2, 'sprite', true],
+  ['art.race.jockey.cap.winner', 32, 24, 2, 'sprite', true],
   ['art.race.horse.body.stand', 32, 24, 1, 'sprite', true],
   ['art.race.horse.tack.gallop', 32, 24, 2, 'sprite', true],
   ['art.race.horse.tack.stand', 32, 24, 1, 'sprite', true],
@@ -123,8 +132,8 @@ const frameOf = (slot, f) => {
   for (let y = 0; y < 24; y++) for (let x = 0; x < 32; x++) px.push(img.name(f * 32 + x, y));
   return px;
 };
-for (const anim of ['gallop', 'stand']) {
-  const n = anim === 'gallop' ? 2 : 1;
+for (const anim of ['gallop', 'stand', 'walk']) {
+  const n = anim === 'stand' ? 1 : 2;
   for (let f = 0; f < n; f++) {
     const body = frameOf(`art.race.horse.body.${anim}`, f);
     let right = -1;
@@ -142,10 +151,14 @@ for (const anim of ['gallop', 'stand']) {
 for (const layer of ['art.race.jockey.jacket', 'art.race.jockey.cap']) {
   const ref = frameOf(`${layer}.stand`, 0).join();
   for (let f = 0; f < 2; f++) if (frameOf(`${layer}.gallop`, f).join() !== ref) fail(`${layer}: gallop frame ${f} differs from stand`);
+  // The rider holds still at the walk and in the winner pose too.
+  for (const anim of ['walk', 'winner']) {
+    if (frameOf(`${layer}.${anim}`, 0).join() !== frameOf(`${layer}.${anim}`, 1).join()) fail(`${layer}.${anim}: frames differ`);
+  }
 }
 
 // Saddlecloth geometry: tack frames are exactly the 7x9 Ink box and 5x7 fill from DESIGN.md.
-for (const [anim, tops] of [['gallop', [9, 8]], ['stand', [9]]]) {
+for (const [anim, tops] of [['gallop', [9, 8]], ['stand', [9]], ['walk', [9, 9]]]) {
   tops.forEach((top, f) => {
     const px = frameOf(`art.race.horse.tack.${anim}`, f);
     px.forEach((c, i) => {
@@ -165,6 +178,39 @@ for (const [anim, tops] of [['gallop', [9, 8]], ['stand', [9]]]) {
     const want = x === 7 ? (y === 4 ? 'Ink' : null) : x >= 1 && x <= 5 && y >= 1 && y <= 7 ? 'Ash' : 'Ink';
     if (img.name(x, y) !== want) fail(`edge marker: ${img.name(x, y)} at ${x},${y}, expected ${want}`);
   }
+}
+
+// Winner arm: the exact sleeve and fist rows from DESIGN.md, and x20 clear at y0-2.
+{
+  const ARM = [
+    '.....................JJJ........',
+    '.....................JJJ........',
+    '.....................JjJ........',
+    '....................JJjJ........',
+    '..............JjjjjjjjJ.........',
+    '..............JjjjjJJJJJ........',
+  ];
+  for (let f = 0; f < 2; f++) {
+    const px = frameOf('art.race.jockey.jacket.winner', f);
+    ARM.forEach((row, y) => [...row].forEach((ch, x) => {
+      const want = ch === 'J' ? 'Ink' : ch === 'j' ? 'Ash' : null;
+      if (px[y * 32 + x] !== want) fail(`jacket.winner frame ${f}: ${px[y * 32 + x]} at ${x},${y}, expected ${want}`);
+    }));
+  }
+}
+// Crowd: Bone, Sky and Tan only (no Red, which fights the silks and saddlecloth 1).
+{
+  const img = images['art.race.bg.mid.crowd'];
+  for (let y = 0; y < img.h; y++) for (let x = 0; x < img.w; x++) {
+    const c = img.name(x, y);
+    if (c !== null && !['Bone', 'Sky', 'Tan'].includes(c)) fail(`crowd: ${c} at ${x},${y}`);
+  }
+}
+// Infield: flagpole at x23 (rows 3-27), and columns 0-15 hold no Bone, so they slice clean.
+{
+  const img = images['art.race.bg.mid.infield'];
+  for (let y = 3; y <= 27; y++) if (img.name(23, y) !== 'Bone') fail(`infield: no pole at 23,${y}`);
+  for (let y = 0; y < 32; y++) for (let x = 0; x < 16; x++) if (img.name(x, y) === 'Bone') fail(`infield: pole pixel in the slice at ${x},${y}`);
 }
 
 // 3. No stray files.
