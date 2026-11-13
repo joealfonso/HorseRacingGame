@@ -264,6 +264,18 @@ const luckEventsSchema = z.strictObject({
   bumpedReserveShare: marked(z.number().gt(0).max(0.1)),
 });
 
+// A speed duel pulls the field along. A duel is on while two or more front-runners (not
+// asked, not rating) are within frontRunnerPace.pressLengths of the leader. Pace pressure,
+// one number per race from 0 to 1, follows it over about pressureSeconds. Before its ask,
+// a horse that is not leading and not a front-runner pressing for the lead runs pull (by
+// style, a share of cruise as earlyEffort) times the pressure above its usual effort, and
+// a rated horse ratedPullShare of that.
+const pacePressureSchema = z.strictObject({
+  pressureSeconds: marked(z.number().gt(0).max(60)),
+  pull: marked(byStyle(z.number().min(0).max(0.1))),
+  ratedPullShare: marked(share),
+});
+
 const goingEffects =Object.fromEntries(dirtGoings.map((g) => [g, marked(z.number().min(0))])) as
   Record<(typeof dirtGoings)[number], ReturnType<typeof marked<z.ZodNumber>>>;
 
@@ -291,6 +303,8 @@ export const tuningSchema = z.strictObject({
   // still validates. validateData requires each one when the card or race uses it.
   instructions: instructionsSchema.optional(),
   trackBias: trackBiasSchema.optional(),
+  // Optional for the same reason: absent means no pace pressure, and every race runs as before it existed.
+  pacePressure: pacePressureSchema.optional(),
   // A rate is the chance a horse is unlucky in that way this race. It only becomes an
   // event if the race then puts it in that situation, so fewer events happen than the
   // rates say.

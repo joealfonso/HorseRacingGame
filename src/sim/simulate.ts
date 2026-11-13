@@ -28,6 +28,16 @@ interface Runner extends Run {
   blockedUntil: number;
 }
 
+/**
+ * Asks simulate to note each horse's reserve the first time it reaches atFeet from the
+ * gate. Watching changes nothing in the race.
+ */
+export interface ReserveWatch {
+  atFeet: number;
+  /** Filled in by simulate, keyed by horse id. */
+  reserves: Map<string, number>;
+}
+
 export interface Simulated {
   runs: Run[];
   /** In the order they happened. */
@@ -43,7 +53,7 @@ const power = (x: number, n: number): number => {
 // Front first, then by post, so ties and input order never decide anything.
 const byPosition = (a: Runner, b: Runner): number => b.d - a.d || a.profile.post - b.profile.post;
 
-export function simulate(profiles: readonly Profile[], course: Course, tuning: Tuning, bias: Bias): Simulated {
+export function simulate(profiles: readonly Profile[], course: Course, tuning: Tuning, bias: Bias, watch?: ReserveWatch): Simulated {
   const m = tuning.model;
   const dt = tuning.replayStepSeconds.value;
   const length = tuning.horseLengthFeet.value;
@@ -70,6 +80,13 @@ export function simulate(profiles: readonly Profile[], course: Course, tuning: T
   // error than a race that never ends or a partial result.
   const maxSteps = Math.ceil(D / dt);
 
+  // Pace pressure, 0 to 1, for this race only. Null when the group is absent: no duel is
+  // looked for and every effort is as it was before pressure existed.
+  const pp = tuning.pacePressure ?? null;
+  const follow = pp === null ? 0 : Math.min(1, dt / pp.pressureSeconds.value);
+  const pressLengths = m.frontRunnerPace.value.pressLengths;
+  let pressure = 0;
+
   for (let k = 1; runners.some((r) => !r.finished); k++) {
     if (k > maxSteps) throw new Error(`race did not finish within ${maxSteps} steps`);
     const t = k * dt;
@@ -79,6 +96,20 @@ export function simulate(profiles: readonly Profile[], course: Course, tuning: T
     // Luck looks at the field as it stands at the start of this step, which is the last
     // replay sample, so every event can be checked against the replay at its time.
     if (luck !== null) events.push(...luck.at(running, (k - 1) * dt));
+    // Once a step, from the standings at the start of the step, before any horse moves or
+    // is asked: a duel is two or more front-runners, not asked and not rating, within
+    // pressLengths of the leader. Counting does not depend on the order horses are listed.
+    if (pp !== null) {
+      let duelling = 0;
+      for (const r of running) {
+        const p = r.profile;
+        if (p.style !== 'frontRunner' || r.asked) continue;
+        if (p.rate !== null && r.d < p.rate.untilFeet) continue;
+        if ((leader.d - r.d) / length <= pressLengths) duelling++;
+      }
+      const duel = duelling >= 2 ? 1 : 0;
+      pressure += (duel - pressure) * follow;
+    }
 
     for (const r of running) {
       const p = r.profile;
@@ -87,13 +118,13 @@ export function simulate(profiles: readonly Profile[], course: Course, tuning: T
       r.asked ||= D - r.d <= p.askFeetToGo;
       const effort = r.asked
         ? 1 + p.kickBoost
-        : p.rate !== null && r.d < p.rate.untilFeet ? ratedEffort(p.style, p.rate.effortDrop, tuning)
+        : p.rate !== null && r.d < p.rate.untilFeet ? ratedEffort(p.style, p.rate.effortDrop, tuning, r === leader ? 0 : pressure)
         : earlyEffort({
           style: p.style,
           isLeader: r === leader,
           behindLeader: (leader.d - r.d) / length,
           clearOfSecond: second === null ? Infinity : (leader.d - second.d) / length,
-        }, tuning);
+        }, tuning, pressure);
       let target = p.cruise * effort;
       const tireBelow = m.tireBelowReserveShare.value;
       if (r.reserve < tireBelow) {
@@ -143,6 +174,9 @@ export function simulate(profiles: readonly Profile[], course: Course, tuning: T
       // On a turn a horse out from the rail runs a bigger circle for the same progress.
       const progress = isTurnAt(course, r.d) ? (ground * R) / (R + r.lane * laneFeet) : ground;
       const next = r.d + progress;
+      if (watch !== undefined && !r.finished && next >= watch.atFeet && !watch.reserves.has(r.profile.id)) {
+        watch.reserves.set(r.profile.id, r.reserve);
+      }
       if (!r.finished) {
         // On the rail ground * R / R can land a hair under ground, which would make a
         // tiny negative here. Running wide never shortens a trip, so it floors at 0.
