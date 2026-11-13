@@ -93,7 +93,7 @@ M1 sim ships in six steps. Each leaves the repo green and can merge on its own.
   - a **wire frame**: every horse's distance and lane at the exact moment the winner reaches the wire, for the photo-finish still;
   - each horse's exact finish moment;
   - the **events list** (empty until M1.5): type, horse, other horse for a bump, and the race time it happened.
-- **O9. Replay sanity, tested over 500 seeds (starting guess):** each horse's distance never goes down between samples; no horse moves faster than a ceiling from tuning between two samples; lanes stay within bounds; the replay finish moments and the result's times agree to the hundredth; the order at the wire frame matches the finish order.
+- **O9. Replay sanity, tested over 500 seeds (starting guess):** each horse's distance never goes down between samples; no horse moves faster than a ceiling from tuning between two samples; lanes stay within bounds; the replay finish moments and the result's times agree to the hundredth; in the wire frame no horse is ahead of the winner. The rest of the wire frame's order does not have to match the finish order, because horses behind the winner can still pass each other before they reach the wire (decided 2026-11-12 after the first build showed this in 28 percent of races).
 
 **Behaviors.** Each runs over many seeds in `npm test` with a fixed seed range, so results do not flake. Starting guess: 500 seeds per check, with a tolerance in tuning. If M1.6 is approved, the same checks also run at 10,000 seeds in the batch runner.
 
@@ -189,8 +189,90 @@ Decided 2026-11-11 by the lead session. Joseph delegated all of them ("You decid
 9. **Playback speed:** accepted. The race clock reads real time and the renderer plays it back faster. The designer picks the speed.
 10. **Browser determinism:** not proven in M1. Node on the Mac and on CI Linux is the bar. Revisit when the debug panel can force a seed in the browser.
 11. **Instruction slots:** the three slots as specced. The on-screen word for "no instruction" is the designer's call.
-12. **Goings:** the shipped race is fast. The model still reads going from data and applies it to times only (B8).
+12. **Goings:** the shipped race is fast. The model still reads going from data. Going slows every horse by the same share, so over many seeds it favors no horse (B8). The same seed on a different going is a different race, and that is fine.
+
+Added 2026-11-12 after the first build and its tests:
+
+- **Seed counts.** Post and style fairness (B7, F2, F3) need 2,000 seeds in `npm test`, because one post's share moves about 1.5 points at 500 seeds and the band is 2.5. The other behavior checks stay at 500.
+- **B7 and front-runners.** The paired post test holds for stalkers and closers. For front-runners it does not yet, see "Known gap" in docs/DECISIONS.md. It is retested in M1.4 with "stay inside".
+- **B7 and front-runners, settled after M1.4.** The cause is the speed duel, not missing ground cost: a rail front-runner in a field of front-runners is pressed for longer and spends more. That is honest racing, so the model stays. The front-runner ground check uses a lone front-runner among stalkers and closers, where post 8 does cost it, and "stay inside" must save it ground and time.
+- **Instruction balance waits for the tuning pass.** After M1.4, "rate early" is close to a free upgrade for front-runners, and the 3/8 move is rarely better than no instruction. Both trace to how hard the lead is taxed in the default model. They get tuned once, with the M1.6 batch runner, and the saved reference results are regenerated on purpose then. The M1 gate does not pass until each instruction is a real choice.
+- **I3 and I4 are about horses that come from off the pace.** The tests assert them for stalkers and closers. A front-runner near the lead has few places to gain, so a late-move instruction does little for it or hurts it. Whether the game should even offer those instructions to a front-runner is the designer's call.
+- **Closers bias follows where a horse runs, not its style label.** On a field of equal horses the stalkers can take the gain instead of the closers. On the shipped card the closers do gain. Left as is.
+- **Luck, settled after M1.5.** A luck rate is the chance a horse is unlucky in that way today. It becomes an event only if the race then puts the horse in the matching situation within a short window. `SIM_VERSION` is 2 from this step. The reference results come in two sets from the same frozen inputs: luck rates at zero (the model alone) and luck on. `luck.events` is required by validation whenever a luck rate is above zero.
+- **Added to the tuning pass list:** a bump in the first seconds of a race can help a front-runner, because it drops out of the speed duel and saves energy. It is the same lead-tax cause as the "rate early" problem.
+- **Tuning groups for instructions and track bias are optional as whole groups** and required when a card or race uses them, so older frozen test inputs stay valid.
+- **V1 covers every file under `src/sim/`,** including test data, so the golden inputs use a made-up track and race name.
 13. **Length of a horse:** stays 8 feet, a starting guess in tuning.
+
+### Tuning pass targets (added 2026-11-12, after the first 10,000 race measurements)
+
+The playtester measured the sim at commit `ea96466`. Three instructions were not real choices, the lead was taxed even with no duel, and an early bump cost a front-runner nothing. These targets define "a real choice" in numbers. All are starting guesses. Each is measured by changing one horse on the same seeds (4,000 or more), every other horse on default, neutral track unless stated, on both the shipped card and a card of equal horses with styles rotated across posts. "Hot" and "slow" mean the pace label of the same seed run with every horse on default. Changes are in win percentage points.
+
+- **U1. Rate early, front-runners.** Over all races the change is between minus 2 and plus 2 for each front-runner (it was plus 5 to plus 9). It gains in hot races and loses in slow ones, so it is the call when there is other speed in the race and the wrong call when the lead is there for the taking. For stalkers the overall change stays between minus 3 and plus 3. It may stay a loss for closers.
+- **U2. The 3/8 move and save it for the stretch, stalkers and closers.** These two are a pair that depends on pace. The 3/8 move gains in slow races and loses in hot ones. Save it for the stretch gains in hot races and loses in slow ones. Over all races each stays between minus 2 and plus 2 for each stalker and closer, and in its good pace it does not make the horse's average finish place worse. I4 still holds (in a hot pace, save it beats the 3/8 move for the same closer), and the mirror now holds too (in a slow pace the 3/8 move beats save it). Both may stay a loss for front-runners.
+- **U3. Stay inside.** It saves ground and risks traffic (I5). On a neutral track the change over all races is between minus 1.5 and plus 1.5 for each horse (it was minus 2 to minus 6 for every horse), and it is better from posts 1 to 3 than from posts 6 to 8. On a track with an inside lane bias it gains for every style.
+- **U4. The lead.** On equal horses, one front-runner among stalkers and closers wins its fair share, 12.5 percent give or take 0.75, averaged over every post (it was 11.6). With three front-runners in the field each still wins at least 11.25 (it was 10.7), so the duel costs something and the lead alone does not.
+- **U5. A bump always costs.** For every running style and every third of the race, a bumped horse's average finish place and beaten lengths are no better than the same seed without the bump. That includes a front-runner bumped in the first tenth of the race, which was gaining about half a length.
+- **U6. The shipped card.** F2 to F5 pass at 10,000 seeds on two seed ranges. No running style averages under 11 percent per horse (front-runners were at 10 to 12 with the two highest speed ratings on the card). The card's stats may change to get there.
+- **U7. Posts.** Stalkers lose about 0.38 points of win share per post from post 1 to post 8 on a neutral track, and closers about 0.19. Both are inside the fairness band and outside posts do lose ground on the turns, so this stays. It must not get steeper.
+- **U8. Nothing else moves.** Every behavior in B1 to B8, I1 to I7 and L1 to L5 still holds, the winner's median time stays between 2:01 and 2:03, and the compute budget is unchanged. The saved reference results are regenerated on purpose and `SIM_VERSION` goes to 3.
+
+A target that cannot be met without breaking another is reported with the numbers, not forced.
+
+#### Where the targets stand after the first pass (2026-11-12, `SIM_VERSION` 3)
+
+Measured by the engineer on seeds 0 to 3999, paired. A per-horse figure carries about 0.6 points of noise over all races and 1 to 1.5 inside one pace label. The playtester re-measures these independently.
+
+- **U1, amended.** On the equal card (three front-runners) rating is within a point of even for each front-runner, gains about 7 in hot races and loses 5 to 8 in slow ones. Met. On the shipped card there are exactly two front-runners, so rating one hands the other a lone lead: it loses 4 to 5 over all races, gains 2.5 to 3.5 in hot ones and loses 7 to 12 in slow ones. That is the choice working as described (wrong when it gives the lead away), so the plus or minus 2 band applies to the equal card only. On any card the direction must hold: better in hot races than in slow ones. Stalkers are between minus 2.8 and plus 3.5.
+- **U2, open.** The levels are close: the 3/8 move is in band for every stalker and closer but one (minus 2.3), save it for all but three (plus 2.6 to plus 4.9). The pace pairing is not there. Which of the two pays follows the horse's own reserve when the rider asks, and that reserve barely follows the pace, because horses off the pace are not pulled along by a hot one. This needs a model change and gets its own pass. No test pins U2 until then, apart from I4, which still holds.
+- **U3, mostly met.** Neutral track: minus 1.6 to plus 0.3 for 14 of 16 horses, two at minus 1.6 and minus 2.3. Inside bias: every style gains on average, every horse but one (minus 0.1). The test writer's independent runs agree on finish place (every horse on the shipped card gains 0.12 to 0.39 places) but found the closers' win share on the equal card inside the noise of zero (minus 0.6 to plus 0.4 over two 1,000 seed ranges), so the test pins places gained, not win share. Better from inside posts than outside ones holds on the shipped card and not on the equal card (the two differ by less than the noise).
+- **U4, met.** 12.98 for the lone front-runner, 12.14 each with three.
+- **U5, met.** Every style and third is a cost. The smallest is a front-runner in the first tenth on the equal card, 0.26 lengths.
+- **U6, met** without changing the card. Per horse: front-runners 12.5, stalkers 13.3, closers 11.6.
+- **U7, met within noise.** Stalkers minus 0.405 per post, closers minus 0.173. Front-runners now lose about 0.22 per post where they were flat, inside F2.
+- **U8, met.** Median 2:01.55 on both ranges.
+
+#### Independent re-measure (playtester, 2026-11-12)
+
+Paired runs on seeds 40000 to 47999 (8,000 per card, not the seeds the pass was tuned on) and one batch at seeds 20000 to 29999. Noise is about 0.4 points over all races and 0.8 to 1.2 inside one pace label.
+
+Confirmed: U1 for front-runners on both cards, U4 (13.05 lone, 11.96 each of three), U5 (no style or part of the race where a bump helps on average), U6 (all nine checks pass; front-runners 12.15, stalkers 13.6, closers 11.6 per horse), U7 (stalkers minus 0.353 per post, closers minus 0.190, front-runners minus 0.264), U8 (median 2:01.55).
+
+Still open, all in the early and move orders, for the second pass:
+
+- **The two move orders do not trade by pace (U2).** What decides between them is the horse's own kick and stamina: low kick with good stamina wants save it, high kick wants the 3/8 move or neither, and the best horses lose with either. The pace label and the number of front-runners give almost no signal. For stalkers the pace effect runs the wrong way.
+- **The 3/8 move is still never a gain for a stalker** (minus 1.0 to minus 1.9 on both cards, worst in slow races, which is where it should pay).
+- **Rate early plus save it is a free upgrade for stalkers.** Plus 6.2 to plus 8.0 on the equal card and positive in every pace label; plus 2.8 to plus 6.5 on the shipped card. The two together pay more than the sum of each alone.
+- **Rate early alone is close to free for stalkers on the equal card** (plus 3.2 to plus 3.8, better average place in every pace label).
+- **Save it raises a stalker's win share but worsens its average place** (about 0.3 places on the equal card).
+- **I4 measured by win share fails for the shipped card's closers in hot races** (save it minus the 3/8 move: minus 0.6, 0.0, 0.0, all inside noise). It holds on the equal card and by the measure the I4 test uses.
+- **Stay inside on a neutral track still costs closers** 1.5 to 2 points on the equal card, and on an inside-bias track the equal card's closers gain in place but not in win share.
+
+#### Second pass targets: the early and move orders (added 2026-11-12)
+
+The first pass left the move slot without a real choice. These targets define one. A player cannot see the pace label before the race, but can see how many front-runners are in the field, so the targets are stated by field. All are starting guesses. Measured as before: paired runs, 4,000 seeds or more, one horse changed, equal horses unless stated. "A lone-speed field" has one front-runner among stalkers and closers. "A speed-heavy field" has three or four.
+
+- **V1. The move orders trade by field.** In a lone-speed field the 3/8 move beats save it for stalkers and for closers (style average, at least 1 point of win share, and a better average place). In a speed-heavy field save it beats the 3/8 move by the same margin. The reason should be the one a racing fan expects: on a slow pace the leaders have plenty left, so waiting leaves too much to do, and on a hot pace the horses near it have been pulled along and an early move runs out.
+- **V2. Each move order pays somewhere.** Against no instruction, the 3/8 move is not a loss for stalkers or closers in a lone-speed field (style average at or above minus 0.5 points, average place no worse), and save it is not a loss in a speed-heavy field by the same measure. Each is a loss in the other field. Over all fields each stays between minus 2 and plus 2.
+- **V3. No free upgrade from rating a stalker.** For each stalker, rate early alone and rate early with save it both stay between minus 3 and plus 3 over all races on the equal card (they were plus 3.2 to 3.8 and plus 6.2 to 8.0), and both lose in a lone-speed field, where giving up position to leaders who are not tiring should cost. No combination of two or three instructions on one horse is above plus 3 on the equal card or plus 4 on the shipped card.
+- **V4. The horse still matters, in the direction a fan expects.** Preferred, not required: a horse with stamina and little kick (85 and 55) does better with the 3/8 move than with save it, and a horse with kick and less stamina (85 kick, 55 stamina) does better with save it. Today it is the reverse. If this fights V1, V1 wins and the numbers are reported.
+- **V5. Nothing else moves.** U1 for front-runners, U3 as measured, U4, U5, U6 and U8 still hold. The post slope (U7) is no steeper than minus 0.45 per post for any style. Every existing test passes unchanged. If an existing test and a target disagree, the work stops and the disagreement is reported with numbers. If results change for the frozen inputs, the reference results are regenerated on purpose and `SIM_VERSION` goes to 4.
+
+A target that cannot be met without breaking another is reported with the numbers, not forced.
+
+#### Where the second-pass targets stand (2026-11-12)
+
+None of V1 to V4 is met. Three attempts were measured and dropped, and the model is unchanged from commit 284bf67. The numbers for each attempt are in `docs/DECISIONS.md` under "M1 tuning pass, second pass".
+
+- **V1 and V2 are a known gap.** A slow pace with one front-runner needed a rule that only front-runners fight for the lead. Every version built on that rule broke an existing test: B6 on both cards, and with closers back behind the stalkers also B1, I4, the U1 slow-race count and batch check F3. Existing tests outrank these targets, so the rule was withdrawn. V1 and V2 need the pace and reserve economy redesigned from its own spec.
+- **V3 is a known gap.** The rules that bring a rated stalker toward the band make rating a front-runner worth 4 to 8 points, against U1's 2. The combination furthest over the limit once stalkers are fixed is a front-runner rated and then sent at the 3/8 pole (plus 4.3 on the equal card at 284bf67), which no stalker rule reaches.
+- **V4** was not pursued on its own.
+- **V5 holds**, because nothing changed: 842 tests pass and all nine batch checks pass on seeds 0 to 9999 and 10000 to 19999.
+
+What a player can still exploit, from the playtester's re-measure above: rate early with save it on a stalker, plus 6.2 to 8.0 on equal horses and plus 2.8 to 6.5 on the shipped card.
+
+One rule added by the first pass: `instructions.stayInsidePassMarginShare` must be at least `model.traffic.passMarginShare`, or a horse told to stay inside would go around more readily than one that was not. Loading the data fails with a message naming both values if it is lower.
 
 ## Open questions (answered above)
 

@@ -9,6 +9,13 @@ A single-player thoroughbred racing management sim with RPG progression, in 8-bi
 - `npm run lint` lints the repo.
 - `npm run typecheck` type-checks without emitting files.
 - `npm run build` writes a production build to `dist/`.
+- `npm run batch -- --races 10000 --seed-start 0` runs the race sim headless and prints the fairness, drama and card checks as plain text (see below).
+
+## Batch runner
+
+`npm run batch` runs N races (default 10000) from a start seed (default 0) and prints a summary with PASS or FLAG for each M1 check. A FLAG is a tuning note and the exit code stays 0. Bad arguments or bad data exit 1. It is run by hand, not by `npm test`, and writes no files unless `--out PATH` is given.
+
+Options: `--races N`, `--seed-start S`, `--card FILE`, `--race FILE`, `--track FILE`, `--tuning FILE` (each replaces the shipped JSON file and is validated like it), `--out PATH`.
 
 ## Node version
 
