@@ -10,9 +10,13 @@
 4. The race view shows silks from pattern and colors only. Freehand pixels in the 16x16 editor show in menus and results, not on the race sprite (see Silks).
 5. The 42-color palette below.
 
+Amended 2026-11-12 by art-director after Joseph's note on charm: added the charm goal, the Charm section, the placeholder race rule, one Do not line and one banned look. No approved rule was removed or loosened.
+
 ## Vision
 
 A warm Kentucky morning on an NES cartridge: big calm shapes, a small honest palette, and horses drawn like the athletes they are.
+
+Charm is a goal, not a garnish. Joseph, 2026-11-12: "8-bit type graphics remember. it should be charming". The horses stay athletes, so the charm comes from the world around them, the ceremony of race day, and the people and words (see Charm).
 
 ## Screen and pixel grid
 
@@ -226,6 +230,39 @@ Warm, a little funny, respectful of the animals and the sport.
 - Injuries are never shown graphically. No falls, no blood, no limping animation, no screens around a horse. A horse that is pulled up eases to a walk and leaves the frame. A layup shows the horse in its stall with standing wraps and a calm vet visit.
 - The vet icon is a stethoscope, not a red cross. The red cross emblem is legally protected.
 
+## Charm
+
+Charm comes from a world busy with its own small business, a race day with ceremony, and people and words with a voice. It never comes from making a horse cute. NES games did this with slow 2-frame loops on a tight budget, and this game does the same. Every item stays on the grid, in master palette colors, at 3 opaque colors per layer.
+
+Race day (M1):
+
+- Card screen: the trainer stands beside the dialog box with a 2-frame idle (guess: lifting a coffee cup), so the instructions come from a person, not a form.
+- Card screen: instructions and horse blurbs are short lines of copy from data with some personality, so the screen has a voice.
+- Card screen: the horseshoe cursor bobs 1px on a slow 2-frame loop, so the screen never looks frozen while you decide.
+- Post parade: the field passes on the 2-frame walk behind one outrider on a pony, so the race opens with a procession. (guess, Churchill's actual post parade to check)
+- Call to the post: a 16x24 bugler on the mid layer raises the horn while `sfx.race.call_to_post` plays (original or public domain only), so the player knows the start is next.
+- Gate: the field stands still, then the doors open in one 2-frame swap with `sfx.race.gate_open`, so the start lands on one beat.
+- Crowd: the grandstand is a mid-layer tile strip that swaps 2 frames (hats and arms up), slow early and faster from the eighth pole, so the stretch feels louder without touching the track.
+- Announcer: one short call per pole in the HUD bar, from data, so the race has a voice that also tells you where you are.
+- The wire: the photo-finish panel steps in by whole 8px moves with a shutter click, so a close finish gets its moment.
+- Winner: the winning jockey stands in the irons and raises a fist, never the crop, and the horse eases to the walk, so the win reads at a glance. All jockey layers get the extra frame to stay in lockstep.
+- Result screen: a winner's circle picture with the winner standing, the groom at its head and the owner beside it, so the win is a moment and not a table. A tradition such as the garland of roses is switched on from data, drawn in Red, Pine and Gold. (which race carries which tradition is to check)
+- Result screen: margins are in racing words from data (nose, head, neck) beside the full silks, so it reads like a chart.
+
+Later screens (guess):
+
+- Farm: the barn cat on the tack trunk breathes in a 2-frame loop and the goat follows the colt it minds, so the barn is lived in.
+
+Cap, so charm never becomes clutter:
+
+- While the field is running, at most 3 ambient moving things on screen at once, not counting horses, hoof kick and the HUD. (guess)
+- Ambient motion lives on the far and mid layers only. Nothing charming draws on the track band or rails, or covers the leading pack or the player's horse, and nothing pulls the eye away from them.
+- From the eighth pole to the wire only the horses and the crowd strip move.
+- Ceremony (post parade, call to the post, gate, winner) happens before the start or after the wire, never mid-race.
+- Ambient loops swap at most 4 times a second and never flash Bone on Ink, so nothing strobes. (guess)
+
+Charm test: watch 10 seconds at gameplay speed next to the reference. If you cannot name one small thing that made it feel alive and say its job, it is flat. If your eye went to it before the leaders or your horse, it is clutter.
+
 ## Do
 
 - Pick colors by palette name, never by eye.
@@ -242,6 +279,7 @@ Warm, a little funny, respectful of the animals and the sport.
 - Do not shrink a big sprite to make a small one. Draw the small one.
 - Do not put UI over the leading pack.
 - Do not use any color that is not in the master palette, including in placeholders.
+- Do not make a horse the joke. A horse only does real horse things (walk, gallop, ear flick, tail swish, head toss), and no screen shake or full-screen flash ever lands on the field. (guess)
 
 ## Banned looks
 
@@ -254,6 +292,7 @@ Any of these is a reject, whatever else is good about the asset.
 - Pillow shading (dark at every edge, light in the middle).
 - High-color "modern indie pixel" with soft lighting and 100+ colors.
 - Cartoon or chibi horses, horses with human faces, wrong leg joints.
+- Cute-ified horses: emote icons over a horse (hearts, sweat drops, music notes), blush marks, sparkles, squash and stretch.
 - Anime horse-girls or any look borrowed from a reference game.
 - Generic fantasy stock: swords, slimes, crystals, castles.
 - Machine-made tells: an uneven pixel grid, smeared details, extra or missing legs, gibberish text.
@@ -270,6 +309,9 @@ Every art and audio hook goes through a named slot in data, so placeholders work
 - Examples: `art.race.horse.body`, `art.race.jockey.cap`, `art.ui.frame.dialog`, `art.track.dirt.sloppy`, `font.ui.main`, `sfx.race.gate_open`, `music.farm.morning`.
 - Ids never contain file names or extensions. The slot entry in data holds the file, frame size, frame count, anchor, nose x for race frames, and whether it is recolorable.
 - A placeholder is a Pink and Ink checker with the slot id in the small font, so it can never ship by accident. An audio placeholder may be silence.
+- Placeholder race: before sprites are approved, the race-day screens use flat stand-ins that still follow every rule here, so the first build already reads as this game. It must have master palette sky bands, the track surface for the going, Bone rails and furlong poles; each horse as a flat 32x24 shape in a coat color with the Ink outline, a jacket block in its silks body color, a cap and its saddlecloth number, on a 2-frame cycle advanced by distance; the real UI frame tiles, the Yellow arrow and the horseshoe cursor; a pixel bitmap font on the 8x8 cell (a logged CC0 font until ours exists); real copy from data; and at least the gate opening and the wire. (guess)
+- The Pink and Ink checker still applies to every slot with no stand-in, every rejected asset, and everything outside the race-day screens.
+- A stand-in sits in a slot marked as a placeholder in data, gets an ASSETS.md row marked stand-in, and while any placeholder is on screen an 8x8 Pink and Ink checker tag shows in the HUD corner. The build must refuse to ship a placeholder slot. The engineer picks how and logs it in docs/DECISIONS.md.
 - Ids are stable. A rename updates every reference in the same change.
 
 ## Asset intake checklist
