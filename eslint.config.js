@@ -18,6 +18,16 @@ const PHASER_DYNAMIC_IMPORT = {
   message: 'src/sim/ must not import Phaser. Keep the sim headless.',
 };
 
+// The race-day screens read the result and never draw from the race's streams.
+const RNG_MESSAGE = 'src/render/ and src/scenes/ must not import the sim\'s random streams.';
+const RNG_BAN = {
+  patterns: [{ regex: '(^|/)sim/(rng|raceStreams)(\\.[cm]?[jt]s)?$', message: RNG_MESSAGE }],
+};
+const RNG_DYNAMIC_IMPORT = {
+  selector: "ImportExpression[source.value=/(^|\\/)sim\\/(rng|raceStreams)(\\.[cm]?[jt]s)?$/]",
+  message: RNG_MESSAGE,
+};
+
 // Same seed, same race: the sim may not read time or outside randomness.
 const DETERMINISM = 'The sim must be deterministic. Use the race streams or pass the value in.';
 const BANNED_GLOBALS = ['Date', 'performance', 'crypto', 'setTimeout', 'setInterval'];
@@ -61,6 +71,15 @@ export default tseslint.config(
         { object: 'Math', property: 'random', message: DETERMINISM },
         ...INEXACT_MATH.map((property) => ({ object: 'Math', property, message: INEXACT })),
       ],
+    },
+  },
+  {
+    // The renderer never touches the sim's random streams (race-day spec RV9): stride
+    // phase, announcer variants and the like are arithmetic on counters.
+    files: ['src/render/**', 'src/scenes/**'],
+    rules: {
+      'no-restricted-imports': ['error', RNG_BAN],
+      'no-restricted-syntax': ['error', RNG_DYNAMIC_IMPORT],
     },
   },
   {

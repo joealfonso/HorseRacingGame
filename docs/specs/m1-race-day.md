@@ -87,7 +87,7 @@ Why: the player cares about their horse, so the camera favors it. The finish is 
 
 The camera and every on-screen word read only the present: samples up to the current time. Nothing on screen before the wire hints at the result.
 
-Edge markers: when the leader is off the right edge, an 8x8 marker at x248 in the leader's saddlecloth color with its number and a right-pointing notch, at the leader's lane height. When the player's horse is off the left edge (only possible in the final sixteenth), a Yellow marker at x0 with its number. Markers sit at the screen edge, never over the leading pack.
+Edge markers: when the leader is off the right edge, an 8x9 marker at x248 in the leader's saddlecloth color with its number and a right-pointing notch, at the leader's lane height. When the player's horse is off the left edge (only possible in the final sixteenth), a Yellow marker at x0 with its number. Markers sit at the screen edge, never over the leading pack.
 
 Rejected:
 - **Always track the leader** (the draft's guess). A closer's owner would watch other people's horses for most of the race, which is the opposite of caring.
@@ -260,7 +260,7 @@ y   0  top bar y0-15: Navy fill y0-14, Ash line y15, no frame.
        hedge and flag on the turns, barns on the backstretch, the bugler)
    64  furlong poles and the wire post stand on the far (inside) rail, y64-91,
        drawn behind the horses
-   88  far rail y88-91, Bone
+   84  far rail tile y84-91: Bone bar at y84-85, Grass behind the posts y88-91 (as drawn and accepted)
    92  dirt band y92-151, track tiles for the going
        horse frames: top = hoofY - 23, hoofY 116 + 4 px per lane
        inner lanes draw first, ties by post
@@ -285,7 +285,7 @@ y   0  top bar y0-15: Navy fill y0-14, Ash line y15, no frame.
 
 **Clock:** race time, tenths while running ("1:02.4"), then the winner's time in hundredths from `result.finish[0].time` once the winner crosses ("2:01.55").
 
-**Announcer calls (top bar):** one call per pole as the leader passes it, kept until the next. Templates and 2 or 3 variants per key are data. The variant is `(raceNumber + poleIndex) mod variants`, arithmetic on counters, not a random draw. Every template with an 18-character name fits 30 characters.
+**Announcer calls (top bar):** one call per pole as the leader passes it, kept until the next. Templates and 2 or 3 variants per key are data. The variant is `(raceNumber + callIndex) mod variants`, where callIndex is the call's 0-based place in the race's call schedule, the gate and the off included. Arithmetic on counters, not a random draw. Every template with an 18-character name fits 30 characters.
 
 | when (shipped 10-furlong course) | key | example |
 |---|---|---|
@@ -452,7 +452,7 @@ src/data/card.json
 horses[2].stats.speed
 must be at most 100
 
-Fix the file and reload the page.
+Fix it and reload the page.
 ```
 
 - Every issue from `DataError` is listed, file, path and message on their own lines, wrapped at 30 characters on spaces, dots or brackets. More issues than fit: the first ones and "and 3 more, see the console".
@@ -523,7 +523,7 @@ Slot ids follow `<kind>.<area>.<subject>[.<part>][.<variant>]`. All layers of th
 | `art.race.jockey.jacket.{gallop,walk,stand,winner}` | 32x24 | 4, 2, 1, 2 | silks body color | P0 (stand-in block) |
 | `art.race.jockey.cap.{gallop,walk,stand,winner}` | 32x24 | 4, 2, 1, 2 | | P0 (stand-in block) |
 | `art.race.marker.player` | 7x4 | 1 | Yellow arrow above the cap | P0 |
-| `art.race.marker.edge` | 8x8 | 1 | recolorable, number drawn on it | P0 |
+| `art.race.marker.edge` | 8x9 | 1 | recolorable, full Ink outline, number drawn at x2-4, y2-6 (DESIGN.md) | P0 |
 | `art.race.gate` | 40x88 | 2 (closed, open) | drawn behind the horses (question 13) | P0 |
 | `art.race.pole.furlong` | 4x28 | 1 | recolorable band per pole type | P0 |
 | `art.race.pole.wire` | 8x28 | 1 | | P0 |
@@ -562,7 +562,7 @@ What P0 draws, all in master palette colors on the 1x grid:
 - At the gate, before the doors open, keys 1 to 8 pick your horse (default post 1). The message line says "Press 1 to 8 to pick your horse".
 - The wire: wire hold, "{winner} wins it" or "Too close to call", then the message line shows "Enter: next race". Enter runs the next seed.
 - The data error screen.
-- Every stand-in slot is marked placeholder in the slot data, has an ASSETS.md row marked stand-in, and the 8x8 Pink and Ink tag shows at the top-right while any is on screen. The production build refuses to ship a placeholder slot (the engineer picks how and logs it).
+- Every stand-in slot is marked placeholder in the slot data, has an ASSETS.md row marked stand-in, and the 8x8 Pink and Ink tag shows at the top-right while any is on screen. A release check refuses to ship a placeholder slot (see P0-3).
 
 P0 covers: P0-1 to P0-4, RV1 to RV10, H1 to H8, AN1 to AN4, ST1, ST2, IN1.
 
@@ -587,12 +587,13 @@ Each step is one reviewable change. Joseph can watch after every step.
 ### P0 placeholder race
 - **P0-1 [E]** From `npm run dev`, a race plays from the gate to the wire with no other screen, at 3x and 4x, and every color on screen is in the master palette.
 - **P0-2 [E]** Each stand-in horse reads as a horse with a rider in an Ink fill test, and the eight are told apart by saddlecloth number and jacket color at gameplay speed.
-- **P0-3 [T]** Every slot used by the race-day screens resolves to a file or a stand-in marked placeholder in data. While any placeholder is drawn, the tag is drawn at (248, 0). The production build fails if any slot is a placeholder.
+- **P0-3 [T]** Every slot used by the race-day screens resolves to a file or a stand-in marked placeholder in data. While any placeholder is drawn, the tag is drawn at (248, 0), and with none drawn it is not. The screens name the slots they need in one list. At boot, a needed slot that is missing from `slots.json` shows the data error screen with the slot named. The release check (`npm run ship:check`, run first by `npm run build:release`) fails if any slot is a placeholder, if a file is missing or the wrong size, or if a needed slot is not in `slots.json`. The everyday `npm run build` and CI do not run it, so they stay green while stand-ins exist. Anything that deploys must use `build:release`.
 - **P0-4 [E]** Keys 1 to 8 at the gate move the Yellow arrow to that post's horse. Enter after the wire runs a race with the next seed.
 
 ### Race view
 - **RV1 [T]** World x is `floor(distance * pxPerFoot / 100)` and hoof y is `116 + floor(lane * pxPerLane / 100)`, both whole numbers for every sample and every interpolated time, using values from data.
-- **RV2 [T]** At a time equal to sample i's time, a horse's position equals sample i's. Past the last sample it holds the last. No position is NaN.
+- **RV2 [T]** At a time equal to sample i's time, a horse's position equals sample i's, for every sample up to that horse's finish. No position is NaN.
+- **RV2b [T]** Gallop out. After its own finish time a horse keeps going at the speed it crossed the wire with, as whole pixels, so nothing freezes on screen. This is drawn by the renderer only: it reads no sample after the horse's finish, changes nothing in the result, and the strip, the clock, the calls and the photo do not use it. World x never decreases for any horse at any time.
 - **RV3 [T]** Camera x is a pure function of the result, the player's horse and time: same inputs, same whole number.
 - **RV4 [T]** Over 500 seeds and every player's horse, before the leader reaches the 1/16 pole the player's nose is between screen x 56 and 200.
 - **RV5 [T]** Camera x never decreases. At default speed it moves at most 32 px between frames 1/60 s apart.
@@ -609,6 +610,7 @@ Each step is one reviewable change. Joseph can watch after every step.
 - **H1 [T]** The strip at each sample is a permutation of all horses. Two horses swap only when the gap passes the hysteresis in data. Once every horse has finished, the strip equals `result.finish` order.
 - **H2 [T]** Mini map positions are whole numbers inside the 88x40 box, the wire maps to the right end of the bottom straight, and positions advance counterclockwise.
 - **H3 [T]** The position line at each call matches `result.calls` for the player's horse ("3rd, 2 1/2 back", "Leads by a head"), using the sim's `marginLabel`.
+- **H3b [T]** From the player's horse's own finish time on, the position line shows its finish from `result.finish`: "Finished 4th", and "Finished 1st" for the winner. Once the second horse has also crossed, the winner's line becomes "Won by a neck" (nose, head, neck in words; "Won by a length" for exactly one; otherwise the number alone, "Won by 2 1/2", so it fits 18 characters). Before its own finish the line never shows a finish, and nothing reads the second horse's margin before the second horse's finish time (AN3). The sim's last call is the 1/8 pole, so without this the line contradicts the result.
 - **H4 [T]** Clock formatting: 0 is "0:00.0", 5999 hundredths "0:59.9", 12155 hundredths "2:01.5" while running and "2:01.55" at the finish.
 - **H5 [T]** Fraction formatting: 4612 is "46.12", 7020 is "1:10.20".
 - **H6 [T]** Orders short form for all 12 combinations, each at most 18 characters.
@@ -617,7 +619,7 @@ Each step is one reviewable change. Joseph can watch after every step.
 
 ### Announcer
 - **AN1 [T]** Each pole gets exactly one call, at the time the leader reaches it, chosen from the course layout as in 4.3.
-- **AN2 [T]** The variant is `(raceNumber + poleIndex) mod variants`. Two consecutive race numbers never give the same line on the same pole when a key has two or more variants.
+- **AN2 [T]** The variant is `(raceNumber + callIndex) mod variants`, with callIndex the call's 0-based place in the race's call schedule (gate, off, then each pole in order). Two consecutive race numbers never give the same line on the same call when a key has two or more variants, and every variant of a key is heard within as many races as it has variants.
 - **AN3 [T]** At time t, no call or message uses a sample later than the one after t. The photo and winner calls appear only once the winner has reached the wire.
 - **AN4 [T]** Every call template fits 30 characters with an 18-character name, and 27 while "4x" shows.
 
@@ -723,6 +725,7 @@ From the data, not the sim (all ask-first, see open question 2):
 - 12: yes, trainer lines in data.
 - Needs from the sim: item 1 is checked by the engineer before step 3. Item 2 (a per-horse ask time) is not added in M1.
 - The art-director's answers to section 12 are recorded in DESIGN.md and win over the assumptions in this spec.
+- After the first code review (2026-11-12): RV2b (gallop out) and H3b (finish on the position line) were added, P0-3 was rewritten around a separate release check, and the gate beat gained a pick window in data (`beats.pickSeconds`, 4 s) because one second is too short to pick a horse.
 
 ## 14. Later
 
