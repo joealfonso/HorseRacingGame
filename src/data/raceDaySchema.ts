@@ -68,6 +68,10 @@ export const SLOT_IDS = {
   crowd: 'art.race.bg.mid.crowd',
   infield: 'art.race.bg.mid.infield',
   flag: 'art.race.ambient.flag',
+  // Step 3, the photo finish: the strip-camera background behind the horses.
+  photoStreaks: 'art.photo.bg.streaks',
+  // Step 4, the result screen: your marker on the order of finish.
+  markerYours: 'art.ui.marker.yours',
   horse: {
     body: { gallop: 'art.race.horse.body.gallop', stand: 'art.race.horse.body.stand', walk: 'art.race.horse.body.walk' },
     tack: { gallop: 'art.race.horse.tack.gallop', stand: 'art.race.horse.tack.stand', walk: 'art.race.horse.tack.walk' },
@@ -81,6 +85,13 @@ export const SLOT_IDS = {
     },
   },
 } as const;
+
+/**
+ * The photo finish's crop is 88 rows tall and puts lanes 8 rows apart (DESIGN, Race view).
+ * Here so the loader can check that the widest lane block fits; src/render/photo.ts uses them.
+ */
+export const PHOTO_CROP_ROWS = 88;
+export const PHOTO_LANE_ROWS = 8;
 
 /** The track surface slot for a race's surface and going. */
 export const trackSlotId = (surface: string, going: string): string => `art.track.${surface}.${going}`;
@@ -215,8 +226,10 @@ export const raceDaySchema = z.strictObject({
     pickSeconds: marked(z.number().min(0)),
     gateStillSeconds: marked(z.number().min(0)),
     wireHoldSeconds: marked(z.number().min(0)),
-    // Step 3 shows the photo; counted now so the sequence check (RV11) includes it.
+    // The photo (spec 4.4), all of it: the look before the caption and the caption after.
     photoSeconds: marked(z.number().min(0)),
+    // Seconds from the photo's start to the winner line, unless Enter shows it sooner.
+    photoCaptionSeconds: marked(z.number().min(0)),
     winnerBeatSeconds: marked(z.number().min(0)),
     // The brief's cap on one race from the gate to the end of the finish beats.
     maxSequenceSeconds: marked(positive),
@@ -228,6 +241,12 @@ export const raceDaySchema = z.strictObject({
     slowSeconds: marked(positive),
     walkPxPerSecond: marked(positive),
     walkStrideFeet: marked(positive),
+  }),
+  // The photo panel steps in from the top by whole stepPx moves, stepsPerSecond of them a
+  // wall second (spec 4.4: one per frame at 60 Hz, so the same speed on any screen).
+  photo: z.strictObject({
+    stepPx: marked(whole.positive()),
+    stepsPerSecond: marked(positive),
   }),
   // Ambient loops (DESIGN Charm cap, CH1). Swap rates are per wall second, at most 4.
   ambient: z.strictObject({
@@ -267,6 +286,36 @@ export const raceDaySchema = z.strictObject({
     oneLength: text,
     finished: text,
     marginWords: z.strictObject({ nose: text, head: text, neck: text }),
+    // A margin in lengths, in words: "1/2 length" at 1 or less, "1 1/4 lengths" above.
+    marginLength: text,
+    marginLengths: text,
+    // The photo's caption (spec 4.4): the title while you look, then the winner and margin.
+    photo: z.strictObject({ title: text, winner: text, margin: text }),
+    // The result screen (spec 4.6).
+    result: z.strictObject({
+      winnerMargin: text,
+      won: text,
+      beaten: text,
+      early: text,
+      earlyLed: text,
+      quarter: text,
+      quarterLed: text,
+      callsJoiner: z.string().min(1),
+      clean: text,
+      blocked: text,
+      steadied: text,
+      bumped: text,
+      near: text,
+      start: text,
+      rough: text,
+      orders: text,
+      time: text,
+      pace: z.strictObject({ hot: text, honest: text, slow: text }),
+      poles: z.strictObject({ wire: text, mile: text }),
+      splits: text,
+      seed: text,
+      next: text,
+    }),
     orders: z.strictObject({
       allDefault: text,
       joiner: z.string().min(1),
@@ -289,20 +338,21 @@ export const raceDaySchema = z.strictObject({
 /**
  * The race-day beats in playback seconds at normal speed, from the gate: the one place
  * they are added up. The timeline and the sequence check (RV11) both read it. The photo
- * (step 3) sits between the hold and the winner beat once it is shown; the post parade and
- * call to the post join in step 6.
+ * sits between the hold and the winner beat when the result flags one, and lasts nothing
+ * otherwise; the post parade and call to the post join in step 6.
  */
-export function beatTimes(rd: RaceDay, winnerSeconds: number) {
+export function beatTimes(rd: RaceDay, winnerSeconds: number, photo = false) {
   const b = rd.beats;
   const doorsAt = b.pickSeconds.value + b.gateStillSeconds.value;
   const winnerAt = doorsAt + winnerSeconds / rd.playback.speed.value;
   const holdEndAt = winnerAt + b.wireHoldSeconds.value;
-  return { doorsAt, winnerAt, holdEndAt, beatEndAt: holdEndAt + b.winnerBeatSeconds.value };
+  const photoEndAt = holdEndAt + (photo ? b.photoSeconds.value : 0);
+  return { doorsAt, winnerAt, holdEndAt, photoEndAt, beatEndAt: photoEndAt + b.winnerBeatSeconds.value };
 }
 
 /** Playback seconds of one whole sequence, the photo included when there is one (RV11). */
 export function sequenceSeconds(rd: RaceDay, winnerSeconds: number, photo: boolean): number {
-  return beatTimes(rd, winnerSeconds).beatEndAt + (photo ? rd.beats.photoSeconds.value : 0);
+  return beatTimes(rd, winnerSeconds, photo).beatEndAt;
 }
 
 export type Palette = z.infer<typeof paletteSchema>;

@@ -1,10 +1,11 @@
 import type { RaceDay } from '../data/raceDaySchema';
 import type { RaceResult } from '../sim/result';
 import { ambientState, midZones, turnArt, zoneTiles, type AmbientId, type AmbientState, type MidZone, type TurnArt } from './ambient';
-import { callForBar, callSchedule, announcerAt, type ScheduledCall } from './announcer';
+import { callForBar, callSchedule, announcerAt, winnerCallAfterPhoto, type ScheduledCall } from './announcer';
 import { callAt, finishLine, formatClock, ordersShort, positionLine } from './format';
 import { messageAt, messageSchedule, messageTriggers, triggersOnWall, type Shown, type Trigger } from './messages';
 import { minimapDot, minimapGeometry, minimapWire, type MinimapGeometry } from './minimap';
+import { photoFrame, photoHorses, photoNamesWinner, type PhotoFrame } from './photo';
 import { stripAt, stripOrders } from './strip';
 import { clockAt, isPlain, makeTimeline, phaseOf, playbackAt, raceAtWall, wallAtRace, wasSkipped, type Clock, type Phase, type Timeline } from './timeline';
 import {
@@ -60,7 +61,7 @@ export function makeRaceSetup(result: RaceResult, rd: RaceDay, raceNumber: numbe
     rd,
     raceNumber,
     model,
-    timeline: makeTimeline(rd, result.finish[0].time),
+    timeline: makeTimeline(rd, result.finish[0].time, result.photoFinish),
     schedule: callSchedule(result, rd, raceNumber),
     strips: stripOrders(result, rd.hud.stripHysteresisLengths.value),
     poles: polesOf(model),
@@ -142,6 +143,13 @@ export interface RaceFrame {
   strip: { post: number; yours: boolean }[];
   dots: { post: number; x: number; y: number; yours: boolean }[];
   wireTick: { x: number; y: number; h: number };
+  /** The photo finish (spec 4.4), only in the photo beat of a race the result flags. */
+  photo: PhotoFrame | null;
+  /**
+   * The HUD's contents (call, 4x tag, strip, mini map, your lines, clock, message) are drawn.
+   * Off in the photo, whose panel and captions take their place; the values stay as they are.
+   */
+  hudVisible: boolean;
   name: string;
   position: string;
   orders: string;
@@ -163,10 +171,24 @@ export function raceFrame(setup: RaceSetup, me: PlayerView, at: number | Clock):
   const cfg = model.cfg;
   const c = typeof at === 'number' ? clockAt(timeline, at) : at;
   const p = c.wall;
-  const plain = isPlain(c, timeline);
-  const toWall = plain ? (rt: number) => playbackAt(timeline, rt) : (rt: number) => wallAtRace(c, rt);
   const phase = phaseOf(c);
-  const t = c.race;
+  // The race view behind the photo is frozen as it was when the photo began (art review
+  // 2026-11-13). Race time runs on in the clock; the view's race time `t` stands still for
+  // the photo and then runs on from where it stopped, so the winner beat starts from the
+  // frozen state. With no photo, t is the clock's race time.
+  const photoBegun = c.holdEndWall !== null && c.photoEndWall !== c.holdEndWall;
+  const frozenT = photoBegun ? raceAtWall(c, c.holdEndWall!) : c.race;
+  const span = !photoBegun ? 0 : c.photoEndWall === null ? c.race - frozenT : raceAtWall(c, c.photoEndWall) - frozenT;
+  const t = c.race - span;
+  const plain = !photoBegun && isPlain(c, timeline);
+  // The wall second view time reached race time rt: past the freeze, that is when the clock reached rt + span.
+  const toWall = plain ? (rt: number) => playbackAt(timeline, rt)
+    : (rt: number) => (rt <= frozenT ? wallAtRace(c, rt) : c.photoEndWall === null ? Infinity : wallAtRace(c, rt + span));
+  // Wall time with the photo taken out: it stands still for the photo and runs on after
+  // it. The message line and the ambient loops pause on it, so nothing is used up unseen.
+  const holdEnd = c.holdEndWall;
+  const photoWall = (w: number) => (!photoBegun || holdEnd === null || w <= holdEnd || !Number.isFinite(w) ? w
+    : c.photoEndWall === null || w <= c.photoEndWall ? holdEnd : w - (c.photoEndWall - holdEnd));
   const cam = cameraX(model, me.id, t);
   const horses = horsesAt(result, cfg, t);
   const drawn = drawnHorsesAt(model, setup.runs, t);
@@ -174,13 +196,15 @@ export function raceFrame(setup: RaceSetup, me: PlayerView, at: number | Clock):
   const winner = result.finish[0];
   const winnerIn = t >= winner.time;
 
-  // The winner beat, from the end of the wire hold: the winner alone, the camera on it.
-  const beat = c.holdEndWall !== null ? (() => {
+  // The winner beat, from the end of the wire hold (and the photo, when there is one): the
+  // winner alone, the camera on it.
+  const beat = c.photoEndWall !== null ? (() => {
     const k = result.replay.horses.findIndex((h) => h.id === winner.id);
     const run = setup.runs[k];
-    const raceAtStart = raceAtWall(c, c.holdEndWall!);
+    // The view's race time at the photo's end: the frozen moment when there was a photo.
+    const raceAtStart = photoBegun ? frozenT : raceAtWall(c, c.photoEndWall!);
     const start = { distance: model.distance + run.speed * (raceAtStart - run.finishTime), speed: run.speed, lane: run.lane };
-    const pose = beatPose(rd, cfg, start, winner.post, c.wall - c.holdEndWall!, timeline.speed, art.noseX, art.gallopFrames, art.walkFrames ?? 1);
+    const pose = beatPose(rd, cfg, start, winner.post, c.wall - c.photoEndWall!, timeline.speed, art.noseX, art.gallopFrames, art.walkFrames ?? 1);
     return { pose, post: winner.post, id: winner.id, lane: run.lane };
   })() : null;
   const drawCam = beat ? beat.pose.cam : cam;
@@ -218,8 +242,10 @@ export function raceFrame(setup: RaceSetup, me: PlayerView, at: number | Clock):
   else {
     // FN1: a message from a skipped stretch is dropped, not shown late, and so is the
     // "Back in stride" that follows it (it carries its event's race time).
-    const onWall = triggersOnWall(me.triggers.filter((tr) => tr.race === undefined || !wasSkipped(c, tr.race)), toWall);
-    shownMessage = messageAt(messageSchedule(onWall, rd.hud.messageSeconds.value, rd.hud.messageMaxWaitSeconds.value), p);
+    // Placed and shown on the photo-excluded wall time: a message on screen or queued when
+    // the photo begins waits behind it, and the 3 s drop rule counts in the same time.
+    const onWall = triggersOnWall(me.triggers.filter((tr) => tr.race === undefined || !wasSkipped(c, tr.race)), (rt) => photoWall(toWall(rt)));
+    shownMessage = messageAt(messageSchedule(onWall, rd.hud.messageSeconds.value, rd.hud.messageMaxWaitSeconds.value), photoWall(p));
   }
   const message = phase === 'gate' ? rd.copy.pickPrompt : shownMessage ?? (phase === 'done' ? rd.copy.nextRace : '');
 
@@ -251,10 +277,14 @@ export function raceFrame(setup: RaceSetup, me: PlayerView, at: number | Clock):
       .filter((f) => f.x + (art.flagWidth ?? 8) > 0 && f.x < SCREEN_W)
     : [];
   const visible = new Set<AmbientId>([...(crowdRaw.length ? ['crowd' as const] : []), ...(flagSpots.length ? ['flag' as const] : [])]);
-  const ambient = ambientState(rd, { wall: p, eighthWall, visible });
+  // Behind the photo the ambient loops stop where they were, and pick up from there after it.
+  const ambient = ambientState(rd, { wall: photoWall(p), eighthWall, visible });
 
   const fastTag = c.fast ? rd.copy.fastTag : null;
-  const call = callForBar(announcerAt(setup.schedule, p, toWall, rd.hud.typeCharsPerSecond.value), c.fast);
+  // After the photo has named the winner, "Too close to call" gives way to the winner call.
+  const call = callForBar(photoNamesWinner(result, timeline, c)
+    ? winnerCallAfterPhoto(result, rd, setup.raceNumber, setup.schedule)
+    : announcerAt(setup.schedule, p, toWall, rd.hud.typeCharsPerSecond.value), c.fast);
 
   return {
     phase,
@@ -278,6 +308,10 @@ export function raceFrame(setup: RaceSetup, me: PlayerView, at: number | Clock):
     strip,
     dots,
     wireTick: minimapWire(setup.minimap),
+    photo: phase === 'photo'
+      ? photoFrame(result, rd, timeline, c, photoHorses(result, cfg, art.noseX, art.gallopFrames, me.id), me.id, cfg.playerArrowDx)
+      : null,
+    hudVisible: phase !== 'photo',
     name: me.name,
     position: finishLine(result.finish, me.id, t, rd.copy)
       ?? positionLine(callAt(result.calls, t), me.id, me.post, result.inputs.tuning.marginLabelBounds.value, rd.copy),

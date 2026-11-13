@@ -52,6 +52,27 @@ export function marginWords(lengthsThousandths: number, bounds: Bounds, copy: Ra
   return label in copy.marginWords ? copy.marginWords[label as keyof RaceDay['copy']['marginWords']] : label;
 }
 
+/** The lengths a numeric margin label stands for: "1 1/4" is 1.25, "3/4" 0.75, "23" 23. NaN for words. */
+export function labelLengths(label: string): number {
+  let total = 0;
+  for (const part of label.split(' ')) {
+    const [a, b] = part.split('/');
+    const n = b === undefined ? Number(a) : Number(a) / Number(b);
+    if (!Number.isFinite(n)) return NaN;
+    total += n;
+  }
+  return label.length > 0 ? total : NaN;
+}
+
+/**
+ * A sim margin label in words for the photo and the result (RS2): "a nose", "a head",
+ * "a neck", then "1/2 length" for 1 or less and "1 1/4 lengths" above.
+ */
+export function marginPhrase(label: string, copy: RaceDay['copy']): string {
+  if (label in copy.marginWords) return copy.marginWords[label as keyof RaceDay['copy']['marginWords']];
+  return fillTemplate(labelLengths(label) <= 1 ? copy.marginLength : copy.marginLengths, { margin: label });
+}
+
 /**
  * Your position line from the latest call (H3): "3rd, 2 1/2 back", "Leads by a head",
  * or "Post 8" before the first call.

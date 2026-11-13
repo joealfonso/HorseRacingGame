@@ -33,6 +33,8 @@
     {"id": "art.race.bg.mid.crowd", "file": "assets/art/race/bg/mid/crowd.png", "frameWidth": 16, "frameHeight": 16, "frames": 2, "atY": 64, "recolor": false, "placeholder": false},
     {"id": "art.race.bg.mid.infield", "file": "assets/art/race/bg/mid/infield.png", "frameWidth": 32, "frameHeight": 32, "frames": 1, "recolor": false, "placeholder": false, "fillSlice": [0, 16]},
     {"id": "art.race.ambient.flag", "file": "assets/art/race/ambient/flag.png", "frameWidth": 8, "frameHeight": 8, "frames": 2, "attachAt": [24, 3], "recolor": false, "placeholder": false},
+    {"id": "art.photo.bg.streaks", "file": "assets/art/photo/bg/streaks.png", "frameWidth": 16, "frameHeight": 16, "frames": 1, "recolor": false, "placeholder": false},
+    {"id": "art.ui.marker.yours", "file": "assets/art/ui/marker/yours.png", "frameWidth": 8, "frameHeight": 8, "frames": 1, "recolor": false, "placeholder": false},
     {"id": "sfx.race.gate_open", "file": null, "placeholder": true},
     {"id": "sfx.race.call_to_post", "file": null, "placeholder": true},
     {"id": "sfx.photo.shutter", "file": null, "placeholder": true}

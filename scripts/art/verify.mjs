@@ -26,6 +26,8 @@ const EXPECTED = [
   ['art.ui.cursor.horseshoe', 8, 8, 2, 'sprite', false],
   ['art.ui.placeholder_tag', 8, 8, 1, 'sprite', false],
   ['art.ui.minimap.track', 88, 40, 1, 'tile', false],
+  ['art.ui.marker.yours', 8, 8, 1, 'sprite', false],
+  ['art.photo.bg.streaks', 16, 16, 1, 'tile', false],
   ['art.race.marker.player', 7, 4, 1, 'sprite', false],
   ['art.race.marker.edge', 8, 9, 1, 'sprite', true],
   ['art.track.dirt.fast', 16, 16, 1, 'tile', false],
@@ -170,6 +172,23 @@ for (const [anim, tops] of [['gallop', [9, 8]], ['stand', [9]], ['walk', [9, 9]]
       if (c !== want) fail(`tack.${anim} frame ${f}: ${c} at ${x},${y}, expected ${want}`);
     });
   });
+}
+// Streaks: Mist and Ash only, fully opaque, and it wraps vertically (row 15 equals row 0).
+{
+  const img = images['art.photo.bg.streaks'];
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+    const c = img.name(x, y);
+    if (c !== 'Mist' && c !== 'Ash') fail(`streaks: ${c} at ${x},${y}`);
+  }
+  for (let x = 0; x < 16; x++) if (img.name(x, 0) !== img.name(x, 15)) fail(`streaks: row 0 and 15 differ at ${x}`);
+}
+// Yours marker: column 7 and row 7 blank, so it keeps 1 px before the text and shares its baseline.
+{
+  const img = images['art.ui.marker.yours'];
+  for (let i = 0; i < 8; i++) {
+    if (img.name(7, i) !== null) fail(`yours marker: column 7 not blank at y${i}`);
+    if (img.name(i, 7) !== null) fail(`yours marker: row 7 not blank at x${i}`);
+  }
 }
 // Edge marker: 7x9 Ink box, 5x7 fill, tip at x7 y4 and nothing else in column 7.
 {

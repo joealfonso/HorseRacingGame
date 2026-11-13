@@ -8,7 +8,7 @@ import { beatTimes, sequenceSeconds, type RaceDay } from '../data/raceDaySchema'
 
 export { sequenceSeconds };
 
-export type Phase = 'gate' | 'race' | 'hold' | 'winner' | 'done';
+export type Phase = 'gate' | 'race' | 'hold' | 'photo' | 'winner' | 'done';
 
 /** The beat lengths and the race's fixed times, for a race played at normal speed. */
 export interface Timeline {
@@ -20,19 +20,28 @@ export interface Timeline {
   winnerAt: number;
   /** Playback second the wire hold ends, at normal speed throughout. */
   doneAt: number;
+  /** Playback second the photo ends, at normal speed with no Enter; doneAt when there is no photo. */
+  photoEndAt: number;
   /** Playback second the winner beat ends, at normal speed throughout. */
   beatEndAt: number;
   winnerTime: number;
   holdSeconds: number;
+  /** The whole photo (spec 4.4), 0 when the result has none, and its look before the caption. */
+  photoSeconds: number;
+  captionSeconds: number;
   beatSeconds: number;
 }
 
-export function makeTimeline(rd: RaceDay, winnerTimeHundredths: number): Timeline {
-  const b = beatTimes(rd, winnerTimeHundredths / 100);
+/** `photo` is `result.photoFinish`: the photo beat is only played when the result flags one (PH1). */
+export function makeTimeline(rd: RaceDay, winnerTimeHundredths: number, photo = false): Timeline {
+  const b = beatTimes(rd, winnerTimeHundredths / 100, photo);
   return {
     speed: rd.playback.speed.value, fastSpeed: rd.playback.fastSpeed.value, doorsAt: b.doorsAt, winnerAt: b.winnerAt,
-    doneAt: b.holdEndAt, beatEndAt: b.beatEndAt, winnerTime: winnerTimeHundredths,
-    holdSeconds: rd.beats.wireHoldSeconds.value, beatSeconds: rd.beats.winnerBeatSeconds.value,
+    doneAt: b.holdEndAt, photoEndAt: b.photoEndAt, beatEndAt: b.beatEndAt, winnerTime: winnerTimeHundredths,
+    holdSeconds: rd.beats.wireHoldSeconds.value,
+    photoSeconds: photo ? rd.beats.photoSeconds.value : 0,
+    captionSeconds: Math.min(rd.beats.photoCaptionSeconds.value, rd.beats.photoSeconds.value),
+    beatSeconds: rd.beats.winnerBeatSeconds.value,
   };
 }
 
@@ -46,6 +55,10 @@ export interface Clock {
   doorsWall: number | null;
   winnerWall: number | null;
   holdEndWall: number | null;
+  /** The photo's end; the same second as holdEndWall when the race has no photo. */
+  photoEndWall: number | null;
+  /** Enter showed the photo's caption early at this wall second (first Enter of two). */
+  captionWall: number | null;
   beatEndWall: number | null;
   /** How race time followed wall time since the doors opened. A skip is two marks at one wall second. */
   marks: readonly Mark[];
@@ -57,13 +70,30 @@ export function phaseOf(c: Clock): Phase {
   if (c.doorsWall === null) return 'gate';
   if (c.winnerWall === null) return 'race';
   if (c.holdEndWall === null) return 'hold';
+  if (c.photoEndWall === null) return 'photo';
   if (c.beatEndWall === null) return 'winner';
   return 'done';
 }
 
 export const startClock = (): Clock => ({
-  wall: 0, race: 0, doorsWall: null, winnerWall: null, holdEndWall: null, beatEndWall: null, marks: [], fast: false,
+  wall: 0, race: 0, doorsWall: null, winnerWall: null, holdEndWall: null, photoEndWall: null, captionWall: null, beatEndWall: null, marks: [], fast: false,
 });
+
+/** The wall second the photo's winner line shows: captionSeconds into the photo, or the first Enter. */
+export function captionAt(c: Clock, tl: Timeline): number {
+  if (c.holdEndWall === null) return Infinity;
+  return Math.min(c.captionWall ?? Infinity, c.holdEndWall + tl.captionSeconds);
+}
+
+/** The wall second the photo ends by itself: photoSeconds - captionSeconds after the winner line shows. */
+const photoEndBy = (c: Clock, tl: Timeline): number => captionAt(c, tl) + (tl.photoSeconds - tl.captionSeconds);
+
+/**
+ * The hold has just ended at the clock's wall second: into the photo, or straight past it
+ * when there is none. Race time runs on underneath; the race view freezes itself (raceFrame).
+ */
+const endHold = (c: Clock, tl: Timeline): Clock =>
+  ({ ...c, holdEndWall: c.wall, photoEndWall: tl.photoSeconds > 0 ? null : c.wall });
 
 /** The clock at playback second p for a race played at normal speed, no skips, no pause. */
 export function clockAt(tl: Timeline, p: number): Clock {
@@ -74,6 +104,8 @@ export function clockAt(tl: Timeline, p: number): Clock {
     doorsWall: doors ? tl.doorsAt : null,
     winnerWall: p >= tl.winnerAt ? tl.winnerAt : null,
     holdEndWall: p >= tl.doneAt ? tl.doneAt : null,
+    photoEndWall: p >= tl.photoEndAt ? tl.photoEndAt : null,
+    captionWall: null,
     beatEndWall: p >= tl.beatEndAt ? tl.beatEndAt : null,
     marks: doors ? [{ wall: tl.doorsAt, race: 0, rate: tl.speed }] : [],
     fast: false,
@@ -133,7 +165,7 @@ const withRate = (c: Clock, rate: number): Clock => {
 export function tick(c0: Clock, tl: Timeline, dt: number, fastHeld: boolean): Clock {
   let c = c0;
   let left = Math.max(0, dt);
-  for (let guard = 0; guard < 8; guard++) {
+  for (let guard = 0; guard < 10; guard++) {
     const phase = phaseOf(c);
     if (phase === 'gate') {
       const toDoors = tl.doorsAt - c.wall;
@@ -149,7 +181,8 @@ export function tick(c0: Clock, tl: Timeline, dt: number, fastHeld: boolean): Cl
     let until = Infinity;
     if (phase === 'race') until = (tl.winnerTime - c.race) / 100 / rate;
     else if (phase === 'hold') until = c.winnerWall! + tl.holdSeconds - c.wall;
-    else if (phase === 'winner') until = c.holdEndWall! + tl.beatSeconds - c.wall;
+    else if (phase === 'photo') until = photoEndBy(c, tl) - c.wall;
+    else if (phase === 'winner') until = c.photoEndWall! + tl.beatSeconds - c.wall;
     const step = Math.min(left, Math.max(0, until));
     // Race time from the mark, not summed frame by frame, so it does not drift from wall time.
     const wall = c.wall + step;
@@ -157,7 +190,8 @@ export function tick(c0: Clock, tl: Timeline, dt: number, fastHeld: boolean): Cl
     left -= step;
     if (step < until || until === Infinity) return c;
     if (phase === 'race') c = { ...c, race: tl.winnerTime, winnerWall: c.wall };
-    else if (phase === 'hold') c = { ...c, holdEndWall: c.wall };
+    else if (phase === 'hold') c = endHold(c, tl);
+    else if (phase === 'photo') c = { ...c, photoEndWall: c.wall };
     else if (phase === 'winner') c = { ...c, beatEndWall: c.wall };
     if (left <= 0) return { ...c, fast: phaseOf(c) === 'race' && fastHeld };
   }
@@ -169,7 +203,10 @@ export function skipRaceTarget(quarterPoleTime: number, winnerTime: number, t: n
   return t < quarterPoleTime ? quarterPoleTime : winnerTime;
 }
 
-/** Enter: open the doors now, jump the race forward, or end the hold or the winner beat now. */
+/**
+ * Enter: open the doors now, jump the race forward, or end the hold or the winner beat now.
+ * In the photo the first Enter shows the caption at once and the second ends the photo.
+ */
 export function skip(c: Clock, tl: Timeline, quarterPoleTime: number): Clock {
   switch (phaseOf(c)) {
     case 'gate':
@@ -181,7 +218,9 @@ export function skip(c: Clock, tl: Timeline, quarterPoleTime: number): Clock {
       return { ...c, race: target, marks, winnerWall: target >= tl.winnerTime ? c.wall : null };
     }
     case 'hold':
-      return { ...c, holdEndWall: c.wall };
+      return endHold(c, tl);
+    case 'photo':
+      return c.wall < captionAt(c, tl) ? { ...c, captionWall: c.wall } : { ...c, photoEndWall: c.wall };
     case 'winner':
       return { ...c, beatEndWall: c.wall };
     default:

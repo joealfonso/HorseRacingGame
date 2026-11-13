@@ -11,6 +11,9 @@
 //                            tick at the right end of the bottom straight. Transparent
 //                            elsewhere, so it sits on the HUD box's Navy fill.
 //   art.race.marker.player   7x4 Yellow arrow with an Ink outline, pointing down.
+//   art.ui.marker.yours     8x8 Yellow and Gold arrow with an Ink outline, pointing right, for the
+//                            left of your horse's row in the result list. Rows 0-6, like the
+//                            horseshoe. Sits on the Navy box fill.
 //   art.race.marker.edge     8x9 recolorable, points right (flip for the left edge).
 //                            7x9 Ink box, 5x7 fill in key Ash, 1 px Ink tip at x7 y4.
 //                            Code draws the 3x5 number at x2-4, y2-6 (x3-5 when flipped).
@@ -118,6 +121,24 @@ export function playerMarker() {
   return c;
 }
 
+// Right-pointing arrowhead in the same family as the horseshoe and the 7x4 arrow: Yellow where
+// the light lands, Gold on the lower edge, 1 px Ink outline. Tip at x6 y3. Drawn in columns 0-6
+// and rows 0-6, so column 7 and row 7 stay blank: 1 px before the text and the same baseline.
+const YOURS = [
+  'KK......',
+  'KYKK....',
+  'KYYYKK..',
+  'KYYYYYK.',
+  'KYGGKK..',
+  'KGKK....',
+  'KK......',
+];
+export function yoursMarker() {
+  const c = new Canvas(8, 8);
+  c.draw(YOURS, { K: 'Ink', Y: 'Yellow', G: 'Gold' });
+  return c;
+}
+
 export function edgeMarker() {
   // 7x9 Ink box pointing right, 5x7 fill, 1 px Ink tip on the center row.
   const c = new Canvas(8, 9);
@@ -143,6 +164,7 @@ export function build() {
     writeSlot('art.ui.minimap.track', minimap()),
     writeSlot('art.race.marker.player', playerMarker()),
     writeSlot('art.race.marker.edge', edgeMarker()),
+    writeSlot('art.ui.marker.yours', yoursMarker()),
   ];
 }
 
