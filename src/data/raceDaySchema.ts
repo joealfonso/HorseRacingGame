@@ -76,6 +76,8 @@ export const SLOT_IDS = {
   paddockTrainer: 'art.paddock.trainer',
   paddockGround: 'art.paddock.ground',
   paddockRail: 'art.paddock.rail',
+  // The program pages: the pencil tick on last race's pick (DESIGN Program pages).
+  markPick: 'art.ui.mark.pick',
   horse: {
     body: { gallop: 'art.race.horse.body.gallop', stand: 'art.race.horse.body.stand', walk: 'art.race.horse.body.walk' },
     tack: { gallop: 'art.race.horse.tack.gallop', stand: 'art.race.horse.tack.stand', walk: 'art.race.horse.tack.walk' },
@@ -201,6 +203,14 @@ const everyValue = (keys: readonly string[]) => z.strictObject(
   Object.fromEntries(keys.map((k) => [k, text])) as Record<string, typeof text>,
 );
 const byKeys = (keys: readonly string[]) => z.strictObject(Object.fromEntries(keys.map((k) => [k, text])) as Record<string, typeof text>);
+// A highlighter band: columns x0-x1, `rows` tall, its rows in four groups whose ends step in by these px.
+const bandShape = z.strictObject({
+  x0: whole.min(0).max(255),
+  x1: whole.min(0).max(255),
+  rows: whole.min(4),
+  leftSteps: z.array(whole.min(0)).length(4),
+  rightSteps: z.array(whole.min(0)).length(4),
+}).refine((b) => b.x0 + Math.max(...b.leftSteps) < b.x1 - Math.max(...b.rightSteps), { error: 'the band must keep at least one column between its chiseled ends' });
 const ALL_GOINGS = [...new Set(Object.values(GOINGS_BY_SURFACE).flat())];
 
 export const raceDaySchema = z.strictObject({
@@ -236,6 +246,15 @@ export const raceDaySchema = z.strictObject({
     // Hold Space (spec 3.4).
     fastSpeed: marked(positive),
     maxFrameMs: marked(positive),
+  }),
+  // The program pages (DESIGN Program pages): the highlighter band's shape on a program
+  // entry and on your Result row, and the 2-frame swipe on a pick.
+  program: z.strictObject({
+    entryBand: marked(bandShape),
+    resultBand: marked(bandShape),
+    swipeHalfX1: marked(whole.min(0).max(255)),
+    swipeFrame1Seconds: marked(positive),
+    swipeFrame2Seconds: marked(positive),
   }),
   // Spec 5: a held arrow on the card or Orders repeats after repeatDelayMs, every repeatEveryMs.
   menus: z.strictObject({
@@ -324,15 +343,12 @@ export const raceDaySchema = z.strictObject({
         laneShort: z.strictObject({ inside: text, outside: text }),
         styleShort: z.strictObject({ speed: text, closers: text }),
       }),
-      jockey: text,
-      stats: text,
-      hint: text,
-      lastPick: text,
+      // The column heads over the three stats, and the footer's rider line (spec 4.1).
+      heads: z.strictObject({ speed: text, stamina: text, kick: text }),
+      jockeyUp: text,
     }),
     // Orders, the paddock (spec 4.2). Values and trainer lines are keyed by INSTRUCTIONS.
     paddock: z.strictObject({
-      styles: byKeys(RUNNING_STYLES),
-      postLine: text,
       title: text,
       labels: z.strictObject({ early: text, move: text, path: text }),
       values: z.strictObject({ early: everyValue(INSTRUCTIONS.early), move: everyValue(INSTRUCTIONS.move), path: everyValue(INSTRUCTIONS.path) }),

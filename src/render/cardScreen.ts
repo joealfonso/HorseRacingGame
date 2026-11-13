@@ -1,52 +1,50 @@
 import { biasLine, conditionsLine } from '../data/cardWords';
 import type { CardLook, RaceDay } from '../data/raceDaySchema';
 import type { Card, GameData, Horse } from '../data/schema';
-import { fillTemplate } from '../data/template';
+import { ENTRY, INK, PAPER, SECOND_INK, bandRects, clothFor, programEntry, riderLines, rule, type Entry, type PageRect, type PageText } from './page';
 import type { Session } from './session';
 import { SLOT_IDS } from './slotStatus';
 
-// The card (spec 4.1), as pure functions: what it draws for a focus, and what a key does.
-// The scene only places what these return and forwards the keys. Horses run by post, 1
-// at the top. Last race's pick shows in Yellow, backed by the words "Your pick last race".
+// The Card as one page of a race program (spec 4.1, DESIGN Program pages), as pure
+// functions: what the page draws for a focus and a pick, what a key does, and the pick's
+// 2-frame swipe. Every horse is on the page at once, one entry each, so the stats compare
+// down the columns. The scene only places what these return and forwards the keys.
 
-/** Three framed boxes: the conditions y0-63, the horses y64-175, the focused horse's detail y176-239. */
-export const CARD_BOXES = [
-  { x: 0, y: 0, tilesW: 32, tilesH: 8 },
-  { x: 0, y: 64, tilesW: 32, tilesH: 14 },
-  { x: 0, y: 176, tilesW: 32, tilesH: 8 },
-] as const;
-
-export const CARD_HEADER = { x: 8, y: 8, dy: 10 } as const;
-/** Row columns: cursor x8-15, saddlecloth box x20-29, name x34-177, style x192-247 (spec 4.1). */
-export const CARD_ROW = { y: 72, dy: 12, cursor: 8, cloth: 20, clothSize: 10, name: 34, style: 192 } as const;
-/** Four detail lines at a 12 px pitch: jockey, stats, blurb, then the hint. */
-export const CARD_DETAIL = { x: 8, y: 184, dy: 12 } as const;
+/** The conditions block, the rules, the column heads, the entries and the footer (spec 4.1 wireframe). */
+export const CARD_PAGE = {
+  header: { x: 8, y: 4, dy: 10 },
+  rules: [44, 56, 210],
+  headsY: 47,
+  entryTop: 58,
+  entryPitch: 19,
+  cursorX: 8,
+  footer: { x: 8, ys: [214, 226] },
+} as const;
 
 /** The slots the card draws, for the placeholder tag. */
-export const CARD_SLOT_IDS: readonly string[] = [SLOT_IDS.fontMain, SLOT_IDS.fontSmall, SLOT_IDS.frameBox, SLOT_IDS.cursor, SLOT_IDS.placeholderTag];
+export const CARD_SLOT_IDS: readonly string[] = [SLOT_IDS.fontMain, SLOT_IDS.fontSmall, SLOT_IDS.cursor, SLOT_IDS.placeholderTag, SLOT_IDS.markPick];
 
 /** Enter, Space or Z picks (spec 4.1 and 5). */
 export const CARD_CONFIRM_KEYS: readonly string[] = ['Enter', 'NumpadEnter', 'Space', 'KeyZ'];
 
-export type CardColor = 'Bone' | 'Yellow';
-export interface CardText { text: string; x: number; y: number; color: CardColor }
-
-export interface CardRow {
-  post: number;
-  id: string;
-  /** Last race's pick: name in Yellow. */
-  lastPick: boolean;
-  /** The 10x10 saddlecloth box (1 px Ash border on Navy, cloth fill) and its small-font number. */
-  cloth: { x: number; y: number; size: number; numberX: number; numberY: number };
-  texts: CardText[];
-}
+/** The pick's swipe, while it plays: frame 1 the band's left part, frame 2 the whole band and the tick. */
+export interface CardSwipe { post: number; frame: 1 | 2 }
 
 export interface CardScreen {
-  boxes: typeof CARD_BOXES;
-  header: CardText[];
-  rows: CardRow[];
-  /** The focused horse's four lines; the blurb line is empty text when the horse has none. */
-  detail: CardText[];
+  /** Flat full-screen paper. */
+  paper: string;
+  /** Race name (Maroon), track, conditions, bias line. */
+  header: PageText[];
+  /** "Speed", "Stamina", "Kick" over their stat columns. */
+  heads: PageText[];
+  rules: PageRect[];
+  /** The highlighter band, one rect per row; empty with no pick to mark. Drawn under the entries. */
+  band: PageRect[];
+  /** One program entry per horse by post, top at y58 + 19i. */
+  rows: Entry[];
+  /** The footer for the focused horse: "{jockey} up", then the blurb ('' with none). */
+  detail: PageText[];
+  /** The horseshoe's top-left (Gold and Auburn on paper). */
   cursor: { x: number; y: number };
 }
 
@@ -79,44 +77,46 @@ export function cardKey(s: CardState, code: string, card: Card): { state: CardSt
   return { state: s, outcome: null };
 }
 
-/** The four detail lines for one horse (CD1). */
-export function detailLines(h: Horse, rd: RaceDay, look: CardLook, lastPick: boolean): string[] {
-  const c = rd.copy.card;
-  return [
-    fillTemplate(c.jockey, { jockey: h.jockey }),
-    fillTemplate(c.stats, { speed: h.stats.speed, stamina: h.stats.stamina, kick: h.stats.kick }),
-    look[h.id]?.blurb ?? '',
-    lastPick ? c.lastPick : c.hint,
-  ];
-}
-
 /** The four header lines: race name, track, conditions, bias. */
 export const headerLines = (game: GameData, rd: RaceDay): string[] =>
   [game.race.name, game.race.track, conditionsLine(game.race, rd.copy.card), biasLine(game.race.trackBias, rd.copy.card)];
 
-export function cardScreen(game: GameData, rd: RaceDay, look: CardLook, session: Session, state: CardState): CardScreen {
-  const R = CARD_ROW;
-  const lastPost = session.lastRace?.post ?? null;
+/** Entry i's top row. */
+export const entryTop = (i: number): number => CARD_PAGE.entryTop + CARD_PAGE.entryPitch * i;
+
+/** The swipe's frame `seconds` after Enter: 1, then 2, then null when it is over and the page cuts to Orders. */
+export function swipeFrame(seconds: number, rd: RaceDay): 1 | 2 | null {
+  const p = rd.program;
+  if (seconds < p.swipeFrame1Seconds.value) return 1;
+  if (seconds < p.swipeFrame1Seconds.value + p.swipeFrame2Seconds.value) return 2;
+  return null;
+}
+
+export function cardScreen(game: GameData, rd: RaceDay, look: CardLook, session: Session, state: CardState, swipe: CardSwipe | null = null): CardScreen {
+  const P = CARD_PAGE;
   const horses = cardHorses(game.card);
-  const header = headerLines(game, rd).map((text, i): CardText => ({ text, x: CARD_HEADER.x, y: CARD_HEADER.y + CARD_HEADER.dy * i, color: 'Bone' }));
-  const rows = horses.map((h, i): CardRow => {
-    const y = R.y + R.dy * i;
-    const lastPick = h.post === lastPost;
-    const clothY = y - 1;
-    return {
-      post: h.post,
-      id: h.id,
-      lastPick,
-      cloth: { x: R.cloth, y: clothY, size: R.clothSize, numberX: R.cloth + 3, numberY: clothY + 2 },
-      texts: [
-        { text: h.name, x: R.name, y, color: lastPick ? 'Yellow' : 'Bone' },
-        { text: rd.copy.card.styles[h.style], x: R.style, y, color: 'Bone' },
-      ],
-    };
-  });
+  const range = game.tuning.statRange.value;
+  const header = headerLines(game, rd).map((text, i): PageText => ({ text, x: P.header.x, y: P.header.y + P.header.dy * i, color: i === 0 ? SECOND_INK : INK }));
+  const h = rd.copy.card.heads;
+  const heads: PageText[] = ENTRY.stats.map((s) => ({ text: h[s.key], x: s.numberX, y: P.headsY, color: INK }));
+  // CD6: the band and tick mark last race's pick; while the swipe plays they move to the new pick,
+  // the band growing in frame 1 and the tick joining it in frame 2.
+  const marked = swipe ? swipe.post : session.lastRace?.post ?? null;
+  const showTick = swipe ? swipe.frame === 2 : marked !== null;
+  const shape = rd.program.entryBand.value;
+  const markedIndex = horses.findIndex((x) => x.post === marked);
+  const band = markedIndex < 0 ? [] : bandRects(shape, entryTop(markedIndex) - 1, swipe?.frame === 1 ? rd.program.swipeHalfX1.value : shape.x1);
+  const rows = horses.map((x, i) => programEntry(x, entryTop(i), rd, clothFor(rd, x.post), range, showTick && x.post === marked));
   const focus = Math.min(Math.max(0, state.focus), horses.length - 1);
-  const h = horses[focus];
-  const detail = detailLines(h, rd, look, h.post === lastPost)
-    .map((text, i): CardText => ({ text, x: CARD_DETAIL.x, y: CARD_DETAIL.y + CARD_DETAIL.dy * i, color: 'Bone' }));
-  return { boxes: CARD_BOXES, header, rows, detail, cursor: { x: R.cursor, y: R.y + R.dy * focus } };
+  const detail = riderLines(horses[focus], rd, look).map((text, i): PageText => ({ text, x: P.footer.x, y: P.footer.ys[i], color: INK }));
+  return {
+    paper: PAPER,
+    header,
+    heads,
+    rules: P.rules.map((y) => rule(y)),
+    band,
+    rows,
+    detail,
+    cursor: { x: P.cursorX, y: entryTop(focus) + ENTRY.cursorDy },
+  };
 }

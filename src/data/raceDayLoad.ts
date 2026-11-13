@@ -39,6 +39,11 @@ export const RESULT_NEXT_CHARS = 28; // 228 px: 28 whole cells
 const BOX_PX = 240;
 // The card and Orders screens (spec 4.1 and 4.2). Style words on a card row, x192-247 (56 px).
 export const CARD_STYLE_CHARS = 7;
+// Column heads: Speed from x40 and Stamina from x108 each hold 8 cells before the next
+// column; Kick from x176 holds 9 to x247. "{jockey} up" holds x8-207, 25 cells.
+export const CARD_HEAD_CHARS = { speed: 8, stamina: 8, kick: 9 } as const;
+export const JOCKEY_UP_CHARS = 25;
+export const STAT_DIGITS = 2;
 // Orders: a slot's label x20-59, its value x84-211, Go to the post and Back to card from x20.
 export const ORDERS_LABEL_CHARS = 5;
 export const ORDERS_VALUE_CHARS = 16;
@@ -197,19 +202,17 @@ export function validateRaceDay(
   for (const line of allBiasLines(cc)) {
     if (line.length > BOX_CHARS) add('raceDay', 'copy.card.bias', `"${line}" is ${line.length} characters; the line holds ${BOX_CHARS}`);
   }
-  check('copy.card.jockey', cc.jockey, ['jockey'], BOX_CHARS, { jockey: 'M'.repeat(MAX_JOCKEY_NAME) });
-  // Stats print as they are, so the line is checked with each horse's real numbers.
-  check('copy.card.stats', cc.stats, ['speed', 'stamina', 'kick'], Infinity);
+  // The program page (spec 4.1): column heads over their stat columns, "{jockey} up" in x8-207.
+  for (const k of ['speed', 'stamina', 'kick'] as const) check(`copy.card.heads.${k}`, cc.heads[k], [], CARD_HEAD_CHARS[k]);
+  check('copy.card.jockeyUp', cc.jockeyUp, ['jockey'], JOCKEY_UP_CHARS, { jockey: 'M'.repeat(MAX_JOCKEY_NAME) });
+  // A stat prints as two small-font digits before its bar, so it must be at most 99.
   horses.forEach((h, i) => {
-    const line = fillTemplate(cc.stats, { speed: h.stats.speed, stamina: h.stats.stamina, kick: h.stats.kick });
-    if (line.length > BOX_CHARS) add('raceDay', 'copy.card.stats', `is ${line.length} characters for card.json horses[${i}] (${h.name}): "${line}"; the line holds ${BOX_CHARS}`);
+    for (const k of ['speed', 'stamina', 'kick'] as const) {
+      if (String(h.stats[k]).length > STAT_DIGITS) add('card', `horses[${i}].stats.${k}`, `is ${h.stats[k]}; the program page prints a stat in ${STAT_DIGITS} digits, so at most 99`);
+    }
   });
-  check('copy.card.hint', cc.hint, [], BOX_CHARS);
-  check('copy.card.lastPick', cc.lastPick, [], BOX_CHARS);
   const pd = copy.paddock;
   check('copy.paddock.title', pd.title, [], BOX_CHARS);
-  const longStyle = Object.values(pd.styles).reduce((a, b) => (b.length > a.length ? b : a), '');
-  check('copy.paddock.postLine', pd.postLine, ['style', 'post'], BOX_CHARS, { style: longStyle });
   for (const k of ['early', 'move', 'path'] as const) {
     check(`copy.paddock.labels.${k}`, pd.labels[k], [], ORDERS_LABEL_CHARS);
     for (const [v, label] of Object.entries(pd.values[k])) check(`copy.paddock.values.${k}.${v}`, label, [], ORDERS_VALUE_CHARS);

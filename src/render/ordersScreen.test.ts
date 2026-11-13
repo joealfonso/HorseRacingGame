@@ -8,7 +8,8 @@ import {
 } from './ordersScreen';
 import { raceInput } from './raceInput';
 import { goToPost, newSession, type Orders } from './session';
-import { deepFreeze, game, rd } from './testkit';
+import { cardScreen } from './cardScreen';
+import { CLOTH_BY_POST, ENTRY_BAND_ROWS, cellOf, deepFreeze, expectedSpans, game, paintRects, pixelAt, rd, shippedRaceDay, yellowSpans } from './testkit';
 
 // Orders, the paddock (spec 4.2): OR1, OR2, OR3, the screen's layout, the trainer's lines
 // and the coffee idle. Expected strings are the spec's table, not read from the code.
@@ -316,18 +317,6 @@ describe('the Orders screen draws the spec\'s layout', () => {
   const s = ordersScreen(game, rd, open(DEFAULTS, 0, 8));
   const at = (text: string) => s.texts.find((t) => t.text === text);
 
-  it('the horse box: name in Yellow at y8, then "Stalker, post 8", the stats and the jockey at a 10 px pitch', () => {
-    expect(at('Mint Julep Lawsuit')).toMatchObject({ y: 8, color: 'Yellow' });
-    expect(at('Stalker, post 8')).toMatchObject({ x: 8, y: 18, color: 'Bone' });
-    expect(at('Speed 68  Stamina 82  Kick 64')).toMatchObject({ x: 8, y: 28 });
-    expect(at('Jockey Imogen Pruitt')).toMatchObject({ x: 8, y: 38 });
-    expect(s.cloth.post).toBe(8);
-  });
-
-  it('a front-runner is spelled out in full here: "Front-runner, post 2"', () => {
-    expect(ordersScreen(game, rd, open(DEFAULTS, 0, 2)).texts.some((t) => t.text === 'Front-runner, post 2')).toBe(true);
-  });
-
   it('the orders box: the title at y64, three slot rows at y78, 90, 102, Go at y116, Back at y127', () => {
     expect(at('Orders')).toMatchObject({ x: 8, y: 64 });
     for (const [i, y] of [78, 90, 102].entries()) {
@@ -344,8 +333,9 @@ describe('the Orders screen draws the spec\'s layout', () => {
     for (const focus of [0, 1, 2]) {
       const sc = ordersScreen(game, rd, open(o, focus));
       const y = [78, 90, 102][focus];
-      expect(sc.texts.filter((t) => t.text === '<')).toEqual([{ text: '<', x: 72, y, color: 'Bone' }]);
-      expect(sc.texts.filter((t) => t.text === '>')).toEqual([{ text: '>', x: 216, y, color: 'Bone' }]);
+      // Rewritten on purpose (spec 4.2, art-director's rulings): the orders list is Ink type on paper, so "<" and ">" are Ink, not Bone.
+      expect(sc.texts.filter((t) => t.text === '<')).toEqual([{ text: '<', x: 72, y, color: 'Ink' }]);
+      expect(sc.texts.filter((t) => t.text === '>')).toEqual([{ text: '>', x: 216, y, color: 'Ink' }]);
       expect(sc.texts.find((t) => t.x === 84 && t.y === 78)!.text).toBe('Rate early');
       expect(sc.texts.find((t) => t.x === 84 && t.y === 90)!.text).toBe('Save for stretch');
       expect(sc.texts.find((t) => t.x === 84 && t.y === 102)!.text).toBe('Stay inside');
@@ -399,5 +389,168 @@ describe('the Orders screen draws the spec\'s layout', () => {
         }
       }
     }
+  });
+});
+
+// Rewritten on purpose for the 2026-11-13 rework (spec 4.2, OR4). The old "horse box" tests are
+// replaced, not kept: a Yellow name at y8, "Stalker, post 8" at y18, a stats line, a "Jockey ..."
+// line and a saddlecloth box (s.cloth) belonged to a Navy box that no longer exists. What they
+// protected, that your horse's own name, style, post, stats and jockey are on this screen, now
+// holds through the Card's entry component, the "{jockey} up" line and the blurb below. "Stalker,
+// post 8" and "Front-runner, post 2" are gone by the spec ("the style is in the entry and the
+// post is the saddlecloth number"), so the test that spelled the front-runner out has no
+// successor: the word is now the Card's "Front", shared with the Card.
+describe('OR4: the top of Orders is the next page of the program', () => {
+  const look = shippedRaceDay.cardLook;
+  const first = newSession(1);
+  const orders = (post: number, focus = 0, l = look) => ordersScreen(game, rd, open(DEFAULTS, focus, post), l);
+  const card = cardScreen(game, rd, look, first, { focus: 0 });
+  const byPost = [...game.card.horses].sort((a, b) => a.post - b.post);
+  /** An entry with its top row taken off every y, so two tops can be compared. */
+  const flat = (e: { top: number; cloth: { x: number; y: number; w: number; h: number }; rects: { y: number }[]; texts: { y: number }[]; images: { y: number }[] }) => ({
+    ...e,
+    top: 0,
+    cloth: { ...e.cloth, y: e.cloth.y - e.top },
+    rects: e.rects.map((r) => ({ ...r, y: r.y - e.top })),
+    texts: e.texts.map((t) => ({ ...t, y: t.y - e.top })),
+    images: e.images.map((i) => ({ ...i, y: i.y - e.top })),
+  });
+
+  it('draws the picked horse with the Card\'s entry: the same rects, texts and x positions, for every horse, only the top row differs (y8 here)', () => {
+    for (const h of byPost) {
+      const e = orders(h.post).entry;
+      expect(e.top, `post ${h.post}`).toBe(8);
+      expect(flat(e), `post ${h.post}`).toEqual(flat(card.rows[h.post - 1]));
+    }
+  });
+
+  it('shows your horse\'s name, style word, program number, three stats and bars, as the Card does', () => {
+    const e = orders(8).entry;
+    expect(e.texts.find((t) => t.text === 'Mint Julep Lawsuit')).toMatchObject({ x: 40, y: 8, color: 'Ink' });
+    expect(e.texts.find((t) => t.text === 'Stalker')).toMatchObject({ x: 192, y: 8, color: 'Maroon' });
+    const num = e.texts.find((t) => t.text === '8' && t.x < 36)!;
+    expect(num.color).toBe(CLOTH_BY_POST[8].number);
+    expect(cellOf(num).x0).toBeGreaterThanOrEqual(21);
+    expect(cellOf(num).x1).toBeLessThanOrEqual(34);
+    expect(cellOf(num).y0).toBeGreaterThanOrEqual(9);
+    expect(cellOf(num).y1).toBeLessThanOrEqual(23);
+    expect(e.texts.filter((t) => t.small).map((t) => [t.text, t.x, t.y])).toEqual([['68', 40, 18], ['82', 108, 18], ['64', 176, 18]]);
+    expect(e.cloth).toEqual({ x: 20, y: 8, w: 16, h: 17 });
+    const px = paintRects(e.rects);
+    expect(pixelAt(px, 20, 8)).toBe('Ink');
+    expect(pixelAt(px, 30, 12)).toBe(CLOTH_BY_POST[8].fill);
+    // Speed 68 is floor(67 * 50 / 99) = 33 px of Ink, then the Ash track.
+    expect(pixelAt(px, 50 + 32, 19)).toBe('Ink');
+    expect(pixelAt(px, 50 + 33, 20)).toBe('Ash'); // the track's middle row, +12
+    expect(pixelAt(px, 50 + 33, 19)).toBeUndefined();
+  });
+
+  it('sits under the Yellow highlighter band: x16-250, 19 rows from y7, chiseled as on the Card', () => {
+    for (const h of byPost) expect(yellowSpans(paintRects(orders(h.post).band)), `post ${h.post}`).toEqual(expectedSpans(7, ENTRY_BAND_ROWS));
+  });
+
+  it('no chisel step sits under the block, the text or anything else in the entry', () => {
+    for (const h of byPost) {
+      const sc = orders(h.post);
+      const spans = yellowSpans(paintRects(sc.band));
+      const marked = [{ x0: 20, x1: 35, y0: 8, y1: 24 }, ...sc.entry.texts.map(cellOf)];
+      for (const c of marked) {
+        for (let y = c.y0; y <= c.y1; y++) {
+          const [a, b] = spans.get(y)!;
+          expect(a, `post ${h.post} row ${y}`).toBeLessThanOrEqual(c.x0);
+          expect(b, `post ${h.post} row ${y}`).toBeGreaterThanOrEqual(c.x1);
+        }
+      }
+    }
+  });
+
+  it('is followed by "{jockey} up" at x8 y30 and the blurb at x8 y42, in Ink', () => {
+    for (const h of byPost) {
+      const sc = orders(h.post);
+      expect(sc.texts.filter((t) => t.y === 30 || t.y === 42).map((t) => [t.text, t.x, t.y, t.color]), `post ${h.post}`).toEqual([
+        [`${h.jockey} up`, 8, 30, 'Ink'],
+        [look[h.id].blurb!, 8, 42, 'Ink'],
+      ]);
+    }
+  });
+
+  it('with no blurb the second line is empty and the jockey line still shows', () => {
+    const bare = structuredClone(look);
+    for (const k of Object.keys(bare)) delete (bare[k] as { blurb?: string }).blurb;
+    const sc = orders(2, 0, bare);
+    expect(sc.texts.find((t) => t.y === 30)!.text).toBe(`${byPost[1].jockey} up`);
+    expect(sc.texts.find((t) => t.y === 42)?.text ?? '').toBe('');
+  });
+
+  it('a 22-character jockey and a 28-character blurb fit x8-207 and x8-231', () => {
+    const g = structuredClone(game);
+    g.card.horses.find((h) => h.post === 3)!.jockey = 'J'.repeat(22);
+    const l = structuredClone(look);
+    l[byPost[2].id].blurb = 'B'.repeat(28);
+    const sc = ordersScreen(g, rd, open(DEFAULTS, 0, 3), l);
+    expect(cellOf(sc.texts.find((t) => t.y === 30)!)).toMatchObject({ x0: 8, x1: 207 });
+    expect(cellOf(sc.texts.find((t) => t.y === 42)!)).toMatchObject({ x0: 8, x1: 231 });
+  });
+
+  it('a rule at y55 across x8-247, "Orders" in Maroon at y64, and the paper ends with a 1 px Ink edge at y143', () => {
+    const sc = orders(8);
+    expect(sc.rules).toContainEqual({ x: 8, y: 55, w: 240, h: 1, color: 'Ink' });
+    expect(sc.texts.find((t) => t.text === 'Orders')).toEqual({ text: 'Orders', x: 8, y: 64, color: 'Maroon' });
+    const px = paintRects([sc.paper, ...sc.rules]);
+    // Flat Parchment from y0 to y142 across the whole width, then Ink at y143.
+    for (const x of [0, 7, 100, 248, 255]) {
+      expect(pixelAt(px, x, 0), `x${x} y0`).toBe('Parchment');
+      expect(pixelAt(px, x, 142), `x${x} y142`).toBe('Parchment');
+      expect(pixelAt(px, x, 143), `x${x} y143`).toBe('Ink');
+      expect(pixelAt(px, x, 144), `x${x} y144 is the paddock`).toBeUndefined();
+    }
+    expect(pixelAt(px, 8, 55)).toBe('Ink');
+    expect(pixelAt(px, 247, 55)).toBe('Ink');
+    expect(pixelAt(px, 7, 55)).toBe('Parchment');
+    expect(pixelAt(px, 248, 55)).toBe('Parchment');
+    // No other rule on the paper.
+    expect(sc.rules.map((r) => r.y).sort((a, b) => a - b)).toEqual([55, 143]);
+  });
+
+  it('the slot rows and actions are Ink at their built positions, and the paper has no Navy and no Bone', () => {
+    const o: Orders = { early: 'rateEarly', move: 'saveForStretch', path: 'stayInside' };
+    const sc = ordersScreen(game, rd, open(o, 1, 8), look);
+    const paper = sc.texts.filter((t) => t.y < 144);
+    const get = (text: string) => paper.find((t) => t.text === text)!;
+    expect(get('Early')).toMatchObject({ x: 20, y: 78, color: 'Ink' });
+    expect(get('Rate early')).toMatchObject({ x: 84, y: 78, color: 'Ink' });
+    expect(get('Move')).toMatchObject({ x: 20, y: 90, color: 'Ink' });
+    expect(get('Save for stretch')).toMatchObject({ x: 84, y: 90, color: 'Ink' });
+    expect(get('Path')).toMatchObject({ x: 20, y: 102, color: 'Ink' });
+    expect(get('Stay inside')).toMatchObject({ x: 84, y: 102, color: 'Ink' });
+    expect(get('Go to the post')).toMatchObject({ x: 20, y: 116, color: 'Ink' });
+    expect(get('Back to card')).toMatchObject({ x: 20, y: 127, color: 'Ink' });
+    expect(get('<')).toMatchObject({ x: 72, y: 90, color: 'Ink' });
+    expect(get('>')).toMatchObject({ x: 216, y: 90, color: 'Ink' });
+    expect(paper.some((t) => t.color === 'Bone')).toBe(false);
+    expect([sc.paper, ...sc.rules, ...sc.band, ...sc.entry.rects].some((r) => r.color === 'Navy')).toBe(false);
+  });
+
+  it('the dialog box stays the one framed box, y192-239, with the trainer\'s lines in Bone', () => {
+    const sc = ordersScreen(game, rd, open({ ...DEFAULTS, move: 'saveForStretch' }, 1, 8), look);
+    expect(sc.boxes.map((b) => [b.x, b.y, b.tilesW * 8, b.tilesH * 8])).toEqual([[0, 192, 256, 48]]);
+    expect(sc.texts.filter((t) => t.y >= 192).map((t) => [t.text, t.color])).toEqual([['Sit chilly till the stretch.', 'Bone'], ['Then ask for everything.', 'Bone']]);
+  });
+
+  it('the paddock strip is unchanged below the paper: it starts at y144 with no frame', () => {
+    const sc = orders(8);
+    expect(Math.min(...sc.tiles.map((t) => t.y))).toBe(144);
+    expect(Math.max(...sc.tiles.map((t) => t.y))).toBe(176);
+    expect(sc.paper.y + sc.paper.h).toBeLessThanOrEqual(143);
+  });
+
+  it('the cursor is the paper horseshoe: at x8 on the focused row (the recolor itself is in programPages.test.ts)', () => {
+    [78, 90, 102, 116, 127].forEach((y, focus) => expect(orders(8, focus).cursor).toEqual({ x: 8, y }));
+  });
+
+  it('the entry follows the post it is given, and the state\'s orders and focus change nothing in it', () => {
+    const a = orders(5, 0).entry;
+    const b = ordersScreen(game, rd, open({ early: 'rateEarly', move: 'saveForStretch', path: 'stayInside' }, 4, 5), look).entry;
+    expect(b).toEqual(a);
   });
 });

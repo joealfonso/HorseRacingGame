@@ -1,12 +1,15 @@
-import type { RaceDay } from '../data/raceDaySchema';
-import { INSTRUCTIONS, type Card, type GameData, type Horse } from '../data/schema';
-import { fillTemplate, wrapWords } from '../data/template';
+import type { CardLook, RaceDay } from '../data/raceDaySchema';
+import { INSTRUCTIONS, type Card, type GameData } from '../data/schema';
+import { wrapWords } from '../data/template';
+import { INK, PAPER, SECOND_INK, bandRects, clothFor, programEntry, riderLines, rule, type Entry, type PageRect } from './page';
 import { ordersFor, sameHorseAsLastRace, type Orders, type Session } from './session';
 import { SLOT_IDS } from './slotStatus';
 
 // Orders, the paddock (spec 4.2), as pure functions: the order values offered (always
 // INSTRUCTIONS from src/data/schema.ts, never a list of its own), the focus model, what a
-// key does, the trainer's line for the focused item, and everything the screen draws.
+// key does, the trainer's line for the focused item, and everything the screen draws. The
+// top, y0-143, is the next page of the program (spec 4.2, DESIGN Program pages): your
+// horse's entry, drawn by the Card's own entry function, under the highlighter band.
 
 export const ORDER_SLOTS = ['early', 'move', 'path'] as const;
 export type OrderSlot = (typeof ORDER_SLOTS)[number];
@@ -14,15 +17,13 @@ export type OrderSlot = (typeof ORDER_SLOTS)[number];
 export const ORDERS_ITEMS = ['early', 'move', 'path', 'post', 'back'] as const;
 export type OrdersItem = (typeof ORDERS_ITEMS)[number];
 
-/** Horse box y0-55, orders box y56-143, paddock strip y144-191 (no frame), dialog box y192-239. */
+/** Paper y0-143, paddock strip y144-191 (no frame), and the one Navy box left: the dialog, y192-239. */
 export const ORDERS_BOXES = [
-  { x: 0, y: 0, tilesW: 32, tilesH: 7 },
-  { x: 0, y: 56, tilesW: 32, tilesH: 11 },
   { x: 0, y: 192, tilesW: 32, tilesH: 6 },
 ] as const;
 
-/** The horse box: four lines at a 10 px pitch; the saddlecloth box leads the first. */
-export const ORDERS_HORSE = { x: 8, y: 8, dy: 10, clothSize: 10, name: 22 } as const;
+/** The paper's top: your entry at y8 (as on the Card), "{jockey} up" and the blurb, a rule at y55, the edge at y143. */
+export const ORDERS_TOP = { entryTop: 8, rider: { x: 8, ys: [30, 42] }, ruleY: 55, edgeY: 143 } as const;
 /** Slot rows: cursor x8-15, label x20-59, "<" x72, value x84-211, ">" x216 (spec 4.2). */
 export const ORDERS_ROW = { title: { x: 8, y: 64 }, ys: [78, 90, 102, 116, 127], cursor: 8, label: 20, left: 72, value: 84, right: 216 } as const;
 /** The paddock strip y144-191: three rows of 16 px tiles across the 256 px screen. Who stands where is data. */
@@ -101,13 +102,21 @@ export function trainerFrame(seconds: number, down: number, up: number): number 
   return t < down ? 0 : 1;
 }
 
-export type OrdersColor = 'Bone' | 'Yellow';
-export interface OrdersText { text: string; x: number; y: number; color: OrdersColor }
+export type OrdersColor = 'Ink' | 'Maroon' | 'Bone';
+export interface OrdersText { text: string; x: number; y: number; color: OrdersColor; small?: boolean }
 
 export interface OrdersScreen {
+  /** The dialog's frame box (the only Navy left). */
   boxes: typeof ORDERS_BOXES;
-  /** The saddlecloth box before your horse's name. */
-  cloth: { post: number; x: number; y: number; size: number; numberX: number; numberY: number };
+  /** The paper, y0-142, flat Parchment. */
+  paper: PageRect;
+  /** The rule under the rider lines (y55) and the paper's Ink edge (y143). */
+  rules: PageRect[];
+  /** The highlighter band under your entry, one rect per row (OR4). */
+  band: PageRect[];
+  /** Your horse's program entry: the Card's entry component at the Card's x positions (OR4). */
+  entry: Entry;
+  /** Rider lines, the title and the orders in Ink and Maroon on paper; the trainer's lines in Bone in the dialog. */
   texts: OrdersText[];
   cursor: { x: number; y: number };
   /** Paddock tiles, one per 16 px of each row, by slot id; `flip` mirrors the tile (the rail's odd tiles). Drawn first. */
@@ -116,39 +125,27 @@ export interface OrdersScreen {
   horse: { x: number; y: number };
 }
 
-/** The horse box's four lines: name, style and post, stats, jockey. */
-export function horseLines(h: Horse, rd: RaceDay): string[] {
-  const p = rd.copy.paddock;
-  const c = rd.copy.card;
-  return [
-    h.name,
-    fillTemplate(p.postLine, { style: p.styles[h.style], post: h.post }),
-    fillTemplate(c.stats, { speed: h.stats.speed, stamina: h.stats.stamina, kick: h.stats.kick }),
-    fillTemplate(c.jockey, { jockey: h.jockey }),
-  ];
-}
-
-export function ordersScreen(game: GameData, rd: RaceDay, s: OrdersState): OrdersScreen {
+export function ordersScreen(game: GameData, rd: RaceDay, s: OrdersState, look: CardLook = {}): OrdersScreen {
   const h = game.card.horses.find((x) => x.post === s.post) ?? game.card.horses[0];
   const p = rd.copy.paddock;
-  const H = ORDERS_HORSE;
+  const T = ORDERS_TOP;
   const R = ORDERS_ROW;
-  const texts: OrdersText[] = horseLines(h, rd).map((text, i) => ({
-    text, x: i === 0 ? H.name : H.x, y: H.y + H.dy * i, color: i === 0 ? 'Yellow' as const : 'Bone' as const,
-  }));
-  texts.push({ text: p.title, x: R.title.x, y: R.title.y, color: 'Bone' });
+  const entry = programEntry(h, T.entryTop, rd, clothFor(rd, h.post), game.tuning.statRange.value, false);
+  const band = bandRects(rd.program.entryBand.value, T.entryTop - 1);
+  const texts: OrdersText[] = riderLines(h, rd, look).map((text, i) => ({ text, x: T.rider.x, y: T.rider.ys[i], color: INK }));
+  texts.push({ text: p.title, x: R.title.x, y: R.title.y, color: SECOND_INK });
   ORDER_SLOTS.forEach((slot, i) => {
     const y = R.ys[i];
-    texts.push({ text: p.labels[slot], x: R.label, y, color: 'Bone' });
-    texts.push({ text: (p.values[slot] as Record<string, string>)[s.orders[slot]] ?? s.orders[slot], x: R.value, y, color: 'Bone' });
+    texts.push({ text: p.labels[slot], x: R.label, y, color: INK });
+    texts.push({ text: (p.values[slot] as Record<string, string>)[s.orders[slot]] ?? s.orders[slot], x: R.value, y, color: INK });
     // "<" and ">" only on the focused slot.
     if (s.focus === i) {
-      texts.push({ text: '<', x: R.left, y, color: 'Bone' });
-      texts.push({ text: '>', x: R.right, y, color: 'Bone' });
+      texts.push({ text: '<', x: R.left, y, color: INK });
+      texts.push({ text: '>', x: R.right, y, color: INK });
     }
   });
-  texts.push({ text: p.go, x: R.label, y: R.ys[3], color: 'Bone' });
-  texts.push({ text: p.back, x: R.label, y: R.ys[4], color: 'Bone' });
+  texts.push({ text: p.go, x: R.label, y: R.ys[3], color: INK });
+  texts.push({ text: p.back, x: R.label, y: R.ys[4], color: INK });
   trainerLines(rd, s).forEach((text, i) => texts.push({ text, x: ORDERS_DIALOG.x, y: ORDERS_DIALOG.ys[i], color: 'Bone' }));
 
   const tiles: OrdersScreen['tiles'] = [];
@@ -159,10 +156,12 @@ export function ordersScreen(game: GameData, rd: RaceDay, s: OrdersState): Order
   });
   const [tx, ty] = rd.paddock.trainerAt.value;
   const [hx, hy] = rd.paddock.horseAt.value;
-  const clothY = H.y - 1;
   return {
     boxes: ORDERS_BOXES,
-    cloth: { post: h.post, x: H.x, y: clothY, size: H.clothSize, numberX: H.x + 3, numberY: clothY + 2 },
+    paper: { x: 0, y: 0, w: PADDOCK.width, h: T.edgeY, color: PAPER },
+    rules: [rule(T.ruleY), rule(T.edgeY, 0, PADDOCK.width)],
+    band,
+    entry,
     texts,
     cursor: { x: R.cursor, y: R.ys[Math.min(Math.max(0, s.focus), ORDERS_ITEMS.length - 1)] },
     tiles,

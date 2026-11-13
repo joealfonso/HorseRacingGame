@@ -12,7 +12,7 @@
 //  - paddock: trainer in Ink, Peach and Maroon with an Ink outer silhouette, boots on row 23,
 //    frames differing only in the head and arm boxes; ground and rail tiles with no Ink, the
 //    rail rows 0-6 Turf and the fence wholly in rail rows 8-15
-//  - pencil tick and staple exactly as DESIGN.md gives them
+//  - pencil tick exactly as DESIGN.md gives it
 //  - no stray files under public/assets
 //  - rebuilding gives byte-identical files
 import { createHash } from 'node:crypto';
@@ -60,7 +60,6 @@ const EXPECTED = [
   ['art.race.jockey.cap.gallop', 32, 24, 2, 'sprite', true],
   ['art.race.jockey.cap.stand', 32, 24, 1, 'sprite', true],
   ['art.ui.mark.pick', 8, 8, 1, 'sprite', false],
-  ['art.ui.paper.staple', 2, 8, 1, 'sprite', false],
   ['art.paddock.trainer', 16, 24, 2, 'sprite', false],
   ['art.paddock.ground', 16, 16, 1, 'tile', false],
   ['art.paddock.rail', 16, 16, 1, 'tile', false],
@@ -287,10 +286,9 @@ for (const [slot, allowed] of [['art.paddock.ground', ['Grass', 'Leaf', 'Turf']]
   }
 }
 
-// Pencil tick and staple: exactly the pixels DESIGN.md (Program pages) gives.
+// Pencil tick: exactly the pixels DESIGN.md (Program pages) gives.
 for (const [slot, rows, key] of [
   ['art.ui.mark.pick', ['........', '.......S', '......SS', '.....SS.', 'S...SS..', 'SS.SS...', '.SSS....', '..S.....'], { S: 'Slate' }],
-  ['art.ui.paper.staple', ['SS', 'AS', 'AS', 'AS', 'AS', 'AS', 'AS', 'SS'], { S: 'Slate', A: 'Ash' }],
 ]) {
   const img = images[slot];
   rows.forEach((row, y) => [...row].forEach((ch, x) => {

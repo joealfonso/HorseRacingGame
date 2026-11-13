@@ -103,6 +103,27 @@ export class Art {
   }
 
   /**
+   * The slot's texture with exact palette swaps applied all at once (each pixel changes at
+   * most once), for the paper variants of the cursor and the arrow marker. Cached by swap set.
+   */
+  swap(id: string, pairs: readonly (readonly [string, string])[]): string {
+    const slot = this.slot(id);
+    if (!this.ok(id) || pairs.length === 0) return id;
+    const key = `${id}|${pairs.map(([a, b]) => `${a}>${b}`).join(',')}`;
+    if (this.scene.textures.exists(key)) return key;
+    const src = this.scene.textures.get(id).getSourceImage() as HTMLImageElement | HTMLCanvasElement;
+    const tex = canvasTexture(this.scene, key, src.width, src.height);
+    tex.context.drawImage(src, 0, 0);
+    const img = tex.context.getImageData(0, 0, src.width, src.height);
+    const c = (name: string) => rgbOf(this.info.colors, name);
+    swapColors(img.data, pairs.map(([a, b]) => [c(a), c(b)] as const));
+    tex.context.putImageData(img, 0, 0);
+    tex.refresh();
+    addFrames(tex, slot);
+    return key;
+  }
+
+  /**
    * A bitmap font (and texture with one frame per glyph, named by char code) in one
    * palette color. While the font file is missing, a stand-in sheet is drawn instead.
    */

@@ -20,8 +20,6 @@
 //   art.ui.mark.pick         8x8 pencil tick, Slate only, no outline (graphite, a hand mark, not
 //                            print). Short stroke down to the right, long stroke up to the right,
 //                            2 px wide where it turns. Card entry x238-245, rows +9 to +16.
-//   art.ui.paper.staple      2x8, Ash left column, Slate right column, Slate on both end rows where
-//                            the legs go into the paper. Left margin of program pages at x2-3.
 import { Canvas, strip, writeSlot } from './png.mjs';
 
 function tile(rows) {
@@ -178,15 +176,6 @@ export function pickMark() {
   return c;
 }
 
-export function staple() {
-  const c = new Canvas(2, 8);
-  c.rect(0, 0, 1, 8, 'Ash');
-  c.rect(1, 0, 1, 8, 'Slate');
-  c.rect(0, 0, 2, 1, 'Slate');
-  c.rect(0, 7, 2, 1, 'Slate');
-  return c;
-}
-
 export function build() {
   return [
     writeSlot('art.ui.frame.box', frameBox()),
@@ -197,7 +186,6 @@ export function build() {
     writeSlot('art.race.marker.edge', edgeMarker()),
     writeSlot('art.ui.marker.yours', yoursMarker()),
     writeSlot('art.ui.mark.pick', pickMark()),
-    writeSlot('art.ui.paper.staple', staple()),
   ];
 }
 

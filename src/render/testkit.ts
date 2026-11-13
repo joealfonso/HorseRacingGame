@@ -134,3 +134,66 @@ export function scrambleAfter(r: RaceResult, t: number): RaceResult {
   if (r.finish[0].time > cut) c.photoFinish = !r.photoFinish;
   return c;
 }
+
+// Program pages (spec 4.1, 4.2, 4.6; DESIGN "Program pages") ------------------------------
+// Expected values below are written from the spec and DESIGN, never read back from page.ts.
+
+/** A page as pixels: rects painted in the order given, later over earlier. Key is "x,y". */
+export function paintRects(rects: readonly { x: number; y: number; w: number; h: number; color: string }[], into = new Map<string, string>()): Map<string, string> {
+  for (const r of rects) for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) into.set(`${x},${y}`, r.color);
+  return into;
+}
+export const pixelAt = (px: Map<string, string>, x: number, y: number): string | undefined => px.get(`${x},${y}`);
+
+/** DESIGN Jockeys and silks: saddlecloth fill and number color by program number. */
+export const CLOTH_BY_POST: Record<number, { fill: string; number: string }> = {
+  1: { fill: 'Red', number: 'Bone' },
+  2: { fill: 'Bone', number: 'Ink' },
+  3: { fill: 'Royal', number: 'Bone' },
+  4: { fill: 'Yellow', number: 'Ink' },
+  5: { fill: 'Emerald', number: 'Bone' },
+  6: { fill: 'Coal', number: 'Yellow' },
+  7: { fill: 'Orange', number: 'Ink' },
+  8: { fill: 'Pink', number: 'Ink' },
+};
+
+/**
+ * DESIGN "Highlighter band": per row of the band, the first and last Yellow column.
+ * Card and Orders entry: x16-250, 19 rows, left x19, 18, 17, 16 and right x250, 249, 248, 247
+ * for rows 0-4, 5-9, 10-14, 15-18. Result row: x5-250, 10 rows, left x8, 7, 6, 5 and right
+ * x250, 249, 248, 247 for rows 0-2, 3-5, 6-7, 8-9.
+ */
+export const ENTRY_BAND_ROWS: [number, number][] = [
+  ...Array.from({ length: 5 }, (): [number, number] => [19, 250]),
+  ...Array.from({ length: 5 }, (): [number, number] => [18, 249]),
+  ...Array.from({ length: 5 }, (): [number, number] => [17, 248]),
+  ...Array.from({ length: 4 }, (): [number, number] => [16, 247]),
+];
+export const RESULT_BAND_ROWS: [number, number][] = [
+  ...Array.from({ length: 3 }, (): [number, number] => [8, 250]),
+  ...Array.from({ length: 3 }, (): [number, number] => [7, 249]),
+  ...Array.from({ length: 2 }, (): [number, number] => [6, 248]),
+  ...Array.from({ length: 2 }, (): [number, number] => [5, 247]),
+];
+
+/** The Yellow pixels of a painted page, as [first, last] column per row y, for the rows that have any. */
+export function yellowSpans(px: Map<string, string>): Map<number, [number, number]> {
+  const spans = new Map<number, [number, number]>();
+  const cells = [...px].filter(([, c]) => c === 'Yellow').map(([k]) => k.split(',').map(Number));
+  for (const [x, y] of cells) {
+    const s = spans.get(y);
+    if (!s) spans.set(y, [x, x]);
+    else spans.set(y, [Math.min(s[0], x), Math.max(s[1], x)]);
+  }
+  // Every row of a band is one solid run: a hole would be a bug the span would hide.
+  for (const [y, [a, b]] of spans) for (let x = a; x <= b; x++) if (px.get(`${x},${y}`) !== 'Yellow') throw new Error(`hole in the band at ${x},${y}`);
+  return spans;
+}
+
+/** The span table a band of `top` and these row columns must paint. */
+export const expectedSpans = (top: number, rows: [number, number][]): Map<number, [number, number]> =>
+  new Map(rows.map((r, i): [number, [number, number]] => [top + i, r]));
+
+/** The cell a string occupies: 8 x 8 in the main font, 4 x 6 in the small. */
+export const cellOf = (t: { text: string; x: number; y: number; small?: boolean }) =>
+  ({ x0: t.x, x1: t.x + (t.small ? 4 : 8) * t.text.length - 1, y0: t.y, y1: t.y + (t.small ? 6 : 8) - 1 });

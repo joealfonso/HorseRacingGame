@@ -165,7 +165,7 @@ y   4  Old Fence Row Stakes                                     race.name, main 
 | cursor | 8-15 | +5 to +12 | horseshoe 8x8 | focused entry only |
 | saddlecloth block | 20-35 | +0 to +16 | 16x17 block, number in the main font, centered | the program number, as printed programs show it |
 | name | 40-183 | +0 to +7 | main font | 18 characters fill it exactly |
-| style | 190-245 | +0 to +7 | main font | "Front", "Stalker", "Closer" |
+| style | right-aligned, ending at x247 | +0 to +7 | main font, Maroon | "Front" x208-247, "Stalker" x192-247, "Closer" x200-247 |
 | speed number | 40-47 | +10 to +15 | small font, 2 digits | |
 | speed bar | 50-99 | +11 to +13 | Ink fill on a 50 px track | |
 | stamina number | 108-115 | +10 to +15 | small font | |
@@ -195,11 +195,11 @@ Rejected:
 
 **Your horse, focus and pick:**
 - Focus: the horseshoe cursor at x8 on the focused entry, and the footer shows that horse's jockey and blurb.
-- Last race's pick: a Yellow highlighter band behind its entry (x18-247, the entry's 17 rows plus 1 above and 1 below), and the pencil tick at x238. Ink on Yellow reads, and Yellow is the player's color everywhere else. The tick is the second signal, a shape, so the band is never the only cue.
+- Last race's pick: a Yellow highlighter band behind its entry (x16-250, the entry's 17 rows plus 1 above and 1 below, with chisel ends as DESIGN's "Program pages" gives them; no chisel step sits under anything the band marks), and the pencil tick at x238. Ink on Yellow reads, and Yellow is the player's color everywhere else. The tick is the second signal, a shape, so the band is never the only cue.
 - On Enter, the band moves to the new pick with a single 2-frame highlighter swipe (left half, then the whole entry), then the page cuts to Orders. That is the page's one moment of motion and it shows that the choice took.
-- The cursor bobs as everywhere (DESIGN Charm). The cursor art needs a variant that reads on Parchment, see the art-director list.
+- The cursor bobs as everywhere (DESIGN Charm). On paper the horseshoe is recolored by code, Yellow to Gold and Gold to Auburn, with the Ink outline kept. The Navy screens keep the Yellow one.
 
-**Art-director's rulings (2026-11-13), recorded in DESIGN.md under "Program pages" and binding here:** flat full-screen Parchment with no border or texture; the race name in Maroon, everything else Ink; no hairlines between entries; each bar is a solid 3 px Ink fill on a 1 px Ash track with a 1x3 Ash end stop; saddlecloth blocks on paper get a 1 px Ink border; the highlighter band has chisel-cut ends; the pick mark is an 8x8 Slate pencil tick; the horseshoe cursor is unchanged; no Yellow text on paper; and two staples sit in the left margin at x2-3 (y28-35 and y204-211 on the Card and the result, y28-35 and y128-135 on Orders). On Orders the paper ends with a 1 px Ink line at y143.
+**Art-director's rulings (2026-11-13), recorded in DESIGN.md under "Program pages" and binding here:** flat full-screen Parchment with no border or texture; the race name in Maroon, everything else Ink; no hairlines between entries; each bar is a solid 3 px Ink fill on a 1 px Ash track with a 1x3 Ash end stop; saddlecloth blocks on paper get a 1 px Ink border; the highlighter band has chisel-cut ends; the pick mark is an 8x8 Slate pencil tick; the horseshoe cursor is Gold and Auburn on paper; Maroon is the second ink, for titles, the style column and the result's margin column, both right-aligned to x247; no Yellow text on paper; no staples (tried in the mock, where they read as stray marks, and dropped). On Orders the paper ends with a 1 px Ink line at y143.
 
 **Charm on the page:** the blurb as a handicapper's comment, the highlighter band and tick as the marks a fan makes on a program, and "{jockey} up" in program voice. A "Scratched" stamp is the kind of touch a real program has, but M1 has no scratches, so it waits (Later). Nothing on the page animates except the cursor bob and the swipe.
 
@@ -222,7 +222,7 @@ Input: Up and Down move the cursor and wrap. Keys 1 to 8 jump to that post. Ente
 
 The header keeps the four lines it had (race name, track, conditions, bias line), now as Ink type on the page. The art-director may set the race name apart, for example in Maroon or with a rule under it. That is a header treatment, not a layout change.
 
-String fit, checked: race name and track name at most 30 characters (240 px, x8-247); "1 1/4 miles, dirt, fast" is 23; the longest bias line, "Outside paths are good", is 22; a name of 18 characters ends at x183, 6 px before the style word; "Stalker" ends at x245; "{jockey} up" ends at x207 at most; a 28-character blurb ends at x231.
+String fit, checked: race name and track name at most 30 characters (240 px, x8-247); "1 1/4 miles, dirt, fast" is 23; the longest bias line, "Outside paths are good", is 22; a name of 18 characters ends at x183, and the style word is set apart by Maroon and by right alignment to x247, since 8 px is no wider than a word space; "Stalker" ends at x247; "{jockey} up" ends at x207 at most; a 28-character blurb ends at x231.
 
 States:
 - Normal: as drawn.
@@ -288,7 +288,9 @@ y   0  paper strip y0-55, Parchment, Ink type, no frame
 
 Slot row: cursor x8-15, label x20-59, "<" x72, value x84-211 (16 characters), ">" x216.
 
-The top strip draws your horse with the same entry component as the Card, at the same x positions, so the stats you picked on are the stats you give orders on. "Stalker, post 8" goes away: the style is in the entry and the post is the saddlecloth number. The orders box keeps its edge as the art-director decides (a ruled slip, or the frame tiles recolored for paper, see 4.1 art-director item 8). The dialog box stays Navy.
+The top strip draws your horse with the same entry component as the Card, at the same x positions, so the stats you picked on are the stats you give orders on. "Stalker, post 8" goes away: the style is in the entry and the post is the saddlecloth number. The dialog box stays Navy.
+
+Art-director's rulings from the mock (2026-11-13), binding here: the paper is flat Parchment over y0-143 with no frame, ending in a 1 px Ink line at y143 that sits on the paddock's far band; the entry's style word is Maroon and right-aligned to x247 and its band is x16-250, exactly as on the Card; the orders list is Ink type on paper with the Gold and Auburn horseshoe; "Orders" at y64 is a title, in Maroon; no staples.
 
 Order values, from `INSTRUCTIONS` in `src/data/schema.ts`, never a hardcoded list. Labels and trainer lines are copy in data:
 
@@ -492,11 +494,13 @@ y   0 +------------------------------------------+  order box, 6.5 tiles
 
 Restyled 2026-11-13 (Joseph's "like a real horse racing book"): the result is the chart page of the same program. The content, trip lines and every x and y position above stay as built. What changes:
 - The three Navy boxes become one Parchment page with Ink type. Where each box edge was, a 1 px Ink rule runs across at y103 and y175. The 8 px where the frame tiles were stays as margin.
-- Your horse's order row and the first trip line (its name) go from Yellow text to Ink text on the Yellow highlighter band, the same mark as the Card. The arrow marker at x8 stays, in Ink, as the second signal.
-- Saddlecloth boxes, margin words, the small-font splits and the seed are drawn in Ink on paper. The horseshoe cursor on "Next race" uses the paper variant from 4.1.
+- Your horse's order row goes from Yellow text to Ink text on the Yellow highlighter band, x5-250 and 10 rows tall (the row's 8 plus 1 above and 1 below), with chisel ends as DESIGN's "Program pages" gives them, so no step sits under the place word or the marker. The arrow marker at x8 stays, drawn in Ink, on the band, as the second signal. The trip heading (your horse's name) is a title, in Maroon, with no band: that section is already your horse's.
+- The margin column is Maroon and right-aligned to end at x247 ("9 3/4" x208-247, "nose" x216-247, the winner's "-" x240-247), so an 18-character name no longer runs into it.
+- The cursor on "Next race" is the Gold and Auburn horseshoe. Saddlecloth boxes get a 1 px Ink border. Small-font splits and the seed are Ink. No staples.
+- The small-font splits and the seed are drawn in Ink on paper.
 - Nothing is added or removed. A race name header would make it more like a printed chart, but the rows fill the page, and it stays rejected as below.
 
-Order rows: your marker x8-15, place x16-39, saddlecloth box x42-51, name x56-199, margin to the horse ahead x204-247 (5 characters; labels from the sim, the longest is "9 3/4").
+Order rows: your marker x8-15, place x16-39, saddlecloth box x42-51, name x56-199, margin to the horse ahead right-aligned to end at x247, in Maroon (5 characters at most; labels from the sim, the longest is "9 3/4").
 
 Trip lines, built only from the result:
 1. Your horse's name.
@@ -727,7 +731,7 @@ Changed 2026-11-13 for the program page (4.1): CD1 is replaced. CD3 to CD8 are n
 - **CD1 [T]** The Card lists every horse by post, one entry each, top at y = 58 + 19 * i. Each entry has the saddlecloth block, name, style word and all three stats (number and bar) at the x ranges in the 4.1 entry table, all at once, with no detail box.
 - **CD3 [T]** Bar length is `floor((stat - statMin) * 50 / (statMax - statMin))` px with statMin and statMax read from `tuning.statRange`. For the shipped range 1 to 100: 58 is 28 px, 86 is 42 px, 100 is 50 px, 1 is 0 px. Changing the card's stats never changes another horse's bar.
 - **CD4 [T]** An entry is drawn from that horse and the stat range only. Swapping any other horse's stats leaves the entry's pixels unchanged. No entry gets a color, mark or order that depends on how it compares with the others.
-- **CD5 [T]** Every string fits its field with the longest allowed data: an 18-character name in x40-183, the style word in x190-245, a 30-character race or track name in x8-247, "{jockey} up" with a 22-character jockey in x8-207, and a 28-character blurb in x8-231.
+- **CD5 [T]** Every string fits its field with the longest allowed data: an 18-character name in x40-183, the style word right-aligned to end at x247 and starting no earlier than x192, a 30-character race or track name in x8-247, "{jockey} up" with a 22-character jockey in x8-207, and a 28-character blurb in x8-231.
 - **CD6 [T]** First race: no highlighter band or tick, focus on post 1. Later races: band and tick on last race's pick, focus on it. Pressing Enter moves the band to the focused horse before the page leaves.
 - **CD7 [T]** The footer shows the focused horse's jockey and blurb. With no blurb, line 2 is empty and line 1 still shows. With fewer than 8 horses, the rule at y210 and the footer stay at the same y.
 - **CD8 [E]** At 3x, Joseph can say which horse has the most stamina, and which two are closest in speed, by looking down the columns without moving the cursor. The page reads as a printed program, not a menu, in color and in grayscale.

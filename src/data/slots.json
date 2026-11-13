@@ -35,6 +35,7 @@
     {"id": "art.race.ambient.flag", "file": "assets/art/race/ambient/flag.png", "frameWidth": 8, "frameHeight": 8, "frames": 2, "attachAt": [24, 3], "recolor": false, "placeholder": false},
     {"id": "art.photo.bg.streaks", "file": "assets/art/photo/bg/streaks.png", "frameWidth": 16, "frameHeight": 16, "frames": 1, "recolor": false, "placeholder": false},
     {"id": "art.ui.marker.yours", "file": "assets/art/ui/marker/yours.png", "frameWidth": 8, "frameHeight": 8, "frames": 1, "recolor": false, "placeholder": false},
+    {"id": "art.ui.mark.pick", "file": "assets/art/ui/mark/pick.png", "frameWidth": 8, "frameHeight": 8, "frames": 1, "recolor": false, "placeholder": false},
     {"id": "art.paddock.trainer", "file": "assets/art/paddock/trainer.png", "frameWidth": 16, "frameHeight": 24, "frames": 2, "recolor": false, "placeholder": false},
     {"id": "art.paddock.ground", "file": "assets/art/paddock/ground.png", "frameWidth": 16, "frameHeight": 16, "frames": 1, "recolor": false, "placeholder": false},
     {"id": "art.paddock.rail", "file": "assets/art/paddock/rail.png", "frameWidth": 16, "frameHeight": 16, "frames": 1, "recolor": false, "placeholder": false},
