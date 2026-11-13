@@ -244,17 +244,36 @@ describe('RV2b: the gallop out is drawn only; everything else reads the result',
     expect(tested).toBeGreaterThan(10);
   });
 
-  it('RV2b: from the end of the wire hold only the winner is drawn, for the rest of the beat', () => {
+  // Updated on purpose with the photo finish (steps 3 and 4). This test assumed there is no
+  // photo beat, so the winner beat started at the end of the wire hold. On a photo seed the
+  // photo now sits between the hold and the winner beat, and the race view runs on behind the
+  // panel, so the winner beat starts when the photo ends. The requirement is now: from the
+  // start of the winner beat only the winner is drawn. With no photo that start is the end
+  // of the hold (timeline.doneAt), with a photo it is the end of the photo (timeline.photoEndAt).
+  it('RV2b: from the start of the winner beat only the winner is drawn, for the rest of the beat', () => {
+    let photoSeeds = 0;
+    let plainSeeds = 0;
     for (const seed of seeds(25)) {
       const r = race(seed);
       const setup = makeRaceSetup(r, rd, 0, art);
       const me = playerView(setup, 4);
       const tl = setup.timeline;
-      expect(raceFrame(setup, me, tl.doneAt - 0.01).horses).toHaveLength(8);
-      for (const p of [tl.doneAt + 0.001, tl.doneAt + 0.5, tl.doneAt + 1.5, tl.beatEndAt - 0.01]) {
+      if (r.photoFinish) {
+        photoSeeds++;
+        expect(tl.photoEndAt, `seed ${seed}`).toBeGreaterThan(tl.doneAt);
+      } else {
+        plainSeeds++;
+        expect(tl.photoEndAt, `seed ${seed}`).toBe(tl.doneAt);
+      }
+      // Before the beat starts the whole field is drawn, behind the photo panel when there is one.
+      expect(raceFrame(setup, me, tl.photoEndAt - 0.01).horses, `seed ${seed}`).toHaveLength(8);
+      for (const p of [tl.photoEndAt + 0.001, tl.photoEndAt + 0.5, tl.photoEndAt + 1.5, tl.beatEndAt - 0.01]) {
         const horses = raceFrame(setup, me, p).horses;
         expect(horses.map((h) => h.id), `seed ${seed} p ${p}`).toEqual([r.finish[0].id]);
       }
     }
+    // Seed 16 is a photo finish, so both kinds are covered.
+    expect(photoSeeds).toBeGreaterThan(0);
+    expect(plainSeeds).toBeGreaterThan(0);
   });
 });

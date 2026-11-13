@@ -534,11 +534,19 @@ describe('4x: Space held plays the race beat at the fast speed', () => {
     expect(tested).toBeGreaterThan(0);
   });
 
+  // Updated on purpose with the photo finish (steps 3 and 4). This test built its timeline
+  // with no photo flag, while the race setup builds its own with `result.photoFinish`, so on
+  // a photo seed the two disagreed about when the winner beat starts. Both are now built the
+  // same way, from `result.photoFinish`, and the seeds cover a photo finish (16) and races
+  // with none (2, 9, 21).
   it('4x and skips: with none of either, the clock gives the same frames as plain playback', () => {
-    for (const seed of [2, 9, 21]) {
+    const covered = { photo: 0, plain: 0 };
+    for (const seed of [2, 9, 16, 21]) {
       const r = race(seed);
-      const tl = timelineOf(r);
+      covered[r.photoFinish ? 'photo' : 'plain']++;
+      const tl = makeTimeline(rd, r.finish[0].time, r.photoFinish);
       const setup = makeRaceSetup(r, rd, 0, art);
+      expect(setup.timeline).toEqual(tl);
       const me = playerView(setup, 3);
       let c = startClock();
       let n = 0;
@@ -551,6 +559,8 @@ describe('4x: Space held plays the race beat at the fast speed', () => {
         expect(raceFrame(setup, me, c)).toEqual(raceFrame(setup, me, clockAt(tl, c.wall)));
       }
     }
+    expect(covered.photo).toBeGreaterThan(0);
+    expect(covered.plain).toBeGreaterThan(0);
   });
 });
 
