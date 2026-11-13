@@ -9,6 +9,10 @@
 //  - recolorable layers use only the key colors Ink, Ash, Slate
 //  - race horse layers: nose at x31 in every body frame, jacket and cap identical in every frame,
 //    saddlecloth exactly the 7x9 box; edge marker exactly the 8x9 layout
+//  - paddock: trainer in Ink, Peach and Maroon with an Ink outer silhouette, boots on row 23,
+//    frames differing only in the head and arm boxes; ground and rail tiles with no Ink, the
+//    rail rows 0-6 Turf and the fence wholly in rail rows 8-15
+//  - pencil tick and staple exactly as DESIGN.md gives them
 //  - no stray files under public/assets
 //  - rebuilding gives byte-identical files
 import { createHash } from 'node:crypto';
@@ -55,6 +59,11 @@ const EXPECTED = [
   ['art.race.jockey.jacket.stand', 32, 24, 1, 'sprite', true],
   ['art.race.jockey.cap.gallop', 32, 24, 2, 'sprite', true],
   ['art.race.jockey.cap.stand', 32, 24, 1, 'sprite', true],
+  ['art.ui.mark.pick', 8, 8, 1, 'sprite', false],
+  ['art.ui.paper.staple', 2, 8, 1, 'sprite', false],
+  ['art.paddock.trainer', 16, 24, 2, 'sprite', false],
+  ['art.paddock.ground', 16, 16, 1, 'tile', false],
+  ['art.paddock.rail', 16, 16, 1, 'tile', false],
 ];
 // The 3x3 frame box sheet is 24x24, not a strip; its tiles are checked as one tile each.
 const SHEET_OVERRIDE = { 'art.ui.frame.box': [24, 24] };
@@ -230,6 +239,64 @@ for (const [anim, tops] of [['gallop', [9, 8]], ['stand', [9]], ['walk', [9, 9]]
   const img = images['art.race.bg.mid.infield'];
   for (let y = 3; y <= 27; y++) if (img.name(23, y) !== 'Bone') fail(`infield: no pole at 23,${y}`);
   for (let y = 0; y < 32; y++) for (let x = 0; x < 16; x++) if (img.name(x, y) === 'Bone') fail(`infield: pole pixel in the slice at ${x},${y}`);
+}
+
+// Paddock trainer: exactly Ink, Peach and Maroon in each frame; every opaque pixel on the outer
+// silhouette is Ink; rows 0-1 empty and boots on row 23; the frames differ only inside the head
+// box (x4-15, y2-10) and the arm and cup box (x9-15, y8-17), and do differ in the arm box.
+{
+  const img = images['art.paddock.trainer'];
+  const at = (f, x, y) => (x < 0 || y < 0 || x > 15 || y > 23 ? null : img.name(f * 16 + x, y));
+  const inBox = ([x0, y0, x1, y1], x, y) => x >= x0 && x <= x1 && y >= y0 && y <= y1;
+  const HEAD = [4, 2, 15, 10];
+  const ARM = [9, 8, 15, 17];
+  let armMoves = false;
+  for (let f = 0; f < 2; f++) {
+    const set = new Set();
+    let top = 24;
+    let bottom = -1;
+    for (let y = 0; y < 24; y++) for (let x = 0; x < 16; x++) {
+      const c = at(f, x, y);
+      if (c === null) continue;
+      set.add(c);
+      top = Math.min(top, y);
+      bottom = Math.max(bottom, y);
+      const edge = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => at(f, x + dx, y + dy) === null);
+      if (edge && c !== 'Ink') fail(`trainer frame ${f}: ${c} on the outer silhouette at ${x},${y}`);
+    }
+    if ([...set].sort().join() !== 'Ink,Maroon,Peach') fail(`trainer frame ${f}: colors ${[...set]}`);
+    if (top !== 2 || bottom !== 23) fail(`trainer frame ${f}: rows ${top}-${bottom}, expected 2-23`);
+  }
+  for (let y = 0; y < 24; y++) for (let x = 0; x < 16; x++) {
+    if (at(0, x, y) === at(1, x, y)) continue;
+    if (inBox(ARM, x, y)) armMoves = true;
+    else if (!inBox(HEAD, x, y)) fail(`trainer: frames differ at ${x},${y}, outside the head and arm boxes`);
+  }
+  if (!armMoves) fail('trainer: the arm and cup do not move between frames');
+}
+// Paddock tiles: fully opaque, no Ink (background), the planned colors, a Turf far band on rail
+// rows 0-6, and the fence (Bone, Mist) only in rail rows 8-15. The rail is the strip's top row,
+// so the fence sits at y152-159, above both figures.
+for (const [slot, allowed] of [['art.paddock.ground', ['Grass', 'Leaf', 'Turf']], ['art.paddock.rail', ['Grass', 'Turf', 'Bone', 'Mist']]]) {
+  const img = images[slot];
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+    const c = img.name(x, y);
+    if (c === null || !allowed.includes(c)) fail(`${slot}: ${c} at ${x},${y}`);
+    if (slot === 'art.paddock.rail' && y < 8 && (c === 'Bone' || c === 'Mist')) fail(`${slot}: fence above row 8 at ${x},${y}`);
+    if (slot === 'art.paddock.rail' && y < 7 && c !== 'Turf') fail(`${slot}: far band rows 0-6 not Turf at ${x},${y}`);
+  }
+}
+
+// Pencil tick and staple: exactly the pixels DESIGN.md (Program pages) gives.
+for (const [slot, rows, key] of [
+  ['art.ui.mark.pick', ['........', '.......S', '......SS', '.....SS.', 'S...SS..', 'SS.SS...', '.SSS....', '..S.....'], { S: 'Slate' }],
+  ['art.ui.paper.staple', ['SS', 'AS', 'AS', 'AS', 'AS', 'AS', 'AS', 'SS'], { S: 'Slate', A: 'Ash' }],
+]) {
+  const img = images[slot];
+  rows.forEach((row, y) => [...row].forEach((ch, x) => {
+    const want = ch === '.' ? null : key[ch];
+    if (img.name(x, y) !== want) fail(`${slot}: ${img.name(x, y)} at ${x},${y}, expected ${want}`);
+  }));
 }
 
 // 3. No stray files.
