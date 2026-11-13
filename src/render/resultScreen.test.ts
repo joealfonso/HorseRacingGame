@@ -378,6 +378,17 @@ describe('RS3: trip line 4, the luck', () => {
     }
   });
 
+  it('within half a furlong of the finish the pole reads "the wire"', () => {
+    const me = horseId(2);
+    const base = race(R);
+    for (const toGo of [0.4, 0.2, 0.05]) {
+      const t = timeAtDistance(base, me, D - toGo * FURLONG);
+      const actual = (D - base.replay.horses.find((x) => x.id === me)!.distance[t / base.replay.step]) / FURLONG;
+      expect(actual).toBeLessThan(0.5);
+      expect(tripLuck(withEvents(R, [{ type: 'steadied', horse: me, otherHorse: null, time: t }]), rd, me)).toBe('Steadied near the wire');
+    }
+  });
+
   it('"at the start" inside the first furlong, and not from the first furlong on', () => {
     const me = horseId(1);
     const base = race(R);
