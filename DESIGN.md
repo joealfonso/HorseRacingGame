@@ -1,8 +1,8 @@
 # DESIGN.md: Bluegrass Dynasty visual direction
 
-**Status: Draft, waiting on Joseph's approval.** No sprite work starts until he approves it. Drafted by art-director on 2026-11-11 from docs/BRIEF.md. Anything marked (guess) is my call, not Joseph's, and is open to change.
+**Status: Approved by Joseph on 2026-11-12, as drafted.** Sprite work can start. Drafted by art-director on 2026-11-11 from docs/BRIEF.md. Anything marked (guess) is my call, not Joseph's, and is open to change through a DESIGN.md change.
 
-## Waiting on Joseph
+## Approved by Joseph on 2026-11-12
 
 1. The 4-colors-per-sprite rule applies per layer, not per composite horse (see Horses).
 2. Horses are 32x24, outside the brief's 16x16 or 16x24 character sizes (see Horses).
@@ -175,7 +175,7 @@ Every race sprite is checked in a full 20-horse field, at gameplay speed, on dir
 - Silks colors are the 18 in the value bands list.
 - Body and pattern colors must come from different value bands, so silks read in grayscale and for colorblind players.
 - On the race sprite the jacket is about 7x6 pixels. It is drawn from a fixed pattern mask for each pattern type plus the colors, not by shrinking the 16x16 design. The body color covers at least half the jacket so it carries at speed.
-- If the editor allows freehand pixels, they show in the silks designer, owner card and results, not in the race view. (guess, Joseph to approve)
+- If the editor allows freehand pixels, they show in the silks designer, owner card and results, not in the race view. (approved 2026-11-12)
 - Results show the full 16x16 silks beside each finisher.
 - 20 starters and 18 colors means body colors can repeat in a field. No two stables in one race may share the same body color, pattern color and pattern. Rival and generated silks are picked to avoid clashes. The player is warned on a clash.
 - Two horses from the same stable wear the same jacket and are told apart by cap color, as in real racing.
@@ -287,7 +287,7 @@ art-director checks every item before an asset counts as done. A missing item is
 9. Checked in context: 20-horse field at speed on all three surfaces for race art, next to the reference asset.
 10. Any third-party asset (Kenney included) is remapped to the master palette and regridded to 16x16 before use, and the row says so.
 11. If a script drew it, the script is committed next to the output. If an editor drew it, the editable source sits next to the PNG with the same base name.
-12. AI-generated images may be used as rough reference or silhouette studies only. Final pixels are placed by hand or by a committed script, and the AI use is logged. (guess, Joseph to approve)
+12. AI-generated images may be used as rough reference or silhouette studies only. Final pixels are placed by hand or by a committed script, and the AI use is logged. (approved 2026-11-12)
 13. Nothing from the banned looks list.
 
 ## Originality
