@@ -106,12 +106,17 @@ describe('RV2b: after its finish a horse keeps going at its crossing speed, in w
     expect(Math.abs(at.lane - laneAtWire)).toBeLessThanOrEqual(30);
   });
 
-  it('RV2b: the drawn position after a horse\'s finish depends on no sample after that finish (scramble method)', () => {
+  // Round three: the ruling changed what this pins. The gallop out holds the lane where it
+  // was drawn at the finish moment, which needs the sample that brackets the finish, so the
+  // spec now lets it read the first sample at or after the finish time (the allowance AN3
+  // gives every drawn thing) and nothing later. Round two scrambled everything after the
+  // last sample at or before the finish; this scrambles everything after the bracketing one.
+  it('RV2b: the drawn position after a horse\'s finish depends on no sample after the first one at or after that finish (scramble method)', () => {
     let compared = 0;
     for (const seed of seeds(20)) {
       const r = race(seed);
       r.replay.horses.forEach((h, k) => {
-        const i = Math.floor(h.finishTime / r.replay.step); // the last sample at or before the finish
+        const i = Math.ceil(h.finishTime / r.replay.step); // the first sample at or after the finish
         const c = structuredClone(r);
         for (const x of c.replay.horses) {
           for (let j = i + 1; j < x.distance.length; j++) {
@@ -119,7 +124,8 @@ describe('RV2b: after its finish a horse keeps going at its crossing speed, in w
             x.lane[j] = (x.lane[j] + 400) % 800;
           }
         }
-        expect(c.replay.horses[k].distance[i + 1]).not.toBe(h.distance[i + 1]);
+        // (A horse that finishes in the last sample has nothing after it to scramble.)
+        if (i + 1 < h.distance.length) expect(c.replay.horses[k].distance[i + 1]).not.toBe(h.distance[i + 1]);
         const a = makeRaceModel(r, cfg);
         const b = makeRaceModel(c, cfg);
         const runsA = finishRuns(r);
@@ -134,6 +140,43 @@ describe('RV2b: after its finish a horse keeps going at its crossing speed, in w
       });
     }
     expect(compared).toBe(20 * 8 * 7);
+  });
+
+  it('RV2b: the lane does not hop at the finish: drawn y is continuous across each horse\'s finish and constant after it', () => {
+    let crossings = 0;
+    for (const seed of seeds(60)) {
+      const r = race(seed);
+      const m = makeRaceModel(r, cfg);
+      const runs = finishRuns(r);
+      r.replay.horses.forEach((h, k) => {
+        const f = h.finishTime;
+        const y = (t: number) => drawnHorsesAt(m, runs, t)[k].hoofY;
+        for (const eps of [0.001, 0.05, 1]) {
+          expect(Math.abs(y(f + eps) - y(f - eps)), `seed ${seed} ${h.id} eps ${eps}`).toBeLessThanOrEqual(1);
+        }
+        for (const dt of [1, 10, 100, 800]) expect(y(f + dt), `seed ${seed} ${h.id} +${dt}`).toBe(y(f));
+        crossings++;
+      });
+    }
+    expect(crossings).toBe(60 * 8);
+  });
+
+  it('RV2b: and no jump at all: across a thousandth of a hundredth the drawn y almost never changes, so there is no one-pixel hop at the finish', () => {
+    let jumps = 0;
+    let total = 0;
+    for (const seed of seeds(60)) {
+      const r = race(seed);
+      const m = makeRaceModel(r, cfg);
+      const runs = finishRuns(r);
+      r.replay.horses.forEach((h, k) => {
+        const f = h.finishTime;
+        if (drawnHorsesAt(m, runs, f + 0.001)[k].hoofY !== drawnHorsesAt(m, runs, f - 0.001)[k].hoofY) jumps++;
+        total++;
+      });
+    }
+    expect(total).toBe(480);
+    // A smooth lane changes a floored row by chance alone about never in 0.002 of a hundredth.
+    expect(jumps).toBeLessThanOrEqual(2);
   });
 });
 
@@ -179,15 +222,39 @@ describe('RV2b: the gallop out is drawn only; everything else reads the result',
     }
   });
 
-  it('RV2b: the sprites in a frame do gallop out: a finished horse is drawn further right each frame', () => {
-    const r = race(2);
-    const setup = makeRaceSetup(r, rd, 0, art);
-    const me = playerView(setup, 2);
-    const loser = r.finish[7];
-    const start = setup.timeline.doorsAt + (loser.time + 50) / 100 / setup.timeline.speed;
-    // The camera is held on the wire then, so a moving sprite is a gallopping horse.
-    const x = (p: number) => raceFrame(setup, me, p).horses.find((h) => h.id === loser.id)!.x;
-    expect(x(start + 0.5)).toBeGreaterThan(x(start));
-    expect(Number.isInteger(x(start + 0.5))).toBe(true);
+  // Round three: from the end of the wire hold the winner beat draws only the winner, so
+  // this keeps its point inside the wire hold (winner at the wire to one second later).
+  it('RV2b: the sprites in a frame do gallop out: a finished horse is drawn further right each frame, inside the wire hold', () => {
+    let tested = 0;
+    for (const seed of seeds(40)) {
+      const r = race(seed);
+      const setup = makeRaceSetup(r, rd, 0, art);
+      const me = playerView(setup, 2);
+      const second = r.finish[1];
+      const holdEndRace = r.finish[0].time + setup.timeline.holdSeconds * setup.timeline.speed * 100;
+      if (!(second.time + 70 < holdEndRace)) continue;
+      const wall = (t: number) => setup.timeline.doorsAt + t / 100 / setup.timeline.speed;
+      const x = (t: number) => raceFrame(setup, me, wall(t)).horses.find((h) => h.id === second.id)!.x;
+      const a = x(second.time + 10);
+      const b = x(second.time + 70);
+      expect(b, `seed ${seed}`).toBeGreaterThan(a);
+      expect(Number.isInteger(b)).toBe(true);
+      tested++;
+    }
+    expect(tested).toBeGreaterThan(10);
+  });
+
+  it('RV2b: from the end of the wire hold only the winner is drawn, for the rest of the beat', () => {
+    for (const seed of seeds(25)) {
+      const r = race(seed);
+      const setup = makeRaceSetup(r, rd, 0, art);
+      const me = playerView(setup, 4);
+      const tl = setup.timeline;
+      expect(raceFrame(setup, me, tl.doneAt - 0.01).horses).toHaveLength(8);
+      for (const p of [tl.doneAt + 0.001, tl.doneAt + 0.5, tl.doneAt + 1.5, tl.beatEndAt - 0.01]) {
+        const horses = raceFrame(setup, me, p).horses;
+        expect(horses.map((h) => h.id), `seed ${seed} p ${p}`).toEqual([r.finish[0].id]);
+      }
+    }
   });
 });

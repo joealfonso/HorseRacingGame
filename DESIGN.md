@@ -16,6 +16,8 @@ Amended 2026-11-12 by art-director with the M1 race-day answers below: edits to 
 
 Amended 2026-11-12 by art-director after the first art review (P0 batch). Changed: the stand-in saddlecloth box (7x9, so every number has fill above and below), the stand-in leg rule (legs at least as long as the barrel is deep, not longer, because the 32x24 frame cannot hold both), the edge marker (8x9, so it keeps a full Ink outline and gets a center row for its tip), the gate's end posts and outline spelled out, a stroke rule for the main font, the intake checklist file paths (slot path under public/assets/, scripts in scripts/art/), and the saddlecloth and furlong pole sources. One approved-era rule was loosened, the leg rule, and only for the P0 stand-in; the Horses line "long legs" is unchanged.
 
+Amended 2026-11-12 by art-director after the second art review (step 2 batch). Added or settled: rider outlines across layers, the walk and winner stand-in frames, what "stands in the irons" means at 32x24 and how the raised arm is drawn, the crowd strip's rows, colors and tiling, the infield slice rule and opaque mid-layer zones, and a ban on national and state flags. One line touches an approved rule and is left for Joseph: the crowd strip is a second layer over the grandstand and counts as its own tile for the 4-color rule (see Charm, Crowd).
+
 ## M1 race-day answers (2026-11-12)
 
 Answers to section 12 of docs/specs/m1-race-day.md. Where this list and the spec disagree, this list wins.
@@ -221,6 +223,10 @@ Accepted only if, filled with Ink, each frame reads as a horse with a rider:
 - The rider as a crouched person: the cap 2 px above the back line and ahead of the shoulders, so the head is a bump, not a box.
 - Legs 2 px wide may be all Ink. At most a 1 px Ink eye. No mouth, no brow, nothing larger.
 
+Rider outlines: the 1 px Ink outline is judged on the composite of layers that are always drawn together. The jacket may take its top edge from the cap's bottom row, since the cap never draws without the jacket. A layer that can draw alone keeps its own outline.
+
+Walk and winner (step 2 stand-ins): the walk keeps the barrel at y9-16 in both frames, so the rider and the saddlecloth do not move. The head is carried at about withers height and nods 1 px (nose y8, then y9), because a low head on this barrel reads as a cow in the Ink fill test. The rider sits up at the walk, with the same pixels in both frames. The winner pose rides on the walk body and is described under Charm, Winner.
+
 Its charm: the rider rides still. The jacket and cap are the same pixels in every frame while the horse bobs 1 px and its head nods under him, the way a good jockey holds his head level at the gallop. It is a real thing, it costs nothing, and it keeps the Yellow arrow steady. A 1 px pricked ear on the poll is also allowed.
 
 Reject: a box with legs, a dog or pony shape, a head a third of the body, legs shorter than the barrel is deep, the rider floating above the back, any expression.
@@ -264,6 +270,9 @@ Layout. The M1 pixel placement is in docs/specs/m1-race-day.md 4.3, and the desi
 - Top 16px: the announcer bar (see HUD, UI frame and font). The race name lives on the card and in the winner's circle, the running time in the bottom HUD.
 - Sky and parallax: sky bands (fixed), far layer (hills, skyline), mid layer (infield, trees, tote board). Far scrolls slowest, mid faster, track at full speed.
 - No foreground layer passes over the horses.
+- Mid-layer zone art (grandstand, infield, barns) is opaque from its ground line down to y87, so no gap shows between the far layer and the far rail.
+- A mid-layer tile with a one-off landmark (the infield flagpole, later a barn door or the bugler's stand) is placed once per zone. The rest of the zone repeats a 16 px slice of the same tile that has no landmark and tiles seamlessly. The landmark sits outside that slice. Infield: the slice is columns 0-15, and the pole and flag sit in columns 16-31.
+- Flags and pennants are generic. No national or state flag, which would carry a meaning the game does not intend, and no real track's or club's flag.
 - Far rail, then the track band, then the near rail. Rails are Bone. Furlong poles and the wire post stand on the far rail, which is the inside rail as at a US track, and draw behind the horses.
 - Paths sit 4px apart vertically, so the cap and shoulders of the horse one path inside always show. Inner paths draw first.
 - Camera is side-on and favors the player's horse: the leader at screen x200 while yours is close enough, yours held at screen x56 when it is not, handing over to the leaders at the 1/16 pole. The exact rule is spec 3.5.
@@ -317,10 +326,12 @@ Race day (M1):
 - Call to the post: a 16x24 bugler on the mid layer raises the horn while `sfx.race.call_to_post` plays (original or public domain only), so the player knows the start is next.
 - Gate: the field stands still, then the doors open in one 2-frame swap with `sfx.race.gate_open`, so the start lands on one beat.
 - Crowd: the grandstand is a mid-layer tile strip that swaps 2 frames (hats and arms up), 1 swap a second early and 4 a second from the eighth pole, so the stretch feels louder without touching the track. Neighboring tiles run a frame apart, so the stand never pulses as one block. The strip counts as one ambient thing.
+  - `art.race.bg.mid.crowd`: a 16x16 tile, top at screen y64, figures 3x6 in two rows (back row tile rows 1-6, front row 7-12, offset 2 px), transparent between them so the seats show. Colors: Bone, Sky and Tan. No Red: a Red and Bone crowd is the strongest contrast above the track and fights the silks and saddlecloth 1. Every other tile is flipped (flipX when floor(worldX / 16) is odd, as with the rails), so the pattern repeats every 32 px, not 16.
+  - The crowd strip is its own layer over the grandstand and counts as its own tile for the 4-color rule, the way horse layers do (approved item 1). Open for Joseph: this extends "a background tile uses at most 4 colors" to a stacked background layer. Without it the crowd cannot sit on the stand at all.
 - Ambient set per camera zone, inside the cap: stretch, the crowd strip and the infield flag; turns, the flag and one pass of a pair of birds on the far layer; backstretch, the barns (still) and the flag. Flag and birds stop at the eighth pole. The flag swaps every 0.4 s, the birds flap every 0.3 s. (rates guess)
 - Announcer: one short call per pole in the announcer bar, from data, so the race has a voice that also tells you where you are. Before the eighth pole a call types out at 60 characters a second, whole characters, no cursor. From the eighth pole on, calls cut in whole, so only the horses and the crowd move in the stretch.
 - The wire: the photo-finish panel steps in by whole 8px moves with a shutter click, so a close finish gets its moment.
-- Winner: after the wire hold, a staged beat. The winner alone, frame at screen x112-143 in its lane at the wire, the background slowing by whole pixels from its speed at the wire to a walk, gallop frames giving way to walk frames. The winning jockey stands in the irons and raises a fist, never the crop, so the win reads at a glance. All jockey layers get the extra frame to stay in lockstep.
+- Winner: after the wire hold, a staged beat. The winner alone, frame at screen x112-143 in its lane at the wire, the background slowing by whole pixels from its speed at the wire to a walk, gallop frames giving way to walk frames. The winning jockey stands in the irons and raises a fist, never the crop, so the win reads at a glance. All jockey layers get the extra frame to stay in lockstep. At 32x24 "stands in the irons" means an upright torso, straighter legs than at the walk and a cap with no peak, 1 px above the walk cap. It does not mean taller, because the crouched cap already touches the frame top. The raised arm is a sleeve, not a line: 3 px wide, Ink sides around 1 px of the silks body color, ending in a 3x2 Ink fist, with 1 px of daylight between it and the cap. A 2 px all-Ink arm reads as a raised stick, which is a crop.
 - Result screen: a winner's circle picture with the winner standing, the groom at its head and the owner beside it, so the win is a moment and not a table. A tradition such as the garland of roses is switched on from data, drawn in Red, Pine and Gold. (which race carries which tradition is to check) Off in M1: the race is fictional and the data has no tradition flag.
 - Result screen: margins are in racing words from data (nose, head, neck) beside the full silks, so it reads like a chart.
 

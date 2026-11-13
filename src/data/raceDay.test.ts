@@ -14,6 +14,7 @@ import { loadRaceDay, validateRaceDay } from './raceDayLoad';
 import { fillTemplate, templateHoles } from './template';
 import { DataError, validateData } from './validate';
 import { MAX_NAME_LENGTH, type GameData } from './schema';
+import { neededSlotIds, sequenceSeconds } from './raceDaySchema';
 
 // Loaders for the race-day files (spec section 13, "Decided", and 4.1, 4.3): raceDay.json,
 // slots.json, cardLook.json and palette.json. Each broken file must be rejected with the
@@ -588,5 +589,230 @@ describe('template helpers', () => {
     expect(fillTemplate('{name} and #{n} bump', { name: 'Oats', n: 7 })).toBe('Oats and #7 bump');
     expect(fillTemplate('{name} {other}', { name: 'A' })).toBe('A {other}');
     expect(fillTemplate('{n}{n}', { n: 0 })).toBe('00');
+  });
+});
+
+// Step 2 data: the playback, beats, winner beat and ambient groups, the pause and 4x copy,
+// the new slot fields, and the nine new slots.
+
+describe('step 2: the shipped values are the spec\'s', () => {
+  const d = raceDayJson;
+  it('4x for Space, a 1 s wire hold, a 4.5 s photo, a 2.5 s winner beat, the 90 s cap (spec 3.4, 4.3)', () => {
+    expect(d.playback.fastSpeed.value).toBe(4);
+    expect(d.beats.wireHoldSeconds.value).toBe(1);
+    expect(d.beats.photoSeconds.value).toBe(4.5);
+    expect(d.beats.winnerBeatSeconds.value).toBe(2.5);
+    expect(d.beats.maxSequenceSeconds.value).toBe(90);
+  });
+  it('the winner beat puts the frame at x112 (DESIGN Charm) and the ambient cap is 3', () => {
+    expect(d.winnerBeat.frameLeft.value).toBe(112);
+    expect(d.ambient.cap.value).toBe(3);
+    expect(d.copy.fastTag).toBe('4x');
+  });
+  it('every new value is marked as a starting guess or confirmed', () => {
+    for (const group of [d.winnerBeat, d.ambient]) {
+      for (const v of Object.values(group)) if (v && typeof v === 'object' && 'status' in v) expect(['starting guess', 'confirmed']).toContain(v.status);
+    }
+  });
+});
+
+describe('step 2: raceDay.json groups are rejected when broken', () => {
+  const set = (path: string, value: unknown) => {
+    const raw = fresh();
+    const keys = path.split('.');
+    let o = raw.raceDay;
+    for (const k of keys.slice(0, -1)) o = o[k];
+    o[keys[keys.length - 1]] = value;
+    return raw;
+  };
+  const del = (path: string) => {
+    const raw = fresh();
+    const keys = path.split('.');
+    let o = raw.raceDay;
+    for (const k of keys.slice(0, -1)) o = o[k];
+    delete o[keys[keys.length - 1]];
+    return raw;
+  };
+
+  it.each([
+    'playback.fastSpeed', 'beats.photoSeconds', 'beats.winnerBeatSeconds', 'beats.maxSequenceSeconds',
+    'winnerBeat', 'winnerBeat.frameLeft', 'winnerBeat.slowSeconds', 'winnerBeat.walkPxPerSecond', 'winnerBeat.walkStrideFeet',
+    'ambient', 'ambient.cap', 'ambient.order', 'ambient.fromEighthPole', 'ambient.crowdSwapsPerSecond', 'ambient.crowdStretchSwapsPerSecond',
+    'ambient.flagSwapsPerSecond', 'ambient.cursorSwapsPerSecond', 'copy.fastTag', 'copy.pause', 'copy.pause.title', 'copy.pause.resume', 'copy.pause.back',
+  ])('a missing %s', (path) => {
+    expectRejected(del(path), F.day, path);
+  });
+
+  it.each([
+    ['playback.fastSpeed.value', 0], ['playback.fastSpeed.value', -4], ['playback.fastSpeed.value', '4'],
+    ['beats.photoSeconds.value', -1], ['beats.winnerBeatSeconds.value', -0.5], ['beats.maxSequenceSeconds.value', 0],
+    ['beats.winnerBeatSeconds.value', 'long'],
+    ['winnerBeat.frameLeft.value', 256], ['winnerBeat.frameLeft.value', -1], ['winnerBeat.frameLeft.value', 112.5],
+    ['winnerBeat.slowSeconds.value', 0], ['winnerBeat.walkPxPerSecond.value', 0], ['winnerBeat.walkStrideFeet.value', -6],
+    ['ambient.cap.value', -1], ['ambient.cap.value', 1.5], ['ambient.cap.value', '3'],
+    ['ambient.crowdSwapsPerSecond.value', 0], ['ambient.crowdSwapsPerSecond.value', 4.5],
+    ['ambient.crowdStretchSwapsPerSecond.value', 4.01], ['ambient.flagSwapsPerSecond.value', 5], ['ambient.cursorSwapsPerSecond.value', 8],
+    ['winnerBeat.slowSeconds.status', 'maybe'],
+  ] as const)('%s = %j is rejected', (path, value) => {
+    expectRejected(set(path, value), F.day, path);
+  });
+
+  it('swap rates of exactly 4 a second are accepted; the limit is "at most 4"', () => {
+    const raw = fresh();
+    raw.raceDay.ambient.flagSwapsPerSecond.value = 4;
+    expect(() => validateRaceDay(raw, game())).not.toThrow();
+  });
+
+  it('an unknown ambient item in order or fromEighthPole', () => {
+    expectRejected(set('ambient.order', ['crowd', 'birds']), F.day, 'ambient.order[1]');
+    expectRejected(set('ambient.fromEighthPole', ['birds']), F.day, 'ambient.fromEighthPole[0]');
+    expectRejected(set('ambient.order', []), F.day, 'ambient.order');
+  });
+
+  it('a fromEighthPole item that is not in order is refused by the loader, naming the field', () => {
+    expectRejected(set('ambient.order', ['flag']), F.day, 'ambient.fromEighthPole');
+  });
+
+  it('the 4x tag must fit its 2 characters, and the pause words their box', () => {
+    expectRejected(set('copy.fastTag', '4x!'), F.day, 'copy.fastTag');
+    expectRejected(set('copy.pause.title', 'Paused for now!'), F.day, 'copy.pause.title');
+    expectRejected(set('copy.pause.back', 'Back to the card'), F.day, 'copy.pause.back');
+    const ok = fresh();
+    ok.raceDay.copy.pause.back = 'x'.repeat(12);
+    ok.raceDay.copy.fastTag = '4x';
+    expect(() => validateRaceDay(ok, game())).not.toThrow();
+    expectRejected(set('copy.pause.back', 'x'.repeat(13)), F.day, 'copy.pause.back');
+    expectRejected(set('copy.fastTag', '4xx'), F.day, 'copy.fastTag');
+  });
+});
+
+describe('RV11: the loader rejects a sequence over the cap, naming the file and field', () => {
+  const edit = (f: (r: Raw) => void) => { const raw = fresh(); f(raw); return raw; };
+  const slowest = 125; // the sim's winning-time band tops out at 2:05.00
+
+  it('RV11: the shipped sequence for a 2:05.00 winner with a photo fits', () => {
+    expect(game().tuning.checks.winningTimeBandSeconds.value.max).toBe(slowest);
+    expect(sequenceSeconds(raceDayJson as never, slowest, true)).toBeLessThanOrEqual(90);
+  });
+
+  it.each([
+    ['a winner beat of 20 s', (r: Raw) => { r.raceDay.beats.winnerBeatSeconds.value = 20; }],
+    ['a photo of 30 s', (r: Raw) => { r.raceDay.beats.photoSeconds.value = 30; }],
+    ['a slow playback of 1x', (r: Raw) => { r.raceDay.playback.speed.value = 1; }],
+    ['a pick window of 40 s', (r: Raw) => { r.raceDay.beats.pickSeconds.value = 40; }],
+    ['a cap of 60 s', (r: Raw) => { r.raceDay.beats.maxSequenceSeconds.value = 60; }],
+  ])('RV11: %s is refused at beats', (_n, f) => {
+    const err = expectRejected(edit(f), F.day, 'beats');
+    expect(err.message).toMatch(/cap|s of playback/);
+  });
+
+  it('RV11: exactly at the cap passes and a hundredth over fails', () => {
+    const seq = 4 + 1 + slowest / 2 + 1 + 4.5 + 2.5; // pick, still, race, hold, photo, winner beat
+    const ok = edit((r) => { r.raceDay.beats.maxSequenceSeconds.value = seq; });
+    expect(() => validateRaceDay(ok, game())).not.toThrow();
+    const over = edit((r) => { r.raceDay.beats.maxSequenceSeconds.value = seq - 0.01; });
+    expectRejected(over, F.day, 'beats');
+  });
+
+  it('RV11: the check uses the sim\'s own slowest winning time, so a changed band changes the verdict', () => {
+    const g = game();
+    g.tuning.checks.winningTimeBandSeconds.value.max = 200;
+    expectRejected(fresh(), F.day, 'beats', g);
+  });
+});
+
+describe('step 2: the new slot fields', () => {
+  const at = (raw: Raw, id: string): number => raw.slots.slots.findIndex((x: { id: string }) => x.id === id);
+  const slotEdit = (id: string, field: string, value: unknown) => {
+    const raw = fresh();
+    const i = at(raw, id);
+    raw.slots.slots[i][field] = value;
+    return { raw, i };
+  };
+
+  it('the shipped fields: gate startX 31, crowd atY 64, flag attachAt [24, 3], infield fillSlice [0, 16]', () => {
+    const find = (id: string) => slotsJson.slots.find((x) => x.id === id) as Record<string, unknown>;
+    expect(find('art.race.gate').startX).toBe(31);
+    expect(find('art.race.bg.mid.crowd').atY).toBe(64);
+    expect(find('art.race.ambient.flag').attachAt).toEqual([24, 3]);
+    expect(find('art.race.bg.mid.infield').fillSlice).toEqual([0, 16]);
+  });
+
+  it.each([-1, 240, 1.5, '64'])('atY = %j is rejected', (v) => {
+    const { raw, i } = slotEdit('art.race.bg.mid.crowd', 'atY', v);
+    expectRejected(raw, F.slots, `slots[${i}].atY`);
+  });
+  it.each([[[-1, 3]], [[24]], [[24, 3, 1]], [['a', 3]], [[1.5, 3]], ['24,3']])('attachAt = %j is rejected', (v) => {
+    const { raw } = slotEdit('art.race.ambient.flag', 'attachAt', v);
+    const err = failure(raw);
+    expect(err.file).toBe(F.slots);
+    expect(err.message).toContain('attachAt');
+  });
+  it.each([[[0, 0]], [[0]], [[-1, 16]], [[0, 1.5]], [['0', '16']], ['0,16']])('fillSlice = %j is rejected', (v) => {
+    const { raw } = slotEdit('art.race.bg.mid.infield', 'fillSlice', v);
+    const err = failure(raw);
+    expect(err.file).toBe(F.slots);
+    expect(err.message).toContain('fillSlice');
+  });
+  it.each([40, 100, -1, '31', 31.5])('startX = %j is rejected (the gate frame is 40 wide)', (v) => {
+    const { raw, i } = slotEdit('art.race.gate', 'startX', v);
+    const err = failure(raw);
+    expect(err.file).toBe(F.slots);
+    expect(err.message).toContain(`slots[${i}].startX`);
+  });
+  it('startX 39, the last column, is accepted', () => {
+    const { raw } = slotEdit('art.race.gate', 'startX', 39);
+    expect(() => validateRaceDay(raw, game())).not.toThrow();
+  });
+  it('the fields are optional: a slot without them is fine', () => {
+    const raw = fresh();
+    const i = at(raw, 'art.race.ambient.flag');
+    delete raw.slots.slots[i].attachAt;
+    expect(() => validateRaceDay(raw, game())).not.toThrow();
+  });
+});
+
+describe('step 2: the nine new slots', () => {
+  const NINE = [
+    'art.race.horse.body.walk', 'art.race.horse.tack.walk', 'art.race.jockey.jacket.walk', 'art.race.jockey.cap.walk',
+    'art.race.jockey.jacket.winner', 'art.race.jockey.cap.winner',
+    'art.race.bg.mid.crowd', 'art.race.bg.mid.infield', 'art.race.ambient.flag',
+  ];
+  const WALK_AND_WINNER = NINE.slice(0, 6);
+  const FINAL = NINE.slice(6);
+  const slotOf = (id: string) => slotsJson.slots.find((x) => x.id === id) as Record<string, unknown> | undefined;
+
+  it('all nine are needed slots', () => {
+    const needed = neededSlotIds({ surface: 'dirt', going: 'fast' });
+    for (const id of NINE) expect(needed, id).toContain(id);
+  });
+
+  it.each(NINE)('the loader refuses a slots.json without %s, naming the file and the slot', (id) => {
+    const raw = fresh();
+    raw.slots.slots = raw.slots.slots.filter((x: { id: string }) => x.id !== id);
+    const err = failure(raw);
+    expect(err.file).toBe(F.slots);
+    expect(err.message).toContain(id);
+  });
+
+  it('the walk and winner layers are stand-ins flagged placeholder; the crowd, infield and flag are final', () => {
+    for (const id of WALK_AND_WINNER) expect(slotOf(id)!.placeholder, id).toBe(true);
+    for (const id of FINAL) expect(slotOf(id)!.placeholder, id).toBe(false);
+  });
+
+  it('their sizes and frame counts are the spec\'s (section 7)', () => {
+    for (const id of WALK_AND_WINNER) expect([slotOf(id)!.frameWidth, slotOf(id)!.frameHeight, slotOf(id)!.frames], id).toEqual([32, 24, 2]);
+    expect([slotOf('art.race.bg.mid.crowd')!.frameWidth, slotOf('art.race.bg.mid.crowd')!.frameHeight, slotOf('art.race.bg.mid.crowd')!.frames]).toEqual([16, 16, 2]);
+    expect([slotOf('art.race.bg.mid.infield')!.frameWidth, slotOf('art.race.bg.mid.infield')!.frameHeight, slotOf('art.race.bg.mid.infield')!.frames]).toEqual([32, 32, 1]);
+    expect([slotOf('art.race.ambient.flag')!.frameWidth, slotOf('art.race.ambient.flag')!.frameHeight, slotOf('art.race.ambient.flag')!.frames]).toEqual([8, 8, 2]);
+  });
+
+  it('the body walk layer keeps the nose column of the other body layers', () => {
+    expect(slotOf('art.race.horse.body.walk')!.noseX).toBe(slotOf('art.race.horse.body.gallop')!.noseX);
+  });
+
+  it('the tack walk layer lists a number position for each of its frames', () => {
+    const t = slotOf('art.race.horse.tack.walk')!;
+    expect((t.numberAt as unknown[]).length).toBe(t.frames);
   });
 });

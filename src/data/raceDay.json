@@ -21,12 +21,31 @@
   },
   "playback": {
     "speed": { "value": 2, "status": "starting guess", "note": "Spec 3.4: a 2:01.55 race plays in about 61 seconds." },
+    "fastSpeed": { "value": 4, "status": "starting guess", "note": "While Space is held, during the race only." },
     "maxFrameMs": { "value": 50, "status": "starting guess", "note": "A stalled tab does not jump the race." }
   },
   "beats": {
     "pickSeconds": { "value": 4, "status": "starting guess", "note": "P0 only: playback seconds the field stands in the gate while keys 1 to 8 pick a horse, before the gate beat. Goes away with the card screen in step 5." },
     "gateStillSeconds": { "value": 1, "status": "starting guess", "note": "The field stands still, then the doors swap open and the race clock starts." },
-    "wireHoldSeconds": { "value": 1, "status": "starting guess" }
+    "wireHoldSeconds": { "value": 1, "status": "starting guess" },
+    "photoSeconds": { "value": 4.5, "status": "starting guess", "note": "Spec 4.3, up to 4.5 s. Shown from step 3; counted in the sequence check now." },
+    "winnerBeatSeconds": { "value": 2.5, "status": "starting guess" },
+    "maxSequenceSeconds": { "value": 90, "status": "starting guess", "note": "The brief's cap on sim plus animation for a 10-furlong race." }
+  },
+  "winnerBeat": {
+    "frameLeft": { "value": 112, "status": "starting guess", "note": "DESIGN Charm: the winner's frame at screen x112-143." },
+    "slowSeconds": { "value": 1.5, "status": "starting guess", "note": "Wall seconds the background takes to slow from the winner's speed at the wire to a walk; walk frames and the fist from then on." },
+    "walkPxPerSecond": { "value": 24, "status": "starting guess", "note": "About 6 feet a second at 4 px a foot, a brisk walk in real time." },
+    "walkStrideFeet": { "value": 6, "status": "starting guess", "note": "Feet per walk cycle, so the feet do not slide. From memory, not checked." }
+  },
+  "ambient": {
+    "cap": { "value": 3, "status": "starting guess", "note": "DESIGN Charm cap: at most 3 ambient things moving while the field runs." },
+    "order": ["crowd", "flag"],
+    "fromEighthPole": ["crowd"],
+    "crowdSwapsPerSecond": { "value": 1, "status": "starting guess" },
+    "crowdStretchSwapsPerSecond": { "value": 4, "status": "starting guess", "note": "From the 1/8 pole." },
+    "flagSwapsPerSecond": { "value": 2.5, "status": "starting guess", "note": "DESIGN: the flag swaps every 0.4 s." },
+    "cursorSwapsPerSecond": { "value": 2, "status": "starting guess", "note": "DESIGN: the horseshoe cursor bobs 0.5 s a frame." }
   },
   "hud": {
     "stripHysteresisLengths": { "value": 0.1, "status": "starting guess" },
@@ -64,6 +83,8 @@
   "copy": {
     "pickPrompt": "Press 1 to 8: pick your horse",
     "nextRace": "Enter: next race",
+    "fastTag": "4x",
+    "pause": { "title": "Paused", "resume": "Resume", "back": "Back to card" },
     "beforeFirstCall": "Post {post}",
     "leads": "Leads by {margin}",
     "behind": "{place}, {margin} back",
