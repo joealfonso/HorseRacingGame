@@ -1,0 +1,48 @@
+import Phaser from 'phaser';
+import type { Slot } from '../data/raceDaySchema';
+import type { ColorMap } from '../render/colors';
+import { prepareSlots, type ArtInfo } from './art';
+
+// Loads every slot file that exists, then hands the art state to the next scene.
+// Spec 4.7: an Ink screen with a 128x4 Bone bar, no text (the font may not be loaded yet).
+
+export interface BootData {
+  slots: readonly Slot[];
+  /** Files that answered as images, checked before the game started. */
+  present: ReadonlySet<string>;
+  colors: ColorMap;
+  keys: ArtInfo['keys'];
+  next: { key: string; data: Record<string, unknown> };
+}
+
+export class BootScene extends Phaser.Scene {
+  private boot!: BootData;
+
+  constructor() {
+    super('boot');
+  }
+
+  init(data: BootData): void {
+    this.boot = data;
+  }
+
+  preload(): void {
+    const bone = this.boot.colors.get('Bone') ?? 0xffffff;
+    this.cameras.main.setBackgroundColor(this.boot.colors.get('Ink') ?? 0);
+    const bar = this.add.graphics();
+    this.load.on('progress', (v: number) => {
+      bar.clear();
+      bar.fillStyle(bone);
+      bar.fillRect(64, 118, Math.floor(128 * v), 4);
+    });
+    for (const slot of this.boot.slots) {
+      if (slot.file !== null && slot.file.endsWith('.png') && this.boot.present.has(slot.file)) this.load.image(slot.id, slot.file);
+    }
+  }
+
+  create(): void {
+    const states = prepareSlots(this, this.boot.slots, this.boot.colors);
+    const art: ArtInfo = { slots: this.boot.slots, states, colors: this.boot.colors, keys: this.boot.keys };
+    this.scene.start(this.boot.next.key, { ...this.boot.next.data, art });
+  }
+}

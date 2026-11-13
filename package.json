@@ -9,7 +9,9 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "build": "vite build",
-    "batch": "node scripts/batch.mjs"
+    "build:release": "npm run ship:check && vite build",
+    "batch": "node scripts/batch.mjs",
+    "ship:check": "node scripts/shipCheck.mjs"
   },
   "dependencies": {
     "phaser": "^3.90.0",

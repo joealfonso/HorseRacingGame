@@ -1,0 +1,31 @@
+{
+  "slots": [
+    { "id": "font.ui.main", "file": "assets/font/ui/main.png", "frameWidth": 8, "frameHeight": 8, "frames": 95, "columns": 16, "recolor": false, "placeholder": false },
+    { "id": "font.ui.small", "file": "assets/font/ui/small.png", "frameWidth": 4, "frameHeight": 6, "frames": 16, "columns": 16, "recolor": false, "placeholder": false },
+    { "id": "art.ui.frame.box", "file": "assets/art/ui/frame/box.png", "frameWidth": 8, "frameHeight": 8, "frames": 9, "columns": 3, "recolor": false, "placeholder": false },
+    { "id": "art.ui.cursor.horseshoe", "file": "assets/art/ui/cursor/horseshoe.png", "frameWidth": 8, "frameHeight": 8, "frames": 2, "recolor": false, "placeholder": false },
+    { "id": "art.ui.placeholder_tag", "file": "assets/art/ui/placeholder_tag.png", "frameWidth": 8, "frameHeight": 8, "frames": 1, "recolor": false, "placeholder": false },
+    { "id": "art.ui.minimap.track", "file": "assets/art/ui/minimap/track.png", "frameWidth": 88, "frameHeight": 40, "frames": 1, "recolor": false, "placeholder": false },
+    { "id": "art.race.horse.body.gallop", "file": "assets/art/race/horse/body/gallop.png", "frameWidth": 32, "frameHeight": 24, "frames": 2, "noseX": 31, "recolor": true, "placeholder": true },
+    { "id": "art.race.horse.body.stand", "file": "assets/art/race/horse/body/stand.png", "frameWidth": 32, "frameHeight": 24, "frames": 1, "noseX": 31, "recolor": true, "placeholder": true },
+    { "id": "art.race.horse.tack.gallop", "file": "assets/art/race/horse/tack/gallop.png", "frameWidth": 32, "frameHeight": 24, "frames": 2, "numberAt": [[10, 10], [10, 9]], "recolor": true, "placeholder": true },
+    { "id": "art.race.horse.tack.stand", "file": "assets/art/race/horse/tack/stand.png", "frameWidth": 32, "frameHeight": 24, "frames": 1, "numberAt": [[10, 10]], "recolor": true, "placeholder": true },
+    { "id": "art.race.jockey.jacket.gallop", "file": "assets/art/race/jockey/jacket/gallop.png", "frameWidth": 32, "frameHeight": 24, "frames": 2, "recolor": true, "placeholder": true },
+    { "id": "art.race.jockey.jacket.stand", "file": "assets/art/race/jockey/jacket/stand.png", "frameWidth": 32, "frameHeight": 24, "frames": 1, "recolor": true, "placeholder": true },
+    { "id": "art.race.jockey.cap.gallop", "file": "assets/art/race/jockey/cap/gallop.png", "frameWidth": 32, "frameHeight": 24, "frames": 2, "recolor": true, "placeholder": true },
+    { "id": "art.race.jockey.cap.stand", "file": "assets/art/race/jockey/cap/stand.png", "frameWidth": 32, "frameHeight": 24, "frames": 1, "recolor": true, "placeholder": true },
+    { "id": "art.race.marker.player", "file": "assets/art/race/marker/player.png", "frameWidth": 7, "frameHeight": 4, "frames": 1, "recolor": false, "placeholder": false },
+    { "id": "art.race.marker.edge", "file": "assets/art/race/marker/edge.png", "frameWidth": 8, "frameHeight": 9, "frames": 1, "recolor": true, "placeholder": false },
+    { "id": "art.race.gate", "file": "assets/art/race/gate.png", "frameWidth": 40, "frameHeight": 88, "frames": 2, "startX": 31, "recolor": false, "placeholder": true },
+    { "id": "art.race.pole.furlong", "file": "assets/art/race/pole/furlong.png", "frameWidth": 4, "frameHeight": 28, "frames": 1, "recolor": true, "placeholder": false },
+    { "id": "art.race.pole.wire", "file": "assets/art/race/pole/wire.png", "frameWidth": 8, "frameHeight": 28, "frames": 1, "recolor": false, "placeholder": false },
+    { "id": "art.race.rail.far", "file": "assets/art/race/rail/far.png", "frameWidth": 16, "frameHeight": 8, "frames": 1, "recolor": false, "placeholder": false },
+    { "id": "art.race.rail.near", "file": "assets/art/race/rail/near.png", "frameWidth": 16, "frameHeight": 8, "frames": 1, "recolor": false, "placeholder": false },
+    { "id": "art.track.dirt.fast", "file": "assets/art/track/dirt/fast.png", "frameWidth": 16, "frameHeight": 16, "frames": 1, "recolor": false, "placeholder": false },
+    { "id": "art.race.bg.far.hills", "file": "assets/art/race/bg/far/hills.png", "frameWidth": 128, "frameHeight": 24, "frames": 1, "recolor": false, "placeholder": false },
+    { "id": "art.race.bg.mid.grandstand", "file": "assets/art/race/bg/mid/grandstand.png", "frameWidth": 32, "frameHeight": 32, "frames": 1, "recolor": false, "placeholder": true },
+    { "id": "sfx.race.gate_open", "file": null, "placeholder": true },
+    { "id": "sfx.race.call_to_post", "file": null, "placeholder": true },
+    { "id": "sfx.photo.shutter", "file": null, "placeholder": true }
+  ]
+}

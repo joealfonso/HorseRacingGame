@@ -1,0 +1,111 @@
+{
+  "view": {
+    "pxPerFoot": { "value": 4, "status": "starting guess", "note": "Spec 3.5: one 8-foot length is 32 px, the width of the horse frame." },
+    "pxPerLane": { "value": 4, "status": "starting guess", "note": "DESIGN: paths sit 4 px apart." },
+    "hoofBaseY": { "value": 116, "status": "starting guess", "note": "Hoof line of lane 0. Lanes 0 to 8 give y116 to y148." },
+    "leaderScreenX": { "value": 200, "status": "starting guess" },
+    "playerScreenX": { "value": 56, "status": "starting guess" },
+    "wireScreenX": { "value": 200, "status": "starting guess" },
+    "gateScreenX": { "value": 200, "status": "starting guess", "note": "World x 0, the start line, sits here during the gate beat. Must equal leaderScreenX so the camera does not jump on the break." },
+    "finalFeetToGo": { "value": 330, "status": "starting guess", "note": "The 1/16 pole. The camera hands over to the leaders from here." },
+    "finalBlendSeconds": { "value": 1, "status": "starting guess", "note": "Race seconds over which the camera blends to the wire." },
+    "finalCatchUpPxPerSecond": { "value": 600, "status": "starting guess", "note": "Most the blend may add per race second over the race camera, so a horse far back does not make the camera jump more than 32 px a frame at 2x (RV5)." },
+    "farParallaxDivisor": { "value": 4, "status": "starting guess" },
+    "midParallaxDivisor": { "value": 2, "status": "starting guess" },
+    "midZonePadPx": { "value": 128, "status": "starting guess", "note": "Mid-layer px the grandstand runs past each end of a stretch, so it still fills the screen with the camera locked on the wire." },
+    "strideFeet": { "value": 24, "status": "starting guess", "note": "Feet per gallop cycle. A thoroughbred's stride is roughly 20 to 25 feet, from memory, not checked." },
+    "stridePhasePerPost": { "value": 0.37, "status": "starting guess", "note": "Share of a cycle each program number shifts the gallop, so the field never moves in lockstep." },
+    "frameTopFromHoof": { "value": 23, "status": "starting guess", "note": "Frame top = hoof y - 23 (24 px frame, hoof on its last row)." },
+    "playerArrowDx": { "value": 19, "status": "starting guess", "note": "DESIGN stand-in: the 7x4 arrow centered over the cap (x20-24), so its left column is frame x19." },
+    "playerArrowDy": { "value": -6, "status": "starting guess", "note": "Bottom row 2 px above the frame top: rows frame y-6 to y-3." }
+  },
+  "playback": {
+    "speed": { "value": 2, "status": "starting guess", "note": "Spec 3.4: a 2:01.55 race plays in about 61 seconds." },
+    "maxFrameMs": { "value": 50, "status": "starting guess", "note": "A stalled tab does not jump the race." }
+  },
+  "beats": {
+    "pickSeconds": { "value": 4, "status": "starting guess", "note": "P0 only: playback seconds the field stands in the gate while keys 1 to 8 pick a horse, before the gate beat. Goes away with the card screen in step 5." },
+    "gateStillSeconds": { "value": 1, "status": "starting guess", "note": "The field stands still, then the doors swap open and the race clock starts." },
+    "wireHoldSeconds": { "value": 1, "status": "starting guess" }
+  },
+  "hud": {
+    "stripHysteresisLengths": { "value": 0.1, "status": "starting guess" },
+    "messageSeconds": { "value": 2, "status": "starting guess", "note": "Playback (wall) seconds each message shows." },
+    "messageMaxWaitSeconds": { "value": 3, "status": "starting guess" },
+    "backInStrideSeconds": { "value": 2, "status": "starting guess", "note": "Playback seconds after your horse's event." },
+    "typeCharsPerSecond": { "value": 60, "status": "starting guess" },
+    "typeUntilFurlongsToGo": { "value": 1, "status": "starting guess", "note": "Calls type out before this pole and cut in whole from it (the 1/8 pole)." }
+  },
+  "poleBands": {
+    "value": { "quarter": "Red", "eighth": "Emerald", "sixteenth": "Coal" },
+    "status": "starting guess",
+    "note": "Kentucky 810 KAR 2:070 Section 6(1): red and white quarter poles, green and white eighth poles, black and white sixteenth poles (found by the artist 2026-11-12). Black is Coal, not Ink, so the band never merges with the Ink outline. Joseph has not confirmed it."
+  },
+  "saddlecloths": {
+    "value": [
+      { "fill": "Red", "number": "Bone" },
+      { "fill": "Bone", "number": "Ink" },
+      { "fill": "Royal", "number": "Bone" },
+      { "fill": "Yellow", "number": "Ink" },
+      { "fill": "Emerald", "number": "Bone" },
+      { "fill": "Coal", "number": "Yellow" },
+      { "fill": "Orange", "number": "Ink" },
+      { "fill": "Pink", "number": "Ink" }
+    ],
+    "status": "starting guess",
+    "note": "Numbers 1 to 8, from DESIGN.md. The US convention from memory, to check against a primary source before it ships."
+  },
+  "coats": {
+    "bay": { "base": "Auburn", "second": "Mahogany" },
+    "dark bay or brown": { "base": "Mahogany", "second": "Bitter" },
+    "chestnut": { "base": "Copper", "second": "Auburn" },
+    "black": { "base": "Coal", "second": "Sheen" }
+  },
+  "copy": {
+    "pickPrompt": "Press 1 to 8: pick your horse",
+    "nextRace": "Enter: next race",
+    "beforeFirstCall": "Post {post}",
+    "leads": "Leads by {margin}",
+    "behind": "{place}, {margin} back",
+    "won": "Won by {margin}",
+    "oneLength": "a length",
+    "finished": "Finished {place}",
+    "marginWords": { "nose": "a nose", "head": "a head", "neck": "a neck" },
+    "orders": {
+      "allDefault": "Rider's call",
+      "joiner": ", ",
+      "early": { "rateEarly": "Rate" },
+      "move": { "moveAtThreeEighths": "3/8", "saveForStretch": "Save" },
+      "path": { "stayInside": "Inside" }
+    },
+    "messages": {
+      "blocked": "{name} has no room",
+      "steadied": "{name} is steadied",
+      "bumped": "{name} and #{n} bump",
+      "backInStride": "Back in stride",
+      "asked": "{name} is asked",
+      "home": "{name} home in {place}"
+    },
+    "calls": {
+      "gate": ["They're all in the gate", "The field is loaded", "All in line and ready"],
+      "off": ["And away they go", "They're off and running", "The gate springs open"],
+      "earlyLeader": ["{leader} shows speed", "{leader} goes early", "{leader} out quick"],
+      "firstTimeBy": ["First time past the stands", "Past the stands once", "First time by the crowd"],
+      "clubhouseTurn": ["Into the clubhouse turn", "Around the clubhouse turn"],
+      "leader": ["{leader} on the lead", "{leader} sets it", "{leader} in front"],
+      "backstretch": ["Down the backstretch", "Along the backside", "Down the back side they go"],
+      "farTurn": ["Around the far turn", "Into the far turn", "They hit the far turn"],
+      "home": ["Turning for home", "Into the stretch they come", "Here they come for home"],
+      "leaderSame": ["{leader} still leads", "{leader} holds on"],
+      "leaderNew": ["{leader} takes over", "{leader} goes by"],
+      "wire": ["Down to the wire", "Here's the wire", "To the wire they go"],
+      "winner": ["{winner} wins it", "{winner} gets there"],
+      "photo": ["Too close to call", "Photo! Too close to call"],
+      "pace": {
+        "hot": ["Half in {half}, a fast clip", "{half} half, they're flying"],
+        "honest": ["Half in {half}, nice and even", "{half} half, an honest pace"],
+        "slow": ["Half in {half}, a crawl", "{half} half, a soft pace"]
+      }
+    }
+  }
+}
