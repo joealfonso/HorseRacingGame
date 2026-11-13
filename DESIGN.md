@@ -12,6 +12,30 @@
 
 Amended 2026-11-12 by art-director after Joseph's note on charm: added the charm goal, the Charm section, the placeholder race rule, one Do not line and one banned look. No approved rule was removed or loosened.
 
+Amended 2026-11-12 by art-director with the M1 race-day answers below: edits to (guess) items and additions only. No approved rule was removed or loosened. Two answers touch approved lines (4 and 6) and are left for Joseph.
+
+## M1 race-day answers (2026-11-12)
+
+Answers to section 12 of docs/specs/m1-race-day.md. Where this list and the spec disagree, this list wins.
+
+1. Top bar: yes, announcer only, an unframed strip. See HUD, UI frame and font.
+2. Furlong poles on the far (inside) rail, behind the horses: yes. See Race view.
+3. Photo: yes, 112x88 crop at 2x in a 240x192 panel, wire 2 px on screen. See Race view.
+4. Placeholder label: open for Joseph, the line is approved. P0 builds the checker, HUD tag and console list. See Named art and audio slots.
+5. Saddlecloths 1 to 8 and the Pink clash. See Jockeys and silks.
+6. Silks body and cap per horse in M1: yes. Results show the saddlecloth box in M1, flagged to Joseph. See Jockeys and silks.
+7. Trainer on the Orders (paddock) screen: yes. See Charm.
+8. Winner beat staged after the wire hold: yes. See Charm.
+9. Paddock horse idle: no, stand frame only in M1. See Charm.
+10. Generic grandstand, no twin spires: yes. See Originality.
+11. Ambient set per zone: yes, with the crowd tiles out of phase. See Charm.
+12. Post parade: yes, direction and escorts to check. See Charm.
+13. Gate behind the horses: yes, door column ahead of the noses. See Race view.
+14. Typewriter calls: yes before the 1/8 pole, whole calls from it. See Charm.
+15. Small font: the designer's 16 glyphs, nothing added. Main font: printable ASCII 32 to 126. See HUD, UI frame and font.
+16. Garland and traditions off in M1: yes. See Charm.
+- Also: the P0 stand-in race horse. See Horses.
+
 ## Vision
 
 A warm Kentucky morning on an NES cartridge: big calm shapes, a small honest palette, and horses drawn like the athletes they are.
@@ -173,6 +197,32 @@ At race size a star is 1 pixel. Markings are flavor in the race and identity on 
 
 Every race sprite is checked in a full 20-horse field, at gameplay speed, on dirt, turf and synthetic, at 3x and 4x. You must be able to find your horse in under a second and tell the leaders apart. Known risks I have not checked by eye: bay on turf, chestnut on dirt, dark coats on mud and synthetic. The Ink outline is the main defense.
 
+### Stand-in race horse (P0)
+
+A committed script draws it. Frames: gallop A (reach), gallop B (gather), stand. Faces right. Coordinates are inside the 32x24 frame, x0 left, y0 top, boxes include their 1 px Ink outline.
+
+| part | layer | where | colors |
+|---|---|---|---|
+| horse | body | barrel x8-22, y9-16 in A and stand, y8-15 in B; legs from the belly to the hoof line y23 | Ink outline, coat base only |
+| nose | body | rightmost opaque column is x31 in every frame, so `nose_x` = 31. Nose y: A 10, B 9, stand 6 | |
+| saddlecloth | tack | x8-14, y9-15 (y8-14 in B, it rides with the body). Number 3x5 at x10-12, y10-14 (y9-13 in B), inside the cloth's 5x5 fill | Ink, cloth fill, number in the trim slot |
+| jacket | jacket | x12-20, y2-8, the same in every frame. Ink arm from x21 y6 to the hands on the crest. Ink leg from the seat down to a bent knee and the boot at x15-16 y11-12 | Ink, silks body |
+| cap | cap | x20-24, y0-3, the same in every frame. 1 px Ink peak at x25 y3 | Ink, cap color |
+| arrow | marker | 7x4, centered over the cap, bottom row 2 px above the frame top | Yellow |
+
+Accepted only if, filled with Ink, each frame reads as a horse with a rider:
+
+- Four legs, at least 8 px from belly to hoof (longer than the barrel is deep). Daylight under the belly in every frame. Front knees fold back, hocks point back.
+- Gallop A has the forelegs reaching forward and the hinds reaching back. Gallop B has them folded under. Stand has four straight legs in two pairs, the far leg of each pair 1 px behind.
+- A neck that rises forward from the withers and is longer than the head. A head small for the body, with a throat notch, tapering to the muzzle.
+- A tail as its own stroke off the croup.
+- The rider as a crouched person: the cap 2 px above the back line and ahead of the shoulders, so the head is a bump, not a box.
+- Legs 2 px wide may be all Ink. At most a 1 px Ink eye. No mouth, no brow, nothing larger.
+
+Its charm: the rider rides still. The jacket and cap are the same pixels in every frame while the horse bobs 1 px and its head nods under him, the way a good jockey holds his head level at the gallop. It is a real thing, it costs nothing, and it keeps the Yellow arrow steady. A 1 px pricked ear on the poll is also allowed.
+
+Reject: a box with legs, a dog or pony shape, a head a third of the body, legs shorter than the barrel is deep, the rider floating above the back, any expression.
+
 ## Jockeys and silks
 
 - Silks are designed at 16x16 with a pattern (stripes, hoops, diamonds, quartered, sash, or solid) and 2 to 3 colors: body, pattern, cap. The cap may repeat body or pattern.
@@ -183,26 +233,46 @@ Every race sprite is checked in a full 20-horse field, at gameplay speed, on dir
 - Results show the full 16x16 silks beside each finisher.
 - 20 starters and 18 colors means body colors can repeat in a field. No two stables in one race may share the same body color, pattern color and pattern. Rival and generated silks are picked to avoid clashes. The player is warned on a clash.
 - Two horses from the same stable wear the same jacket and are told apart by cap color, as in real racing.
-- Saddlecloth color follows the program number, modeled on the US saddlecloth convention. The 1 to 20 color list lives in data and must be checked against a primary source before it ships. (guess)
+- Saddlecloth color follows the program number, modeled on the US saddlecloth convention. The 1 to 20 color list lives in data and must be checked against a primary source before it ships. Numbers 1 to 8, for M1, are below. 9 to 20 wait for a race with more than 8 starters.
+
+| # | fill | number | US convention (from memory, to check against a primary source) |
+|---|---|---|---|
+| 1 | Red | Bone | red, white number |
+| 2 | Bone | Ink | white, black number |
+| 3 | Royal | Bone | blue, white number |
+| 4 | Yellow | Ink | yellow, black number |
+| 5 | Emerald | Bone | green, white number |
+| 6 | Coal | Yellow | black, yellow number |
+| 7 | Orange | Ink | orange, black number |
+| 8 | Pink | Ink | pink, black number |
+
+- 6 is Coal, not Ink, so the cloth never merges with the Ink outline.
+- On the race sprite the number is drawn from the small font in the tack layer's trim slot, so the layer stays at Ink, cloth and number.
+- Every saddlecloth box on a Navy fill (strip 12x10, card and result 10x10) gets a 1 px Ash border, so 3 and 6 read on Navy. The number is centered in the small font. Edge markers sit on the track and get an Ink outline instead.
+- Risks to check by eye: 7 Orange on a chestnut, 1 Red on a bay, 6 Coal on dark coats. The cloth's Ink outline is the defense.
+- Pink: 8 keeps Pink, as the convention has it, and Pink stays the placeholder color. They never look alike. A saddlecloth is always one solid fill with a number. A placeholder is always a checker of 2x2 px Pink and Ink cells. No accepted art uses a Pink and Ink checker, and no placeholder ships.
+- M1 silks: a body color and a cap color per horse from the 18, in `src/data/cardLook.json`, no pattern, so the jacket is solid. No two horses on a card share a body color, and the loader rejects a card that does. M1 results show the 10x10 saddlecloth box. The 16x16 silks line above is unchanged and applies once 16x16 silks exist (M9).
 - Jockeys carry a crop. The urging animation is a hand ride, never a strike on the horse. (guess)
 
 ## Race view
 
-Layout (guess, the designer owns final placement):
+Layout. The M1 pixel placement is in docs/specs/m1-race-day.md 4.3, and the designer owns it. It follows these rules:
 
-- Top 16px: HUD bar with race name, furlong call and running time.
+- Top 16px: the announcer bar (see HUD, UI frame and font). The race name lives on the card and in the winner's circle, the running time in the bottom HUD.
 - Sky and parallax: sky bands (fixed), far layer (hills, skyline), mid layer (infield, trees, tote board). Far scrolls slowest, mid faster, track at full speed.
 - No foreground layer passes over the horses.
-- Far rail, then the track band, then the near rail with furlong poles. Rails are Bone.
-- Paths sit 4px apart vertically, so the cap and shoulders of the horse one path inside always show (guess). Inner paths draw first.
-- Camera is side-on and tracks the leader. If the player's horse falls off screen, an edge arrow shows where it is. (guess, designer to confirm)
+- Far rail, then the track band, then the near rail. Rails are Bone. Furlong poles and the wire post stand on the far rail, which is the inside rail as at a US track, and draw behind the horses.
+- Paths sit 4px apart vertically, so the cap and shoulders of the horse one path inside always show. Inner paths draw first.
+- Camera is side-on and favors the player's horse: the leader at screen x200 while yours is close enough, yours held at screen x56 when it is not, handing over to the leaders at the 1/16 pole. The exact rule is spec 3.5.
+- Edge marker for a horse off screen: 8x8 at the screen edge, at the horse's lane height, never over the leading pack. 1 px Ink outline, saddlecloth fill, number in the small font in its number color, a 1 px notch on the pointing side.
 - The player's horse has a small Yellow arrow above the cap, on by default.
+- Starting gate (`art.race.gate`, 40x88, 2 frames): drawn behind the horses, so every horse shows at the start. Columns x0-31 are the stalls and header, x32-39 the front doors, standing just ahead of the noses. Gate column x31 sits on the start line, top at screen y64. Closed: the door column filled. Open: the column clear except its two end posts. Slate, Ash and Bone. (colors guess)
 - Furlong poles: Bone posts with a colored band. Band colors come from data and follow the US quarter, eighth and sixteenth pole convention once checked against a primary source. (guess)
 - Track surface tiles per going: fast and good dirt use Dirt and Dirt Shade, sloppy and muddy use Dirt Shade and Mud with Sky Pale glints. Firm turf uses Turf and Grass in mowing stripes, yielding uses Turf and Pine. Synthetic uses Synthetic and Synthetic Light.
 - Hoof kick is 1 to 2 pixel clods in Dirt Shade or Mud, as sprites on the grid.
-- Mini map: a top-down oval in the bottom HUD. Each horse is a 2x2 dot in its saddlecloth color. The player's horse is a 3x3 dot with a Yellow ring. No blinking.
-- Running order strip: one box per starter in saddlecloth color with the number in the small font.
-- Photo-finish still: the race frame at the wire, cropped to 128x112 and shown at 2x inside a framed panel. The background is replaced by vertical Mist and Ash streaks, like a strip camera, and the finish line is a 1px Bone line. Labels sit outside the photo at 1x. This is the one allowed exception to mixed pixel density, because it reads as a photograph. (guess)
+- Mini map: a top-down oval in the bottom HUD. The oval band is 4 px wide in Dirt Shade on the Navy fill, so dots pushed out by lane stay on it. Each horse is a 2x2 dot in its saddlecloth color. The player's horse is a 3x3 dot with a Yellow ring. No blinking.
+- Running order strip: one 12x10 box per starter in saddlecloth color with the number in the small font (see Jockeys and silks for the border).
+- Photo-finish still: a 112x88 crop of the wire frame (race-view rows y77-164, from 96 px behind the wire to 16 px past it), shown at 2x as 224x176 inside a 240x192 framed panel at x8-247, y8-199. Everything but the horses and the wire becomes vertical Mist and Ash streaks (`art.photo.bg.streaks`, a 16x16 tile at 1x, doubled with the photo), like a strip camera. The finish line is 1 px Bone in the crop, so 2 px on screen. No HUD inside the photo: when your horse is in the crop, the 7x4 Yellow arrow sits at 1x above the panel, y3-6, centered over your horse's cap. Captions sit below the panel at 1x. This is the one allowed exception to mixed pixel density, because it reads as a photograph.
 
 ## Overworld and menus
 
@@ -214,9 +284,10 @@ Layout (guess, the designer owns final placement):
 
 - Text boxes are built from 8x8 frame tiles: Bone outer line, Ash inner line, Navy fill. Corners are their own tiles.
 - Dialog box: full width, 3 lines of text, bottom of screen.
+- Announcer bar (race view): y0-15, Navy fill y0-14 and a 1 px Ash line at y15. It is a HUD strip, not a text box, so it has no frame tiles (16 px cannot hold frame tiles and a line of text). One line of Bone text, cell rows y4-11, from x4.
 - Cursor: a small Yellow horseshoe.
-- Main font: pixel bitmap, 8x8 cell, upper and lower case, tabular numerals so odds and times line up on the tote board.
-- Small font: 4x6 cell, numerals and a few symbols, for the running order strip, mini map and tote board.
+- Main font (`font.ui.main`): original, drawn by the artist. Pixel bitmap, 8x8 cell, monospaced at 8 px advance, so numerals are tabular and odds and times line up. Glyphs: printable ASCII 32 to 126, all 95. Each glyph uses columns 0-6, column 7 is blank. Capitals and digits use rows 0-6. Descenders may use row 7.
+- Small font (`font.ui.small`): original, drawn by the artist. 4x6 cell, monospaced at 4 px advance, each glyph 3x5 in columns 0-2 and rows 0-4. Glyphs: `0 1 2 3 4 5 6 7 8 9 : . / # -` and space, 16 in all. No letters. For saddlecloth numbers (strip, boxes, edge markers, the race sprite), splits, the seed, the mini map and the tote board.
 - All text uses Phaser BitmapText. No system fonts, no anti-aliased canvas text.
 - No text baked into images, except the game logo. Signs, banners and the tote board take text from data, so it can change and is never gibberish.
 - Money up is Emerald with a plus sign, money down is Red with a minus sign. Color is never the only signal.
@@ -236,17 +307,18 @@ Charm comes from a world busy with its own small business, a race day with cerem
 
 Race day (M1):
 
-- Card screen: the trainer stands beside the dialog box with a 2-frame idle (guess: lifting a coffee cup), so the instructions come from a person, not a form.
-- Card screen: instructions and horse blurbs are short lines of copy from data with some personality, so the screen has a voice.
-- Card screen: the horseshoe cursor bobs 1px on a slow 2-frame loop, so the screen never looks frozen while you decide.
-- Post parade: the field passes on the 2-frame walk behind one outrider on a pony, so the race opens with a procession. (guess, Churchill's actual post parade to check)
+- Orders (paddock) screen: the trainer, 16x24, stands beside your horse with a 2-frame idle, lifting a coffee cup (cup down 1.5 s, up 0.5 s, in data), so the orders come from a person, not a form. Your horse stays on its stand frame with the jockey up. No tail swish in M1, so the trainer carries the screen.
+- Card and Orders screens: horse blurbs and the trainer's lines are short copy from data with some personality, so the screens have a voice.
+- Card and Orders screens: the horseshoe cursor bobs 1px on a slow 2-frame loop, 0.5 s a frame, so the screen never looks frozen while you decide.
+- Post parade: the field walks by on the 2-frame walk in post order behind one outrider on a pony, left to right on the outside path, 5 s, every race, Enter skips, so the race opens with a procession. (To check against Churchill's actual post parade: direction, and whether each runner has a pony escort. If it runs right to left, flip the sprites, which is allowed.)
 - Call to the post: a 16x24 bugler on the mid layer raises the horn while `sfx.race.call_to_post` plays (original or public domain only), so the player knows the start is next.
 - Gate: the field stands still, then the doors open in one 2-frame swap with `sfx.race.gate_open`, so the start lands on one beat.
-- Crowd: the grandstand is a mid-layer tile strip that swaps 2 frames (hats and arms up), slow early and faster from the eighth pole, so the stretch feels louder without touching the track.
-- Announcer: one short call per pole in the HUD bar, from data, so the race has a voice that also tells you where you are.
+- Crowd: the grandstand is a mid-layer tile strip that swaps 2 frames (hats and arms up), 1 swap a second early and 4 a second from the eighth pole, so the stretch feels louder without touching the track. Neighboring tiles run a frame apart, so the stand never pulses as one block. The strip counts as one ambient thing.
+- Ambient set per camera zone, inside the cap: stretch, the crowd strip and the infield flag; turns, the flag and one pass of a pair of birds on the far layer; backstretch, the barns (still) and the flag. Flag and birds stop at the eighth pole. The flag swaps every 0.4 s, the birds flap every 0.3 s. (rates guess)
+- Announcer: one short call per pole in the announcer bar, from data, so the race has a voice that also tells you where you are. Before the eighth pole a call types out at 60 characters a second, whole characters, no cursor. From the eighth pole on, calls cut in whole, so only the horses and the crowd move in the stretch.
 - The wire: the photo-finish panel steps in by whole 8px moves with a shutter click, so a close finish gets its moment.
-- Winner: the winning jockey stands in the irons and raises a fist, never the crop, and the horse eases to the walk, so the win reads at a glance. All jockey layers get the extra frame to stay in lockstep.
-- Result screen: a winner's circle picture with the winner standing, the groom at its head and the owner beside it, so the win is a moment and not a table. A tradition such as the garland of roses is switched on from data, drawn in Red, Pine and Gold. (which race carries which tradition is to check)
+- Winner: after the wire hold, a staged beat. The winner alone, frame at screen x112-143 in its lane at the wire, the background slowing by whole pixels from its speed at the wire to a walk, gallop frames giving way to walk frames. The winning jockey stands in the irons and raises a fist, never the crop, so the win reads at a glance. All jockey layers get the extra frame to stay in lockstep.
+- Result screen: a winner's circle picture with the winner standing, the groom at its head and the owner beside it, so the win is a moment and not a table. A tradition such as the garland of roses is switched on from data, drawn in Red, Pine and Gold. (which race carries which tradition is to check) Off in M1: the race is fictional and the data has no tradition flag.
 - Result screen: margins are in racing words from data (nose, head, neck) beside the full silks, so it reads like a chart.
 
 Later screens (guess):
@@ -255,11 +327,11 @@ Later screens (guess):
 
 Cap, so charm never becomes clutter:
 
-- While the field is running, at most 3 ambient moving things on screen at once, not counting horses, hoof kick and the HUD. (guess)
+- While the field is running, at most 3 ambient moving things on screen at once, not counting horses, hoof kick and the HUD.
 - Ambient motion lives on the far and mid layers only. Nothing charming draws on the track band or rails, or covers the leading pack or the player's horse, and nothing pulls the eye away from them.
 - From the eighth pole to the wire only the horses and the crowd strip move.
 - Ceremony (post parade, call to the post, gate, winner) happens before the start or after the wire, never mid-race.
-- Ambient loops swap at most 4 times a second and never flash Bone on Ink, so nothing strobes. (guess)
+- Ambient loops swap at most 4 times a second and never flash Bone on Ink, so nothing strobes. Rates are in wall time, so 4x playback does not speed them up.
 
 Charm test: watch 10 seconds at gameplay speed next to the reference. If you cannot name one small thing that made it feel alive and say its job, it is flat. If your eye went to it before the leaders or your horse, it is clutter.
 
@@ -309,9 +381,10 @@ Every art and audio hook goes through a named slot in data, so placeholders work
 - Examples: `art.race.horse.body`, `art.race.jockey.cap`, `art.ui.frame.dialog`, `art.track.dirt.sloppy`, `font.ui.main`, `sfx.race.gate_open`, `music.farm.morning`.
 - Ids never contain file names or extensions. The slot entry in data holds the file, frame size, frame count, anchor, nose x for race frames, and whether it is recolorable.
 - A placeholder is a Pink and Ink checker with the slot id in the small font, so it can never ship by accident. An audio placeholder may be silence.
-- Placeholder race: before sprites are approved, the race-day screens use flat stand-ins that still follow every rule here, so the first build already reads as this game. It must have master palette sky bands, the track surface for the going, Bone rails and furlong poles; each horse as a flat 32x24 shape in a coat color with the Ink outline, a jacket block in its silks body color, a cap and its saddlecloth number, on a 2-frame cycle advanced by distance; the real UI frame tiles, the Yellow arrow and the horseshoe cursor; a pixel bitmap font on the 8x8 cell (a logged CC0 font until ours exists); real copy from data; and at least the gate opening and the wire. (guess)
+- Placeholder race: before sprites are approved, the race-day screens use flat stand-ins that still follow every rule here, so the first build already reads as this game. It must have master palette sky bands, the track surface for the going, Bone rails and furlong poles; each horse as a flat 32x24 shape in a coat color with the Ink outline, a jacket block in its silks body color, a cap and its saddlecloth number, on a 2-frame cycle advanced by distance (see Stand-in race horse); the real UI frame tiles, the Yellow arrow and the horseshoe cursor; the original 8x8 and 4x6 fonts, drawn by the artist, no third-party font; real copy from data; and at least the gate opening and the wire.
 - The Pink and Ink checker still applies to every slot with no stand-in, every rejected asset, and everything outside the race-day screens.
 - A stand-in sits in a slot marked as a placeholder in data, gets an ASSETS.md row marked stand-in, and while any placeholder is on screen an 8x8 Pink and Ink checker tag shows in the HUD corner. The build must refuse to ship a placeholder slot. The engineer picks how and logs it in docs/DECISIONS.md.
+- Open for Joseph (M1 answer 4): the slot id cannot print on most placeholders. The small font has no letters, and an 8x8 slot is narrower than any id. The designer's proposal: the checker alone, plus the HUD tag and a console list of placeholder slots. The checker line above is unchanged until Joseph decides. P0 builds the checker, the tag and the console list, which it needs either way.
 - Ids are stable. A rename updates every reference in the same change.
 
 ## Asset intake checklist
@@ -334,4 +407,4 @@ art-director checks every item before an asset counts as done. A missing item is
 
 ## Originality
 
-No asset, name, text, UI layout or character from the reference games in the brief. Real races, tracks and sales appear by name only, from data, with no real logos or trademarks. Horses, jockeys, trainers, stables and NPCs are fictional, and so are their silks.
+No asset, name, text, UI layout or character from the reference games in the brief. Real races, tracks and sales appear by name only, from data, with no real logos or trademarks, and no venue's signature architecture: the grandstand is a generic stand, with no twin spires or anything close to them. Horses, jockeys, trainers, stables and NPCs are fictional, and so are their silks.
