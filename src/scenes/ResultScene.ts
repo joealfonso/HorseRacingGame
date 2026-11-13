@@ -2,13 +2,14 @@ import Phaser from 'phaser';
 import type { RaceDayData } from '../data/raceDayLoad';
 import type { GameData } from '../data/schema';
 import { rgbOf } from '../render/colors';
-import { keyDown, keyState, keyUp, type KeyState } from '../render/keys';
+import { heldKeys, keyDown, keyState, keyUp, type KeyState } from '../render/keys';
 import { cursorFrame } from '../render/pause';
 import { RESULT_CONFIRM_KEYS, resultScreen, type ResultScreen } from '../render/resultScreen';
-import { nextRace, type Session } from '../render/session';
+import type { Session } from '../render/session';
 import { SLOT_IDS } from '../render/slotStatus';
 import type { RaceResult } from '../sim/result';
 import { Art, type ArtInfo } from './art';
+import type { CardData } from './CardScene';
 
 // The result screen (spec 4.6): the order of finish, your trip, the time, splits and seed,
 // and one action, Next race. Its own scene, opened by the race scene when the winner beat
@@ -91,11 +92,12 @@ export class ResultScene extends Phaser.Scene {
     });
   }
 
-  /** Next race: no card screen yet, so straight to the next gate, the next seed, the same horse. */
+  /** Next race: back to the card with your horse focused. The session is already on the next race. */
   private next(): void {
     if (this.leaving) return;
     this.leaving = true;
     const { game, rd, art, session } = this.data0;
-    this.scene.start('race', { game, rd, art, session: nextRace(session), held: [...this.keys.down] });
+    const data: CardData = { game, rd, art, session, held: heldKeys(this.keys) };
+    this.scene.start('card', data);
   }
 }

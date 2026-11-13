@@ -365,10 +365,22 @@ describe('IN1: every action has a keyboard binding; no handler needs a pointer',
     }
   });
 
-  it('IN1: the P0 actions are bound to keys: 1 to 8 picks a horse at the gate, Enter starts the next race', () => {
-    const src = readFileSync(join(ROOT, 'src/scenes/RaceScene.ts'), 'utf8');
-    expect(src).toMatch(/keydown/);
-    expect(src).toMatch(/Digit/);
-    expect(src).toMatch(/'Enter'/);
+  // Updated on purpose with step 5: this said keys 1 to 8 pick a horse at the gate, in the race
+  // scene. The number keys left the race scene; the pick is on the Card, where 1 to 8 jump to a
+  // post. IN1 still holds: every action on every screen has a keyboard binding and no handler
+  // needs a pointer. The race scene keeps Enter (skip) and the pause keys, the Card and Orders
+  // scenes bind keys through MenuKeys, and no scene binds a pointer event.
+  it('IN1: every action on every screen is bound to keys, and no handler needs a pointer', () => {
+    const scene = (f: string) => readFileSync(join(ROOT, 'src/scenes', f), 'utf8');
+    expect(scene('RaceScene.ts')).toMatch(/keydown/);
+    expect(scene('RaceScene.ts')).toMatch(/'Enter'/);
+    expect(scene('RaceScene.ts')).not.toMatch(/Digit/); // the pick is no longer made at the gate
+    expect(scene('menuKeys.ts')).toMatch(/keydown/);
+    expect(scene('CardScene.ts')).toContain('new MenuKeys');
+    expect(scene('OrdersScene.ts')).toContain('new MenuKeys');
+    expect(scene('ResultScene.ts')).toMatch(/keydown/);
+    for (const f of ['RaceScene.ts', 'CardScene.ts', 'OrdersScene.ts', 'ResultScene.ts', 'menuKeys.ts']) {
+      expect(scene(f), f).not.toMatch(/pointerdown|pointerup|pointermove|setInteractive|\.on\('pointer|gameobjectdown/);
+    }
   });
 });

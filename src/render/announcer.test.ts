@@ -267,9 +267,14 @@ describe('typing and holding the call', () => {
     expect(announcerAt(s, at(next.at) - 0.01, at, cps)).toBe(c.text);
   });
 
+  // Updated on purpose with step 5: this sampled at `pickSeconds`, which is now 0 (picking moved
+  // to the Card), so it no longer fell in the gate beat. The requirement stands: the gate call
+  // shows while the field stands in the gate, from the start of the beat to the doors opening.
   it('the gate call shows before the doors open', () => {
-    expect(announcerAt(s, 0.5, at, cps)).toBe(s[0].text);
-    expect(announcerAt(s, rd.beats.pickSeconds.value, at, cps)).toBe(s[0].text);
+    const doors = rd.beats.pickSeconds.value + rd.beats.gateStillSeconds.value;
+    // The call types out at 60 characters a second, so it is whole from 0.5 s: the samples are after that and before the doors.
+    expect(doors).toBeGreaterThan(0.5);
+    for (const p of [0.5, (0.5 + doors) / 2, doors - 0.01]) expect(announcerAt(s, p, at, cps), `p ${p}`).toBe(s[0].text);
   });
 
   it('every typed text is a prefix of the call, and the last two calls cut in whole', () => {

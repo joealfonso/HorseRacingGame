@@ -1,10 +1,66 @@
 {
-  "h4": { "coat": "dark bay or brown", "silks": { "body": "Bone", "cap": "Red" } },
-  "h1": { "coat": "chestnut", "silks": { "body": "Royal", "cap": "Bone" } },
-  "h7": { "coat": "bay", "silks": { "body": "Orange", "cap": "Auburn" } },
-  "h3": { "coat": "black", "silks": { "body": "Purple", "cap": "Gold" } },
-  "h6": { "coat": "bay", "silks": { "body": "Sky", "cap": "Bone" } },
-  "h2": { "coat": "chestnut", "silks": { "body": "Lime", "cap": "Royal" } },
-  "h8": { "coat": "bay", "silks": { "body": "Emerald", "cap": "Hay" } },
-  "h5": { "coat": "dark bay or brown", "silks": { "body": "Turquoise", "cap": "Gold" } }
+  "h4": {
+    "coat": "dark bay or brown",
+    "silks": {
+      "body": "Bone",
+      "cap": "Red"
+    },
+    "blurb": "Served papers to the leader."
+  },
+  "h1": {
+    "coat": "chestnut",
+    "silks": {
+      "body": "Royal",
+      "cap": "Bone"
+    },
+    "blurb": "Wants the lead and a snack."
+  },
+  "h7": {
+    "coat": "bay",
+    "silks": {
+      "body": "Orange",
+      "cap": "Auburn"
+    },
+    "blurb": "Wakes up at the far turn."
+  },
+  "h3": {
+    "coat": "black",
+    "silks": {
+      "body": "Purple",
+      "cap": "Gold"
+    },
+    "blurb": "Papers say horse. We agree."
+  },
+  "h6": {
+    "coat": "bay",
+    "silks": {
+      "body": "Sky",
+      "cap": "Bone"
+    },
+    "blurb": "Typing... still typing..."
+  },
+  "h2": {
+    "coat": "chestnut",
+    "silks": {
+      "body": "Lime",
+      "cap": "Royal"
+    },
+    "blurb": "Cc's the entire grandstand."
+  },
+  "h8": {
+    "coat": "bay",
+    "silks": {
+      "body": "Emerald",
+      "cap": "Hay"
+    },
+    "blurb": "The rest is mostly lungs."
+  },
+  "h5": {
+    "coat": "dark bay or brown",
+    "silks": {
+      "body": "Turquoise",
+      "cap": "Gold"
+    },
+    "blurb": "Sweet, cold, and litigious."
+  }
 }

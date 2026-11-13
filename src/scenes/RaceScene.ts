@@ -4,9 +4,10 @@ import type { GameData } from '../data/schema';
 import { rgbOf } from '../render/colors';
 import { simErrorLines } from '../render/format';
 import { makeRaceSetup, playerView, raceFrame, type PlayerView, type RaceFrame, type RaceSetup } from '../render/raceFrame';
-import { nextRace, seedFor, type Session } from '../render/session';
+import { raceInput } from '../render/raceInput';
+import type { RaceTicket, Session } from '../render/session';
 import { PLACEHOLDER_TAG_AT, SLOT_IDS, neededSlotIds, showPlaceholderTag, standIns, trackSlotId } from '../render/slotStatus';
-import { beatBegan, keyDown, keyState, keyUp, type KeyState } from '../render/keys';
+import { beatBegan, heldKeys, keyDown, keyState, keyUp, type KeyState } from '../render/keys';
 import { PAUSE_BOX, PAUSE_ITEMS, PAUSE_LAYOUT, closedPause, cursorFrame, moveFocus, openPause, type PauseState } from '../render/pause';
 import { PHOTO_AREA, PHOTO_CROP, PHOTO_PANEL, PHOTO_SCALE } from '../render/photo';
 import { phaseOf, skip, startClock, tick, type Clock } from '../render/timeline';
@@ -14,17 +15,23 @@ import { railTiles, type PoleKind } from '../render/view';
 import { runRace } from '../sim/runRace';
 import type { RaceResult } from '../sim/result';
 import { Art, type ArtInfo } from './art';
+import type { CardData } from './CardScene';
 import type { ResultData } from './ResultScene';
 
 // The race-day sequence (spec 4.3): the gate, the race, the wire hold, the photo when the
 // result flags one, and the winner beat, played from the sim's replay, with the HUD, 4x,
-// skips and the pause box. When the beat ends the result screen opens by itself. Every
+// skips and the pause box. When the beat ends the result screen opens by itself. The race
+// runs the ticket Orders wrote: your horse, its orders and the seed already spent. Every
 // position, word and color comes from src/render/raceFrame.ts and the pure modules beside
 // it; this file keeps the clock and the keys and places sprites and text where they say.
 
 export interface RaceData {
-  game: GameData; rd: RaceDayData; art: ArtInfo; session: Session;
-  /** Keys still down from the race before, ignored until released (IN2). */
+  game: GameData; rd: RaceDayData; art: ArtInfo;
+  /** Already on the next race: Go to the post spent this race's seed (LP1). */
+  session: Session;
+  /** This race: its number, seed, your horse and its orders. */
+  ticket: RaceTicket;
+  /** Keys still down from the screen before, ignored until released (IN2). */
   held?: string[];
 }
 
@@ -69,6 +76,7 @@ export class RaceScene extends Phaser.Scene {
   private setup!: RaceSetup;
   private me!: PlayerView;
   private session!: Session;
+  private ticket!: RaceTicket;
   private clock: Clock = startClock();
   private keys: KeyState = keyState();
   private pause: PauseState = closedPause();
@@ -104,6 +112,7 @@ export class RaceScene extends Phaser.Scene {
   create(data: RaceData): void {
     this.data0 = data;
     this.session = data.session;
+    this.ticket = data.ticket;
     this.clock = startClock();
     this.keys = keyState(data.held ?? []);
     this.pause = closedPause();
@@ -121,10 +130,11 @@ export class RaceScene extends Phaser.Scene {
     this.rails = { far: [], near: [] };
     this.art = new Art(this, data.art);
 
-    const seed = seedFor(this.session.firstSeed, this.session.raceNumber);
+    const seed = this.ticket.seed;
     let result: RaceResult;
     try {
-      result = runRace(data.game, seed);
+      // A copy of the card with your orders, validated again; the loaded data is never changed (OR2).
+      result = runRace(raceInput(data.game, this.ticket.post, this.ticket.orders), seed);
     } catch (err) {
       console.error(`The race could not be run (seed ${seed}).`, err);
       this.scene.start('error', { lines: simErrorLines(seed, err), art: data.art });
@@ -133,7 +143,7 @@ export class RaceScene extends Phaser.Scene {
     // The loader has already checked at boot that every needed slot, this one included, is in slots.json.
     this.trackSlot = trackSlotId(result.inputs.race.surface, result.inputs.race.going);
     const gallop = this.art.slot(SLOT.body.gallop);
-    this.setup = makeRaceSetup(result, data.rd.raceDay, this.session.raceNumber, {
+    this.setup = makeRaceSetup(result, data.rd.raceDay, this.ticket.raceNumber, {
       gallopFrames: gallop.frames ?? 1,
       noseX: gallop.noseX ?? (gallop.frameWidth ?? 32) - 1,
       standTileWidth: this.art.slot(SLOT_IDS.grandstand).frameWidth ?? 32,
@@ -146,7 +156,7 @@ export class RaceScene extends Phaser.Scene {
       flagAt: this.art.slot(SLOT_IDS.flag).attachAt ?? [0, 0],
       flagWidth: this.art.slot(SLOT_IDS.flag).frameWidth ?? 8,
     });
-    this.me = playerView(this.setup, this.session.pickPost);
+    this.me = playerView(this.setup, this.ticket.post);
 
     this.buildWorld();
     this.buildHorses(result);
@@ -185,7 +195,7 @@ export class RaceScene extends Phaser.Scene {
     this.leaving = true;
     const data: ResultData = {
       game: this.data0.game, rd: this.data0.rd, art: this.data0.art, session: this.session,
-      result: this.setup.result, playerId: this.me.id, held: [...this.keys.down],
+      result: this.setup.result, playerId: this.me.id, held: heldKeys(this.keys),
     };
     this.scene.start('result', data);
   }
@@ -279,7 +289,7 @@ export class RaceScene extends Phaser.Scene {
     const used = neededSlotIds(this.setup.result.inputs.race);
     const drawn = standIns(this.data0.art.slots, this.data0.art.states, used);
     tag.setVisible(showPlaceholderTag(drawn));
-    if (drawn.length > 0 && this.session.raceNumber === 0) {
+    if (drawn.length > 0 && this.ticket.raceNumber === 0) {
       console.warn(`Placeholder art on the race screen (${drawn.length} slots):\n${drawn.map((d) => `  ${d.id}: ${d.reason}`).join('\n')}`);
     }
 
@@ -353,10 +363,13 @@ export class RaceScene extends Phaser.Scene {
     this.drawPause();
   }
 
-  private nextRace(): void {
+  /** Back to card from the pause box: the race is abandoned and its seed stays spent (LP1). */
+  private backToCard(): void {
     if (this.leaving) return;
     this.leaving = true;
-    this.scene.restart({ ...this.data0, session: nextRace(this.session), held: [...this.keys.down] });
+    const { game, rd, art } = this.data0;
+    const data: CardData = { game, rd, art, session: this.session, held: heldKeys(this.keys) };
+    this.scene.start('card', data);
   }
 
   private bindKeys(): void {
@@ -389,23 +402,15 @@ export class RaceScene extends Phaser.Scene {
       else if (code === 'ArrowUp') this.setPause(moveFocus(this.pause, -1));
       else if (code === 'ArrowDown') this.setPause(moveFocus(this.pause, 1));
       else if (enter && PAUSE_ITEMS[this.pause.focus] === 'resume') this.setPause(closedPause());
-      // No card screen yet: Back to card abandons this race and its seed is spent.
-      else if (enter) this.nextRace();
+      // Back to card abandons this race; its seed was spent at Go to the post.
+      else if (enter) this.backToCard();
       return;
     }
     if (code === 'KeyP' || code === 'Escape') {
       this.setPause(openPause(this.uiSeconds));
       return;
     }
-    const phase = phaseOf(this.clock);
-    const digit = /^(Digit|Numpad)([1-9])$/.exec(code);
-    if (digit && phase === 'gate') {
-      const post = Number(digit[2]);
-      if (this.setup.result.inputs.card.horses.some((h) => h.post === post)) {
-        this.session = { ...this.session, pickPost: post };
-        this.me = playerView(this.setup, post);
-      }
-    } else if (enter) {
+    if (enter) {
       const quarter = this.setup.result.calls.find((c) => c.furlongsToGo === 2)?.time ?? this.setup.timeline.winnerTime;
       this.setClock(skip(this.clock, this.setup.timeline, quarter));
       if (!this.leaving) this.draw(raceFrame(this.setup, this.me, this.clock));

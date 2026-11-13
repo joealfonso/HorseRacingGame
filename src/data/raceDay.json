@@ -25,7 +25,7 @@
     "maxFrameMs": { "value": 50, "status": "starting guess", "note": "A stalled tab does not jump the race." }
   },
   "beats": {
-    "pickSeconds": { "value": 4, "status": "starting guess", "note": "P0 only: playback seconds the field stands in the gate while keys 1 to 8 pick a horse, before the gate beat. Goes away with the card screen in step 5." },
+    "pickSeconds": { "value": 0, "status": "starting guess", "note": "Was the P0 pick window (4 s) while keys 1 to 8 picked a horse at the gate. The card screen picks from step 5, so it is 0 and the gate beat is the spec's length. Kept so the window can come back without a schema change." },
     "gateStillSeconds": { "value": 1, "status": "starting guess", "note": "The field stands still, then the doors swap open and the race clock starts." },
     "wireHoldSeconds": { "value": 1, "status": "starting guess" },
     "photoSeconds": { "value": 4.5, "status": "starting guess", "note": "Spec 4.3 and 4.4: the whole photo, 1.5 s to look and 3.0 s with the caption. Only when the result flags a photo." },
@@ -42,6 +42,25 @@
   "photo": {
     "stepPx": { "value": 8, "status": "starting guess", "note": "Spec 4.4: the panel steps in from the top by whole 8 px moves, 25 of them." },
     "stepsPerSecond": { "value": 60, "status": "starting guess", "note": "One move a frame at 60 Hz, timed by the wall clock so a 120 Hz screen steps at the same speed." }
+  },
+  "menus": {
+    "repeatDelayMs": { "value": 400, "status": "starting guess", "note": "Spec 5: a held arrow on the card or Orders repeats after this long." },
+    "repeatEveryMs": { "value": 120, "status": "starting guess", "note": "Spec 5: and then this often." }
+  },
+  "paddock": {
+    "rows": {
+      "value": [
+        { "slot": "art.paddock.rail", "flipOddTiles": true },
+        { "slot": "art.paddock.ground", "flipOddTiles": false },
+        { "slot": "art.paddock.ground", "flipOddTiles": false }
+      ],
+      "status": "starting guess",
+      "note": "The Orders screen's paddock strip, y144-191, top row first: y144-159 rail, y160-175 ground, y176-191 ground, each tile repeated 16 times across, so the planks (y153-154, y157-158) sit above the trainer and your horse. The rail flips every odd tile (flipX when floor(x / 16) is odd), as the race rails do, so its 2 px posts come every 32 px. From the artist and art-director, 2026-11-13."
+    },
+    "trainerAt": { "value": [24, 164], "status": "starting guess", "note": "Spec 4.2: the trainer's 16x24 frame's top-left; its boots land on y187." },
+    "horseAt": { "value": [48, 164], "status": "starting guess", "note": "Spec 4.2: your horse's 32x24 stand frame's top-left." },
+    "cupDownSeconds": { "value": 1.5, "status": "starting guess", "note": "DESIGN Charm: the trainer's cup is down 1.5 s, then up 0.5 s." },
+    "cupUpSeconds": { "value": 0.5, "status": "starting guess" }
   },
   "ambient": {
     "cap": { "value": 3, "status": "starting guess", "note": "DESIGN Charm cap: at most 3 ambient things moving while the field runs." },
@@ -90,6 +109,57 @@
     "nextRace": "Enter: next race",
     "fastTag": "4x",
     "pause": { "title": "Paused", "resume": "Resume", "back": "Back to card" },
+    "card": {
+      "styles": { "frontRunner": "Front", "stalker": "Stalker", "closer": "Closer" },
+      "furlongs": "{n} furlongs",
+      "mile": "1 mile",
+      "miles": "1 {fraction} miles",
+      "conditions": "{distance}, {surface}, {going}",
+      "surfaces": { "dirt": "dirt", "turf": "turf", "synthetic": "synthetic" },
+      "goings": { "fast": "fast", "good": "good", "muddy": "muddy", "sloppy": "sloppy", "firm": "firm", "yielding": "yielding" },
+      "bias": {
+        "fair": "Track playing fair",
+        "lane": { "inside": "Inside paths are good", "outside": "Outside paths are good" },
+        "style": { "speed": "Speed is holding", "closers": "Closers are rolling" },
+        "both": "{lane}, {style}",
+        "laneShort": { "inside": "Inside good", "outside": "Outside good" },
+        "styleShort": { "speed": "speed holding", "closers": "closers rolling" }
+      },
+      "jockey": "Jockey {jockey}",
+      "stats": "Speed {speed}  Stamina {stamina}  Kick {kick}",
+      "hint": "Enter: pick this horse",
+      "lastPick": "Your pick last race"
+    },
+    "paddock": {
+      "styles": { "frontRunner": "Front-runner", "stalker": "Stalker", "closer": "Closer" },
+      "postLine": "{style}, post {post}",
+      "title": "Orders",
+      "labels": { "early": "Early", "move": "Move", "path": "Path" },
+      "values": {
+        "early": { "default": "Rider's call", "rateEarly": "Rate early" },
+        "move": { "default": "Rider's call", "moveAtThreeEighths": "Move at the 3/8", "saveForStretch": "Save for stretch" },
+        "path": { "default": "Rider's call", "stayInside": "Stay inside" }
+      },
+      "go": "Go to the post",
+      "back": "Back to card",
+      "trainer": {
+        "early": {
+          "default": "Let this one break and find its own rhythm.",
+          "rateEarly": "Take a hold early. Let the speed horses argue up front."
+        },
+        "move": {
+          "default": "Ask when it feels right. You know this one.",
+          "moveAtThreeEighths": "Go at the 3/8 pole. It's a long run home, so mean it.",
+          "saveForStretch": "Sit chilly till the stretch. Then ask for everything."
+        },
+        "path": {
+          "default": "Take whatever path opens. Going around is fine.",
+          "stayInside": "Hug the rail. Save the ground and hope it opens."
+        },
+        "go": "Good luck. I'll be at the rail with the coffee.",
+        "back": "Want a different horse? No hard feelings."
+      }
+    },
     "beforeFirstCall": "Post {post}",
     "leads": "Leads by {margin}",
     "behind": "{place}, {margin} back",

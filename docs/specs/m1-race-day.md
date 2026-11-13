@@ -128,41 +128,82 @@ String budgets used below, checked against the longest real data:
 - Jockey: 22 max (needs a cap). "Imogen Pruitt" is 13.
 - Any template with a horse name: rendered with an 18-character name, it must fit its field.
 
-### 4.1 Card
+### 4.1 Card: the program page
 
-**Job:** show who is running and how the race will be run, and let the player pick a horse. **Question it answers:** "Which one do I want today?"
+Rewritten 2026-11-13 on Joseph's direction: "that's too much detail to pick a horse. simplify it to picking a horse, it having attributes and stats compared to others. It should all be like a real horse racing book". The version before this one had a header box, a list of names and styles, and a detail box that showed the stats for one horse at a time. To compare two horses you had to remember numbers, which was the problem.
 
-**Reads first:** the list of eight names with their styles, because the pick is the decision. The conditions header is read once and rarely again, so it sits above but does not compete: plain Bone text, no color. The detail panel is read for the focused horse only.
+**Job:** let the player pick a horse by comparing all eight at once. **Question it answers:** "Which one do I want today, next to the others?"
+
+**What it looks like:** one printed page from a race program. Parchment paper, Ink type, no Navy boxes. A conditions block across the top, then one entry per horse in program order, then a comment line for the horse under the cursor. Nothing has to be read before you can compare.
+
+**Reads first:** the column of names and their styles, then down each stat column. The bars let the eye compare lengths straight down a column, and the numbers give the exact value once the eye has stopped. The conditions block is read once. The footer is read only for the horse you are on.
 
 ```
-y   0 +------------------------------------------+  header box, 4 tiles
-    8 | Old Fence Row Stakes                      |  race.name
-   18 | Churchill Downs                           |  race.track
-   28 | 1 1/4 miles, dirt, fast                   |  distance words, surface, going
-   38 | Track playing fair                        |  bias line
-   63 +------------------------------------------+
-   64 +------------------------------------------+  list box, 7 tiles
-   72 | > [1] Gravy Subpoena          Stalker     |  rows at y72 + 12*i
-   84 |   [2] Hold My Oats            Front       |
-  ... |   ...                                     |
-  156 |   [8] Mint Julep Lawsuit      Stalker     |
-  175 +------------------------------------------+
-  176 +------------------------------------------+  detail box, 4 tiles
-  184 | Jockey Imogen Pruitt                      |  lines at y184 + 9*i
-  193 | Speed 68  Stamina 82  Kick 64             |
-  202 | <blurb, one line from data>               |
-  211 | Today: 1st 4th 2nd                        |  step 8, blank before
-  220 | Enter: pick this horse                    |
-  239 +------------------------------------------+
+x 8                                                        247
+y   4  Old Fence Row Stakes                                     race.name, main font
+   14  Churchill Downs                                          race.track
+   24  1 1/4 miles, dirt, fast                                  distance, surface, going
+   34  Track playing fair                                       bias line
+   44  ------------------------------------------------------   1 px Ink rule, x8-247
+   47          Speed          Stamina         Kick              column heads, main font
+   56  ------------------------------------------------------   1 px Ink rule
+   58  > [ 1] Gravy Subpoena                    Stalker         entry: line 1
+   67        76 ========....   70 ======.....   66 =====.....   entry: line 2
+   77    [ 2] Hold My Oats                      Front           next entry at y58 + 19*i
+  ...
+  191    [ 8] Mint Julep Lawsuit                Stalker
+  200        68 ====         82 ======        64 =====
+  210  ------------------------------------------------------   1 px Ink rule
+  214  Imogen Pruitt up                                         footer line 1: jockey
+  226  Sweet, cold, and litigious.                              footer line 2: blurb
 ```
 
-Row columns: cursor x8-15, saddlecloth box x18-27 (10x10, number in the small font), name x32-175, style x184-239. Style words: "Front", "Stalker", "Closer" (7 max, 56 px).
+**Entry (one per horse, 17 px tall, 19 px pitch, top at y = 58 + 19 * i):**
+
+| element | x | y in the entry | font or art | notes |
+|---|---|---|---|---|
+| cursor | 8-15 | +5 to +12 | horseshoe 8x8 | focused entry only |
+| saddlecloth block | 20-35 | +0 to +16 | 16x17 block, number in the main font, centered | the program number, as printed programs show it |
+| name | 40-183 | +0 to +7 | main font | 18 characters fill it exactly |
+| style | 190-245 | +0 to +7 | main font | "Front", "Stalker", "Closer" |
+| speed number | 40-47 | +10 to +15 | small font, 2 digits | |
+| speed bar | 50-99 | +11 to +13 | Ink fill on a 50 px track | |
+| stamina number | 108-115 | +10 to +15 | small font | |
+| stamina bar | 118-167 | +11 to +13 | | |
+| kick number | 176-183 | +10 to +15 | small font | |
+| kick bar | 186-235 | +11 to +13 | | |
+| pick mark | 238-245 | +9 to +16 | 8x8 pencil tick | last race's pick only |
+
+Column heads at y47 (not y48, so the descender in "Speed" clears the rule at y56), main font, each starting at its stat cell: "Speed" x40-79, "Stamina" x108-163, "Kick" x176-207. The name and style columns have no head. A name and a style word explain themselves, and leaving the heads off keeps the stat heads lined up over their stat columns.
+
+**Footer:** footer line 1 is "{jockey} up", the program's way of naming the rider (a 22-character jockey plus " up" is 25 characters, x8-207). Footer line 2 is the blurb (28 characters, x8-231). Both describe the focused horse. Because M1 jockeys have no stats, the jockey moves from the entries to the footer. A jockey on every entry would push the stats onto a third line and the page would stop being comparable at a glance. That is the one part of a real program I left out.
+
+**How the stats compare (final):**
+- Each stat is a number and a bar, side by side, in a fixed column. Every speed bar starts at x50, every stamina bar at x118 and every kick bar at x186. Comparing horses means looking down one column at lengths that all start from the same edge.
+- Bar length is `floor((stat - statMin) * 50 / (statMax - statMin))` px, where statMin and statMax are from `tuning.statRange` in data (today 1 and 100). The card's own lowest and highest values are never used. So the bars show the real gap between horses, not a stretched one. On the shipped card, 58 is 28 px and 86 is 42 px.
+- Each bar sits on a 50 px track (a full-length guide line, the art-director's call). That way a short bar reads as "less of the whole", not just "shorter than its neighbor".
+- At this scale 2 stat points are about 1 px. Equal stats always draw equal bars and equal numbers. Stats 1 point apart may draw the same length; the number settles it. I accept that: the bar is for the glance, the number for the decision.
+- The number comes before the bar so the exact value sits where the eye starts the line. The small font is used because it is 8 px for two digits against 16 in the main font, and those 8 px are what let three bars fit at a useful length. At 3x the small font's digits are 12x18 screen pixels.
+- What is not drawn: no "best in field" mark, no color for high or low values, no sorting by a stat, no total or rating. Each entry is drawn from that horse and the stat range only, never from the other horses. That is the line between comparing figures, which is the point, and handing out a tip, which section 6 rules out.
+
+Rejected:
+- **Numbers alone in one row** (my first alternative in the old 4.1). Eight two-digit numbers in a column compare, but slowly, and the eye has to read each one.
+- **Bars alone.** Joseph asked for stats, and a bar without its number hides 1-point differences that a racing fan would want to see.
+- **Bars scaled to the card's range** (58 to 86 stretched to the full bar). It would make a 4-point gap look huge. That is a tip by exaggeration.
+- **A detail box for the focused horse.** It is the thing Joseph called too much detail.
+- **The stats in the main font on one line.** "76 70 66" in the main font plus a name and style is 32 characters, with no room for bars and none for the cursor.
+
+**Your horse, focus and pick:**
+- Focus: the horseshoe cursor at x8 on the focused entry, and the footer shows that horse's jockey and blurb.
+- Last race's pick: a Yellow highlighter band behind its entry (x18-247, the entry's 17 rows plus 1 above and 1 below), and the pencil tick at x238. Ink on Yellow reads, and Yellow is the player's color everywhere else. The tick is the second signal, a shape, so the band is never the only cue.
+- On Enter, the band moves to the new pick with a single 2-frame highlighter swipe (left half, then the whole entry), then the page cuts to Orders. That is the page's one moment of motion and it shows that the choice took.
+- The cursor bobs as everywhere (DESIGN Charm). The cursor art needs a variant that reads on Parchment, see the art-director list.
+
+**Art-director's rulings (2026-11-13), recorded in DESIGN.md under "Program pages" and binding here:** flat full-screen Parchment with no border or texture; the race name in Maroon, everything else Ink; no hairlines between entries; each bar is a solid 3 px Ink fill on a 1 px Ash track with a 1x3 Ash end stop; saddlecloth blocks on paper get a 1 px Ink border; the highlighter band has chisel-cut ends; the pick mark is an 8x8 Slate pencil tick; the horseshoe cursor is unchanged; no Yellow text on paper; and two staples sit in the left margin at x2-3 (y28-35 and y204-211 on the Card and the result, y28-35 and y128-135 on Orders). On Orders the paper ends with a 1 px Ink line at y143.
+
+**Charm on the page:** the blurb as a handicapper's comment, the highlighter band and tick as the marks a fan makes on a program, and "{jockey} up" in program voice. A "Scratched" stamp is the kind of touch a real program has, but M1 has no scratches, so it waits (Later). Nothing on the page animates except the cursor bob and the swipe.
 
 Order: by post, 1 at the top (a race program's order).
-
-The player's horse from the last race shows its name in Yellow, and its detail line 5 reads "Your pick last race" instead of the hint. Color is backed by the words.
-
-Stats are numbers in the detail panel, not a table on every row. Rejected: all 24 stats on the rows in the small font. The small font has no letters, so the columns could not be labeled, and 24 tiny numbers read as a spreadsheet.
 
 Bias line copy (from data):
 
@@ -177,29 +218,56 @@ Bias line copy (from data):
 
 Distance words: under 8 furlongs "{n} furlongs", 8 "1 mile", above 8 "1 {eighths reduced} miles" (9 "1 1/8 miles", 10 "1 1/4 miles", 12 "1 1/2 miles").
 
-Input: Up and Down move the cursor and wrap. Keys 1 to 8 jump to that post. Enter, Space or Z picks and opens Orders. Esc does nothing here (no title screen in M1). Initial focus: last race's pick, or post 1 on the first race.
+Input: Up and Down move the cursor and wrap. Keys 1 to 8 jump to that post. Enter, Space or Z picks and opens Orders. Esc does nothing here (no title screen in M1). Initial focus: last race's pick, or post 1 on the first race. Coming back from Orders, the focus is the horse you were just looking at, which may not be last race's pick.
+
+The header keeps the four lines it had (race name, track, conditions, bias line), now as Ink type on the page. The art-director may set the race name apart, for example in Maroon or with a rule under it. That is a header treatment, not a layout change.
+
+String fit, checked: race name and track name at most 30 characters (240 px, x8-247); "1 1/4 miles, dirt, fast" is 23; the longest bias line, "Outside paths are good", is 22; a name of 18 characters ends at x183, 6 px before the style word; "Stalker" ends at x245; "{jockey} up" ends at x207 at most; a 28-character blurb ends at x231.
 
 States:
 - Normal: as drawn.
-- First race of the session: no Yellow name, no form line, focus on post 1.
-- Fewer than 8 horses: rows end early, no gaps. More than 8: boot fails with "src/data/card.json: horses: the M1 race-day screens show at most 8 horses".
-- No blurb in data for a horse: line 3 is blank, no placeholder text.
-- Data error: the error screen (4.8), never a half-drawn card.
+- First race of the session: no highlighter band and no tick anywhere. Focus on post 1. The footer shows post 1's jockey and blurb.
+- Last race's pick: band and tick on its entry. Focus starts on it.
+- Back from Orders without picking a different horse: focus on the horse you were looking at. The band stays on last race's pick until you press Enter on a horse.
+- Fewer than 8 horses: entries end early with no gaps. The rule at y210 and the footer stay in place, so the page does not jump between cards.
+- More than 8: boot fails with "src/data/card.json: horses: the M1 race-day screens show at most 8 horses".
+- No blurb for the focused horse: footer line 2 is blank, no placeholder text. The jockey line still shows.
+- Equal stats between two horses: identical numbers and bars, nothing else marks it.
+- Data error: the error screen (4.8), never a half-drawn page.
+
+**For the art-director (the page):**
+1. The paper: a full-screen Parchment page, or a Parchment sheet with an edge (a 1 px Ink border, a torn or deckled top, a shadow line in Ink) on an Ink or Navy desk. I need 8 px of margin at the left and right and 4 px at the top and bottom for the layout above.
+2. Rules: 1 px Ink full-width rules at y44, y56 and y210 as drawn. Do you also want hairline rules between entries, or does the 2 px gap with the saddlecloth blocks carry the rhythm? My lean is no rules between entries, because eight extra lines start to look like a spreadsheet.
+3. Header treatment: how the race name stands apart (color from the palette, a rule, a size you can make with the 8x8 font).
+4. Bars: Ink fill 3 px tall on a 50 px track. Is the track a dotted Ash line, a solid Mist line or a hollow Ink outline? It must read in grayscale.
+5. Marks: the Yellow highlighter band (exact extent and whether it has a ragged pen edge), the 8x8 pencil tick (`art.ui.mark.pick`, Ink or Red pencil), and the 2-frame swipe.
+6. The horseshoe cursor on Parchment: Yellow on Parchment is weak. A variant with an Ink outline, or Ink fill on paper?
+7. Saddlecloth blocks at 16x17 with the number in the main font. Do the number colors per cloth still read at that size, and is #8 Pink kept apart from the placeholder checker?
+8. Navy boxes: none on the Card. On Orders the dialog box stays Navy, because a person is speaking (4.2). Confirm that Navy means speech and the world, and paper means print.
+
+**For Joseph (at most three questions):**
+1. **Does Orders stay a separate step?** *Recommend: yes.* The Card's job is now only the pick. Folding the three orders onto the same page would bring back the detail you just cut, and the paddock is where the trainer, and the charm, live. Orders gets your horse's program entry at the top, so it reads as the next page of the same book (4.2).
+2. **Jockey on the footer, not on every entry.** M1 jockeys have no stats, so a jockey per entry costs a line per horse and compares nothing. *Recommend: footer only in M1. Jockeys move onto every entry when M2 gives them stats worth comparing.*
+3. **"All", meaning which screens are paper.** *Recommend: paper for what a fan would read in print, which is the program (Card), the riding instructions (the top two boxes of Orders) and the chart (Result). The race, the photo, the winner's circle and the paddock picture stay the world, because they are things you watch, not read.*
 
 ### 4.2 Orders (the paddock)
 
 **Job:** set the three orders for your horse. **Question it answers:** "How should my rider ride it?"
 
-**Reads first:** your horse's name in Yellow, then the three orders. The trainer's line explains the focused order. The paddock picture is the mood, so it gets space but no text.
+**Reads first:** your horse's entry under the Yellow highlighter band, then the three orders. The trainer's line explains the focused order. The paddock picture is the mood, so it gets space but no text.
+
+Restyled 2026-11-13 (Joseph's "like a real horse racing book"): the horse box and the orders box are now paper, as the next page of the program. The paddock strip and the dialog box are unchanged, because they are the world and a person speaking. The layout, focus order and copy are unchanged.
 
 ```
-y   0 +------------------------------------------+  horse box, 3.5 tiles
-    8 | [8] Mint Julep Lawsuit                    |  Yellow
-   18 | Stalker, post 8                           |  "Front-runner" spelled out here
-   28 | Speed 68  Stamina 82  Kick 64             |
-   38 | Jockey Imogen Pruitt                      |
-   55 +------------------------------------------+
-   56 +------------------------------------------+  orders box
+y   0  paper strip y0-55, Parchment, Ink type, no frame
+    8  [ 8] Mint Julep Lawsuit                Stalker   the Card's entry for your horse,
+   17       68 ====          82 ======        64 =====  same columns and bars, top at y8,
+                                                        under a Yellow highlighter band
+   30  Imogen Pruitt up                                  main font, x8
+   42  Sweet, cold, and litigious.                       blurb, x8
+   55  ------------------------------------------------  1 px Ink rule
+   56 +------------------------------------------+  orders box, now paper: Parchment
+                                                    fill, Ink type, same positions
    64 | Orders                                    |
    78 | > Early < Rate early       >              |  < > only on the focused slot
    90 |   Move    Rider's call                    |
@@ -207,9 +275,11 @@ y   0 +------------------------------------------+  horse box, 3.5 tiles
   116 |   Go to the post                          |
   127 |   Back to card                            |
   143 +------------------------------------------+
-  144   paddock strip, no frame, y144-191:
-        Grass ground, Bone paddock rail, trainer 16x24 at x24 y164,
-        your horse with jockey up, 32x24 stand frame, at x48 y164
+  144   paddock strip, no frame, y144-191, three 16 px tile rows:
+        fence row on top at y144-159 (a darker far band, the planks
+        above both figures' heads), lawn at y160-175 and y176-191;
+        trainer 16x24 at x24 y164, your horse with jockey up,
+        32x24 stand frame, at x48 y164
   192 +------------------------------------------+  dialog box, 3 lines
   200 | Sit chilly till the stretch.              |  y200, y210, y220
   210 | Then ask for everything.                  |  28 characters a line
@@ -217,6 +287,8 @@ y   0 +------------------------------------------+  horse box, 3.5 tiles
 ```
 
 Slot row: cursor x8-15, label x20-59, "<" x72, value x84-211 (16 characters), ">" x216.
+
+The top strip draws your horse with the same entry component as the Card, at the same x positions, so the stats you picked on are the stats you give orders on. "Stalker, post 8" goes away: the style is in the entry and the post is the saddlecloth number. The orders box keeps its edge as the art-director decides (a ruled slip, or the frame tiles recolored for paper, see 4.1 art-director item 8). The dialog box stays Navy.
 
 Order values, from `INSTRUCTIONS` in `src/data/schema.ts`, never a hardcoded list. Labels and trainer lines are copy in data:
 
@@ -394,7 +466,7 @@ Advances after 2.5 s or on Enter. Garland and other traditions are off in M1: th
 
 **Job:** say what happened, to everyone and to yours. **Question:** "How did mine run, and was it the orders or the luck?"
 
-**Reads first:** the order of finish, because it settles the race. Then your trip, in Yellow, which is where the caring lives. Times last, for those who read charts.
+**Reads first:** the order of finish, because it settles the race. Then your trip, under the highlighter band, which is where the caring lives. Times last, for those who read charts.
 
 ```
 y   0 +------------------------------------------+  order box, 6.5 tiles
@@ -417,6 +489,12 @@ y   0 +------------------------------------------+  order box, 6.5 tiles
   220 | > Next race                               |  cursor x8-15, label from x20
   239 +------------------------------------------+
 ```
+
+Restyled 2026-11-13 (Joseph's "like a real horse racing book"): the result is the chart page of the same program. The content, trip lines and every x and y position above stay as built. What changes:
+- The three Navy boxes become one Parchment page with Ink type. Where each box edge was, a 1 px Ink rule runs across at y103 and y175. The 8 px where the frame tiles were stays as margin.
+- Your horse's order row and the first trip line (its name) go from Yellow text to Ink text on the Yellow highlighter band, the same mark as the Card. The arrow marker at x8 stays, in Ink, as the second signal.
+- Saddlecloth boxes, margin words, the small-font splits and the seed are drawn in Ink on paper. The horseshoe cursor on "Next race" uses the paper variant from 4.1.
+- Nothing is added or removed. A race name header would make it more like a printed chart, but the rows fill the page, and it stays rejected as below.
 
 Order rows: your marker x8-15, place x16-39, saddlecloth box x42-51, name x56-199, margin to the horse ahead x204-247 (5 characters; labels from the sim, the longest is "9 3/4").
 
@@ -644,7 +722,17 @@ Each step is one reviewable change. Joseph can watch after every step.
 - **RS6 [T]** The record string for finishes [1, 3, 2, 5] is "4-1-1-1". (step 8)
 
 ### Card, orders, loop
-- **CD1 [T]** The card lists horses by post with name and style, and the detail lines for the focused horse; every string fits its field for the shipped data.
+Changed 2026-11-13 for the program page (4.1): CD1 is replaced. CD3 to CD8 are new. CD2 and the key and focus behavior in 4.1 are unchanged.
+
+- **CD1 [T]** The Card lists every horse by post, one entry each, top at y = 58 + 19 * i. Each entry has the saddlecloth block, name, style word and all three stats (number and bar) at the x ranges in the 4.1 entry table, all at once, with no detail box.
+- **CD3 [T]** Bar length is `floor((stat - statMin) * 50 / (statMax - statMin))` px with statMin and statMax read from `tuning.statRange`. For the shipped range 1 to 100: 58 is 28 px, 86 is 42 px, 100 is 50 px, 1 is 0 px. Changing the card's stats never changes another horse's bar.
+- **CD4 [T]** An entry is drawn from that horse and the stat range only. Swapping any other horse's stats leaves the entry's pixels unchanged. No entry gets a color, mark or order that depends on how it compares with the others.
+- **CD5 [T]** Every string fits its field with the longest allowed data: an 18-character name in x40-183, the style word in x190-245, a 30-character race or track name in x8-247, "{jockey} up" with a 22-character jockey in x8-207, and a 28-character blurb in x8-231.
+- **CD6 [T]** First race: no highlighter band or tick, focus on post 1. Later races: band and tick on last race's pick, focus on it. Pressing Enter moves the band to the focused horse before the page leaves.
+- **CD7 [T]** The footer shows the focused horse's jockey and blurb. With no blurb, line 2 is empty and line 1 still shows. With fewer than 8 horses, the rule at y210 and the footer stay at the same y.
+- **CD8 [E]** At 3x, Joseph can say which horse has the most stamina, and which two are closest in speed, by looking down the columns without moving the cursor. The page reads as a printed program, not a menu, in color and in grayscale.
+- **OR4 [T]** The top of Orders draws the picked horse with the same entry component and x positions as the Card, under the highlighter band, followed by "{jockey} up" and the blurb.
+- **RS7 [E]** The result is drawn on Parchment with Ink type and rules at y103 and y175. Every row and line is at its built position, and your horse's row and name sit on the highlighter band with the Ink marker.
 - **CD2 [T]** A card with more than 8 horses fails at boot with the file and field in the message.
 - **OR1 [T]** The order values offered are exactly `INSTRUCTIONS` from `src/data/schema.ts`.
 - **OR2 [T]** The race input changes only the picked horse's instructions, does not mutate the loaded card, passes `validateData`, and gives the same result bytes as a hand-written card with the same content.
@@ -729,6 +817,7 @@ From the data, not the sim (all ask-first, see open question 2):
 - Needs from the sim: item 1 is checked by the engineer before step 3. Item 2 (a per-horse ask time) is not added in M1.
 - The art-director's answers to section 12 are recorded in DESIGN.md and win over the assumptions in this spec.
 - After the first code review (2026-11-12): RV2b (gallop out) and H3b (finish on the position line) were added, P0-3 was rewritten around a separate release check, and the gate beat gained a pick window in data (`beats.pickSeconds`, 4 s) because one second is too short to pick a horse.
+- 2026-11-13, Joseph's direction, verbatim: "that's too much detail to pick a horse. simplify it to picking a horse, it having attributes and stats compared to others. It should all be like a real horse racing book". The Card is redone as a program page with all eight horses' style and stats compared at once (4.1). The top of Orders and the Result are restyled as pages of the same program, with layout and content unchanged (4.2, 4.6). CD1 was replaced and CD3 to CD8, OR4 and RS7 were added. The designer's three questions for Joseph are at the end of 4.1 and are open.
 
 ## 14. Later
 

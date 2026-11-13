@@ -9,22 +9,32 @@ import { rd } from './testkit';
 // what can be tested headless is the pure state they run on, plus a read of the scene.
 
 describe('IN2: keys held over from before are ignored until released', () => {
+  // Updated on purpose (key guard fix, DECISIONS.md): the old rule ignored every event for a
+  // handed-over key. A quick tap's keyup goes to the old screen, so the new screen cannot tell
+  // a tap from a hold by the hand-off alone, and the next fresh press was swallowed. Now a key
+  // that is genuinely held shows up as flagged repeats, and those never act. What this still
+  // protects (IN2): a key held when a screen opens does nothing until released.
   it('IN2: a key down when the screen opens does nothing, even as it repeats', () => {
     let s = keyState(['Enter']);
-    for (const repeat of [false, true, true]) {
-      const r = keyDown(s, 'Enter', repeat);
+    for (let i = 0; i < 5; i++) {
+      const r = keyDown(s, 'Enter', true); // still held: the browser sends flagged repeats
       expect(r.act).toBe(false);
       s = r.state;
     }
+    expect([...s.stale]).toEqual(['Enter']); // and it is still held over
   });
 
+  // Updated on purpose (same fix): Space is still held over, and its flagged repeats are still
+  // ignored, but an unflagged keydown for it now acts, because a browser only sends one after
+  // the key came up (a quick tap whose keyup went to the old screen).
   it('IN2: once it is released, the next press acts', () => {
     let s = keyState(['Enter', 'Space']);
     s = keyUp(s, 'Enter');
     const r = keyDown(s, 'Enter', false);
     expect(r.act).toBe(true);
-    // Space is still held over and still ignored.
-    expect(keyDown(r.state, 'Space', false).act).toBe(false);
+    // Space is still held over: its repeats are still ignored.
+    expect(keyDown(r.state, 'Space', true).act).toBe(false);
+    expect(keyDown(r.state, 'Space', false).act).toBe(true); // a fresh press proves it came up
   });
 
   it('IN2: keys that were not held act at once', () => {
@@ -78,11 +88,18 @@ describe('IN2: keys held over from before are ignored until released', () => {
     expect(keyDown(s, 'Enter', false).act).toBe(true);
   });
 
+  // Updated on purpose (same fix): handed-over keys now live in `stale`, and `down` holds only
+  // what this screen saw go down. The no-mutation property is unchanged.
   it('IN2: the state is not mutated by a key event', () => {
     const s = keyState(['Space']);
+    expect([...s.down]).toEqual([]);
+    expect([...s.stale]).toEqual(['Space']);
     keyDown(s, 'Enter', false);
+    keyDown(s, 'Space', false);
+    keyDown(s, 'Space', true);
     keyUp(s, 'Space');
-    expect([...s.down]).toEqual(['Space']);
+    beatBegan(s);
+    expect([...s.down]).toEqual([]);
     expect([...s.stale]).toEqual(['Space']);
   });
 
@@ -176,13 +193,20 @@ describe('PA1: the pause box', () => {
     expect(tickAt).toBeGreaterThan(returnAt);
   });
 
-  it('PA1: Esc or Enter on Resume resumes; Enter on Back to card spends the seed and goes on to the next race', () => {
+  // Updated on purpose with step 5: "Back to card" used to restart the race scene on the next
+  // seed because there was no card. It now goes to the Card with the abandoned race's seed
+  // spent, which is tested on the session (LP1 in sessionLoop.test.ts) and here on the scene.
+  it('PA1: Esc or Enter on Resume resumes; Enter on Back to card goes to the card with the seed already spent', () => {
     const src = readFileSync(new URL('../scenes/RaceScene.ts', import.meta.url), 'utf8');
     const act = src.slice(src.indexOf('private act('), src.indexOf('private setText'));
     const paused = act.slice(act.indexOf('if (this.pause.open)'), act.indexOf("if (code === 'KeyP'"));
     expect(paused).toMatch(/Escape[\s\S]*closedPause/);
     expect(paused).toMatch(/PAUSE_ITEMS\[this\.pause\.focus\] === 'resume'[\s\S]*closedPause/);
-    expect(paused).toMatch(/else if \(enter\) this\.nextRace\(\)/);
+    expect(paused).toMatch(/else if \(enter\) this\.backToCard\(\)/);
+    const back = src.slice(src.indexOf('private backToCard'), src.indexOf('private bindKeys'));
+    expect(back).toContain("this.scene.start('card'");
+    expect(back).toContain('session: this.session'); // the session this race was sent to the post with: already on the next race
+    expect(back).not.toMatch(/nextRace\(|raceNumber \+ 1/); // it does not spend another seed
     expect(act).toMatch(/KeyP[\s\S]*openPause/);
   });
 });
