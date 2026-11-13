@@ -49,6 +49,16 @@ const P0_SLOTS: [string, number, number, number][] = [
   ['art.track.dirt.fast', 16, 16, 1],
   ['art.race.bg.far.hills', 128, 24, 1],
   ['art.race.bg.mid.grandstand', 32, 32, 1],
+  // Step 2 (spec section 7): the walk and winner layers, the crowd, the infield and the flag.
+  ['art.race.horse.body.walk', 32, 24, 2],
+  ['art.race.horse.tack.walk', 32, 24, 2],
+  ['art.race.jockey.jacket.walk', 32, 24, 2],
+  ['art.race.jockey.cap.walk', 32, 24, 2],
+  ['art.race.jockey.jacket.winner', 32, 24, 2],
+  ['art.race.jockey.cap.winner', 32, 24, 2],
+  ['art.race.bg.mid.crowd', 16, 16, 2],
+  ['art.race.bg.mid.infield', 32, 32, 1],
+  ['art.race.ambient.flag', 8, 8, 2],
 ];
 const P0_SFX = ['sfx.race.gate_open', 'sfx.race.call_to_post', 'sfx.photo.shutter'];
 

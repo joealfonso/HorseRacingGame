@@ -1,51 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { RaceResult } from '../sim/result';
 import { makeRaceSetup, playerView, raceFrame } from './raceFrame';
-import { art, playbackSecond, race, rd, seeds } from './testkit';
+import { art, playbackSecond, race, rd, scrambleAfter, seeds } from './testkit';
 
 // AN3, the no-spoilers rule, on everything the screen shows: at race time t nothing
 // returned for the screen may depend on a replay sample later than the one after t.
 // Method: build a second result identical up to that sample and different after it
 // (replay, calls, finish, events, pace, photo flag), and require identical frames.
-
-type Mutable = {
-  -readonly [K in keyof RaceResult]: RaceResult[K];
-};
-
-function scrambleAfter(r: RaceResult, t: number): RaceResult {
-  const c = structuredClone(r) as Mutable;
-  const { step } = r.replay;
-  const k = Math.floor(t / step) + 1; // the sample after t
-  const cut = k * step;
-  const ids = r.replay.horses.map((h) => h.id);
-  const other = (id: string) => ids[(ids.indexOf(id) + 3) % ids.length];
-
-  for (const h of c.replay.horses) {
-    for (let i = k + 1; i < h.distance.length; i++) {
-      h.distance[i] += 900 * (i - k) + ((i * 7919) % 400);
-      h.lane[i] = (h.lane[i] + 350 + i) % 800;
-    }
-  }
-  c.replay.events = c.replay.events.map((e) =>
-    e.time > cut ? { ...e, type: e.type === 'blocked' ? 'steadied' : 'blocked', horse: other(e.horse), otherHorse: null, time: e.time } : e,
-  );
-  c.calls = c.calls.map((call) =>
-    call.time > cut
-      ? { ...call, horses: [...call.horses].reverse().map((h, i) => ({ id: h.id, position: i + 1, lengthsBehind: h.lengthsBehind + 777 })) }
-      : call,
-  );
-  // Rotate the ids among the entries that finish after the cut, so the finish stays a permutation.
-  const later = c.finish.filter((f) => f.time > cut).map((f) => f.id);
-  const rotated = [...later.slice(1), ...later.slice(0, 1)];
-  let n = 0;
-  c.finish = c.finish.map((f) =>
-    f.time > cut ? { ...f, id: rotated[n++], time: f.time + 3, margin: { lengths: 9, label: 'nose' }, beatenLengths: f.beatenLengths + 5 } : f,
-  );
-  const halfCall = r.calls.find((x) => x.furlongsToGo === 4)!;
-  if (t < halfCall.time) c.pace = { halfMile: r.pace.halfMile + 123, label: r.pace.label === 'hot' ? 'slow' : 'hot' };
-  if (r.finish[0].time > cut) c.photoFinish = !r.photoFinish;
-  return c;
-}
 
 /** Times worth asking about: spread through the race, and either side of every call and event. */
 function probeTimes(r: RaceResult): number[] {
