@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import cardLookJson from './cardLook.json';
 import paletteJson from './palette.json';
@@ -174,13 +174,18 @@ describe('the card copy', () => {
     'copy.card', 'copy.card.styles', 'copy.card.styles.frontRunner', 'copy.card.styles.stalker', 'copy.card.styles.closer', 'copy.card.furlongs', 'copy.card.mile',
     'copy.card.miles', 'copy.card.conditions', 'copy.card.surfaces', 'copy.card.surfaces.dirt', 'copy.card.goings', 'copy.card.goings.sloppy', 'copy.card.bias',
     'copy.card.bias.fair', 'copy.card.bias.lane.inside', 'copy.card.bias.style.closers', 'copy.card.bias.both', 'copy.card.bias.laneShort.outside',
-    'copy.card.bias.styleShort.speed', 'copy.card.jockey', 'copy.card.stats', 'copy.card.hint', 'copy.card.lastPick',
+    'copy.card.bias.styleShort.speed',
+    // Rewritten on purpose (spec 4.1, program page): the detail box's jockey, stats, hint and lastPick
+    // lines are gone with the box. Their successors are the three column heads and the footer's "{jockey} up".
+    'copy.card.heads', 'copy.card.heads.speed', 'copy.card.heads.stamina', 'copy.card.heads.kick', 'copy.card.jockeyUp',
   ];
   it.each(KEYS)('%s missing is refused', (path) => { rejected((r) => setAt(r, path, undefined), DAY, path); });
 
   it('empty text and a number are refused', () => {
-    rejected((r) => setAt(r, 'copy.card.hint', ' '), DAY, 'copy.card.hint');
-    rejected((r) => setAt(r, 'copy.card.lastPick', 3), DAY, 'copy.card.lastPick');
+    rejected((r) => setAt(r, 'copy.card.heads.speed', ' '), DAY, 'copy.card.heads.speed');
+    rejected((r) => setAt(r, 'copy.card.heads.kick', ''), DAY, 'copy.card.heads.kick');
+    rejected((r) => setAt(r, 'copy.card.jockeyUp', 3), DAY, 'copy.card.jockeyUp');
+    rejected((r) => setAt(r, 'copy.card.jockeyUp', ' {jockey} up'), DAY, 'copy.card.jockeyUp');
   });
 
   it('a style word is at most 7 characters: 7 passes, 8 is refused', () => {
@@ -207,19 +212,98 @@ describe('the card copy', () => {
     rejected((r) => { setAt(r, 'copy.card.bias.laneShort.inside', 'Inside paths are good'); setAt(r, 'copy.card.bias.styleShort.speed', 'speed is holding on'); }, DAY, 'copy.card.bias');
   });
 
-  it('the detail templates are checked: unknown holes and widths', () => {
-    rejected((r) => setAt(r, 'copy.card.jockey', 'Jockey {name}'), DAY, 'copy.card.jockey');
-    rejected((r) => setAt(r, 'copy.card.jockey', 'The jockey today is {jockey}'), DAY, 'copy.card.jockey');
-    rejected((r) => setAt(r, 'copy.card.stats', 'Speed {speed}  Stamina {stamina}  Kick {kick}  Extra {x}'), DAY, 'copy.card.stats');
-    rejected((r) => setAt(r, 'copy.card.stats', 'Speed {speed}  Stamina {stamina}  Kick {kick}   x'), DAY, 'copy.card.stats'); // 31 with the widest real horse
-    rejected((r) => setAt(r, 'copy.card.hint', 'Press Enter to pick this horse today'), DAY, 'copy.card.hint');
-    rejected((r) => setAt(r, 'copy.card.lastPick', 'You picked this one in the last race'), DAY, 'copy.card.lastPick');
+  // Column heads sit over their stat columns (spec 4.1): "Speed" from x40 and "Stamina" from x108 must
+  // end before the next head starts (8 cells each), "Kick" from x176 must end by x247 (9 cells).
+  it('the column heads fit their columns: Speed 8 characters, Stamina 8, Kick 9; one more is refused', () => {
+    accepted((r) => setAt(r, 'copy.card.heads.speed', 'x'.repeat(8)));
+    rejected((r) => setAt(r, 'copy.card.heads.speed', 'x'.repeat(9)), DAY, 'copy.card.heads.speed');
+    accepted((r) => setAt(r, 'copy.card.heads.stamina', 'x'.repeat(8)));
+    rejected((r) => setAt(r, 'copy.card.heads.stamina', 'x'.repeat(9)), DAY, 'copy.card.heads.stamina');
+    accepted((r) => setAt(r, 'copy.card.heads.kick', 'x'.repeat(9)));
+    rejected((r) => setAt(r, 'copy.card.heads.kick', 'x'.repeat(10)), DAY, 'copy.card.heads.kick');
+  });
+
+  it('a column head takes no holes', () => {
+    const err = rejected((r) => setAt(r, 'copy.card.heads.speed', 'Speed {n}'), DAY, 'copy.card.heads.speed');
+    expect(err.issues.find((i) => i.path === 'copy.card.heads.speed')!.message).toMatch(/not allowed/);
+  });
+
+  it('an unknown column head is refused', () => {
+    const raw = fresh();
+    raw.raceDay.copy.card.heads.total = 'Total';
+    expect(failure(raw).message).toContain('total');
+  });
+
+  it('"{jockey} up" fits x8-207 with a 22-character jockey: 25 characters pass, 26 are refused', () => {
+    accepted((r) => setAt(r, 'copy.card.jockeyUp', '{jockey} up'));
+    rejected((r) => setAt(r, 'copy.card.jockeyUp', '{jockey} up!'), DAY, 'copy.card.jockeyUp');
+    rejected((r) => setAt(r, 'copy.card.jockeyUp', 'Rider {jockey} up'), DAY, 'copy.card.jockeyUp');
+  });
+
+  it('the footer template takes only {jockey}: an unknown hole is refused, naming it', () => {
+    for (const bad of ['{name} up', '{jockey} up on {horse}', '{post} {jockey}']) {
+      const err = rejected((r) => setAt(r, 'copy.card.jockeyUp', bad), DAY, 'copy.card.jockeyUp');
+      expect(err.issues.find((i) => i.path === 'copy.card.jockeyUp')!.message).toMatch(/not allowed/);
+    }
+  });
+
+  it('the detail box\'s copy is gone: the shipped file has no card.jockey, stats, hint or lastPick, and the schema refuses them back', () => {
+    for (const k of ['jockey', 'stats', 'hint', 'lastPick']) {
+      expect(Object.keys(raceDayJson.copy.card), k).not.toContain(k);
+      const raw = fresh();
+      raw.raceDay.copy.card[k] = 'x';
+      expect(failure(raw).message, k).toContain(k);
+    }
+  });
+
+  it('the shipped heads and footer are the spec\'s words', () => {
+    expect(raceDayJson.copy.card.heads).toEqual({ speed: 'Speed', stamina: 'Stamina', kick: 'Kick' });
+    expect(raceDayJson.copy.card.jockeyUp).toBe('{jockey} up');
+  });
+});
+
+describe('a card stat prints in two small-font digits, so a stat over 99 is refused at boot, naming the horse', () => {
+  const statFailure = (idx: number, key: 'speed' | 'stamina' | 'kick', value: number) => {
+    const g = game();
+    g.card.horses[idx].stats[key] = value;
+    return failure(fresh(), g);
+  };
+
+  it.each(['speed', 'stamina', 'kick'] as const)('%s at 100 is refused: src/data/card.json, horses[i].stats.%s, with the value', (key) => {
+    for (const idx of [0, 4, 7]) {
+      const err = statFailure(idx, key, 100);
+      expect(err.file).toBe('src/data/card.json');
+      const path = `horses[${idx}].stats.${key}`;
+      expect(err.issues.map((i) => i.path)).toContain(path);
+      expect(err.message).toContain(path);
+      expect(err.issues.find((i) => i.path === path)!.message).toContain('100');
+      expect(err.issues.find((i) => i.path === path)!.message).toMatch(/99/);
+    }
+  });
+
+  it('99 passes, and so does 10; 100 and 150 are refused', () => {
+    for (const ok of [99, 10]) {
+      const g = game();
+      for (const h of g.card.horses) h.stats = { speed: ok, stamina: ok, kick: ok };
+      expect(() => validateRaceDay(fresh(), g), String(ok)).not.toThrow();
+    }
+    expect(statFailure(2, 'speed', 150).file).toBe('src/data/card.json');
+  });
+
+  it('only the horse over the limit is named', () => {
+    const err = statFailure(3, 'stamina', 120);
+    expect(err.issues.map((i) => i.path)).toEqual(['horses[3].stats.stamina']);
+  });
+
+  it('every shipped stat fits two digits', () => {
+    for (const h of game().card.horses) for (const v of Object.values(h.stats)) expect(v).toBeLessThanOrEqual(99);
   });
 });
 
 describe('the paddock copy', () => {
   const KEYS = [
-    'copy.paddock', 'copy.paddock.styles.closer', 'copy.paddock.postLine', 'copy.paddock.title', 'copy.paddock.labels.move', 'copy.paddock.values',
+    // Rewritten on purpose (spec 4.2): "Stalker, post 8" is gone, so copy.paddock.styles and postLine are not required any more.
+    'copy.paddock', 'copy.paddock.title', 'copy.paddock.labels.move', 'copy.paddock.values',
     'copy.paddock.values.early.rateEarly', 'copy.paddock.values.move.saveForStretch', 'copy.paddock.values.path.default', 'copy.paddock.go', 'copy.paddock.back',
     'copy.paddock.trainer', 'copy.paddock.trainer.early.default', 'copy.paddock.trainer.move.moveAtThreeEighths', 'copy.paddock.trainer.path.stayInside',
     'copy.paddock.trainer.go', 'copy.paddock.trainer.back',
@@ -251,9 +335,17 @@ describe('the paddock copy', () => {
     rejected((r) => setAt(r, 'copy.paddock.back', 'x'.repeat(29)), DAY, 'copy.paddock.back');
   });
 
-  it('the post line "{style}, post {n}" fits with the longest style word, and takes only its holes', () => {
-    rejected((r) => setAt(r, 'copy.paddock.postLine', '{style}, post {post}, a long way from the rail'), DAY, 'copy.paddock.postLine');
-    rejected((r) => setAt(r, 'copy.paddock.postLine', '{horse}, post {post}'), DAY, 'copy.paddock.postLine');
+  // Removed on purpose (spec 4.2): "the style is in the entry and the post is the saddlecloth number", so
+  // the post line template and the spelled-out style words are no longer data. This asserts the removal.
+  it('the post line and the paddock\'s own style words are gone: the shipped file has neither, and the schema refuses them back', () => {
+    expect(Object.keys(raceDayJson.copy.paddock)).not.toContain('postLine');
+    expect(Object.keys(raceDayJson.copy.paddock)).not.toContain('styles');
+    const a = fresh();
+    a.raceDay.copy.paddock.postLine = '{style}, post {post}';
+    expect(failure(a).message).toContain('postLine');
+    const b = fresh();
+    b.raceDay.copy.paddock.styles = { frontRunner: 'Front-runner', stalker: 'Stalker', closer: 'Closer' };
+    expect(failure(b).message).toContain('styles');
   });
 
   it('a trainer line wraps into at most 3 lines of 28: 3 lines pass, 4 are refused', () => {
@@ -320,5 +412,179 @@ describe('the three paddock slots: art.paddock.trainer (16x24, 2 frames), art.pa
     const err = failure(raw);
     expect(err.file).toBe(SLOTS);
     expect(err.message).toContain(id);
+  });
+});
+
+// A bad value inside a band or a list is named at the element ("...leftSteps[2]"), so the path is matched by its start.
+function refusedUnder(edit: (r: Raw) => void, file: string, path: string): DataError {
+  const raw = fresh();
+  edit(raw);
+  const err = failure(raw);
+  expect(err.file).toBe(file);
+  expect(err.issues.some((i) => i.path === path || i.path.startsWith(`${path}[`) || i.path.startsWith(`${path}.`)), `${path} in ${JSON.stringify(err.issues.map((i) => i.path))}`).toBe(true);
+  expect(err.message).toContain(file);
+  expect(err.message).toContain(path);
+  return err;
+}
+
+describe('the program block: the highlighter bands and the pick\'s swipe (DESIGN Program pages)', () => {
+  const BANDS = ['program.entryBand', 'program.resultBand'] as const;
+
+  it('the shipped values are DESIGN\'s: entry x16-250 over 19 rows, result x5-250 over 10, chisel 3, 2, 1, 0 in and 0, 1, 2, 3 in; swipe to x132 for 0.1 s then 0.25 s', () => {
+    const p = raceDayJson.program;
+    expect(p.entryBand.value).toEqual({ x0: 16, x1: 250, rows: 19, leftSteps: [3, 2, 1, 0], rightSteps: [0, 1, 2, 3] });
+    expect(p.resultBand.value).toEqual({ x0: 5, x1: 250, rows: 10, leftSteps: [3, 2, 1, 0], rightSteps: [0, 1, 2, 3] });
+    expect(p.swipeHalfX1.value).toBe(132);
+    expect(p.swipeFrame1Seconds.value).toBe(0.1);
+    expect(p.swipeFrame2Seconds.value).toBe(0.25);
+  });
+
+  it.each(['program', ...BANDS, 'program.swipeHalfX1', 'program.swipeFrame1Seconds', 'program.swipeFrame2Seconds'])('%s missing is refused', (path) => {
+    refusedUnder((r) => setAt(r, path, undefined), DAY, path);
+  });
+
+  it.each(BANDS)('%s: every field is required and typed', (band) => {
+    for (const k of ['x0', 'x1', 'rows', 'leftSteps', 'rightSteps']) refusedUnder((r) => setAt(r, `${band}.value.${k}`, undefined), DAY, `${band}.value.${k}`);
+    for (const k of ['x0', 'x1', 'rows']) {
+      for (const bad of ['16', null, [16], 16.5]) refusedUnder((r) => setAt(r, `${band}.value.${k}`, bad), DAY, `${band}.value.${k}`);
+    }
+    for (const k of ['leftSteps', 'rightSteps']) {
+      for (const bad of [3, '3,2,1,0', ['3', 2, 1, 0], [3, 2, 1, 0.5]]) refusedUnder((r) => setAt(r, `${band}.value.${k}`, bad), DAY, `${band}.value.${k}`);
+    }
+  });
+
+  it.each(BANDS)('%s: x0 and x1 are columns on the 256 px screen, 0 to 255', (band) => {
+    refusedUnder((r) => setAt(r, `${band}.value.x0`, -1), DAY, `${band}.value.x0`);
+    refusedUnder((r) => setAt(r, `${band}.value.x1`, 256), DAY, `${band}.value.x1`);
+    refusedUnder((r) => setAt(r, `${band}.value.x1`, -3), DAY, `${band}.value.x1`);
+    accepted((r) => setAt(r, `${band}.value.x0`, 0));
+    accepted((r) => setAt(r, `${band}.value.x1`, 255));
+  });
+
+  it.each(BANDS)('%s: the rows split into four groups, so at least 4 rows: 4 passes, 3, 0 and -19 are refused', (band) => {
+    accepted((r) => setAt(r, `${band}.value.rows`, 4));
+    for (const bad of [3, 0, -19]) refusedUnder((r) => setAt(r, `${band}.value.rows`, bad), DAY, `${band}.value.rows`);
+  });
+
+  it.each(BANDS)('%s: the chisel lists have exactly 4 steps, whole numbers of 0 or more', (band) => {
+    for (const k of ['leftSteps', 'rightSteps']) {
+      for (const bad of [[], [1], [3, 2, 1], [3, 2, 1, 0, 0]]) refusedUnder((r) => setAt(r, `${band}.value.${k}`, bad), DAY, `${band}.value.${k}`);
+      refusedUnder((r) => setAt(r, `${band}.value.${k}`, [3, 2, -1, 0]), DAY, `${band}.value.${k}`);
+      accepted((r) => setAt(r, `${band}.value.${k}`, [0, 0, 0, 0]));
+    }
+  });
+
+  it.each(BANDS)('%s: the chiseled ends must leave a column between them, or the band is refused', (band) => {
+    // x0 + the biggest left step must stay clear of x1 - the biggest right step.
+    const set = (x0: number, x1: number, left: number[], right: number[]) => (r: Raw) => {
+      setAt(r, `${band}.value.x0`, x0); setAt(r, `${band}.value.x1`, x1);
+      setAt(r, `${band}.value.leftSteps`, left); setAt(r, `${band}.value.rightSteps`, right);
+    };
+    accepted(set(16, 250, [3, 2, 1, 0], [0, 1, 2, 3]));
+    accepted(set(100, 110, [3, 2, 1, 0], [0, 1, 2, 3])); // 103 and 107: columns 104 to 106 are between
+    // Ends that meet or cross.
+    for (const edit of [
+      set(100, 100, [0, 0, 0, 0], [0, 0, 0, 0]), // a band one column wide has no column between
+      set(100, 90, [0, 0, 0, 0], [0, 0, 0, 0]), // x1 left of x0
+      set(100, 104, [3, 2, 1, 0], [0, 1, 2, 3]), // 103 against 101
+      set(100, 106, [3, 2, 1, 0], [0, 1, 2, 3]), // 103 against 103
+      set(16, 250, [0, 0, 0, 120], [0, 0, 0, 120]), // the steps eat the whole band
+      set(16, 250, [240, 0, 0, 0], [0, 0, 0, 0]), // a left step past the far end
+    ]) {
+      const raw = fresh();
+      edit(raw);
+      const err = failure(raw);
+      expect(err.file).toBe(DAY);
+      expect(err.message).toContain(band);
+      expect(err.message).toMatch(/column/);
+    }
+  });
+
+  it('swipeHalfX1 is a column on the screen: 0 and 255 pass; -1, 256, 132.5 and "132" are refused', () => {
+    accepted((r) => setAt(r, 'program.swipeHalfX1.value', 0));
+    accepted((r) => setAt(r, 'program.swipeHalfX1.value', 255));
+    for (const bad of [-1, 256, 132.5, '132', null]) refusedUnder((r) => setAt(r, 'program.swipeHalfX1.value', bad), DAY, 'program.swipeHalfX1');
+  });
+
+  it.each(['program.swipeFrame1Seconds', 'program.swipeFrame2Seconds'])('%s is positive seconds: 0, negative and a string are refused', (path) => {
+    accepted((r) => setAt(r, `${path}.value`, 0.5));
+    for (const bad of [0, -0.1, '0.1', null, [0.1]]) refusedUnder((r) => setAt(r, `${path}.value`, bad), DAY, path);
+  });
+
+  it('a status that is neither starting guess nor confirmed, and an unknown field, are refused', () => {
+    refusedUnder((r) => { r.raceDay.program.entryBand.status = 'maybe'; }, DAY, 'program.entryBand.status');
+    refusedUnder((r) => { r.raceDay.program.swipeHalfX1.status = 'maybe'; }, DAY, 'program.swipeHalfX1.status');
+    const a = fresh();
+    a.raceDay.program.entryBand.value.slant = 1;
+    expect(failure(a).message).toContain('slant');
+    const b = fresh();
+    b.raceDay.program.staple = { value: 1, status: 'starting guess' };
+    expect(failure(b).message).toContain('staple');
+  });
+
+  it('the band shape is data: the shipped files load with it, and a change reaches the loaded values', () => {
+    const raw = fresh();
+    raw.raceDay.program.entryBand.value.x1 = 240;
+    expect(validateRaceDay(raw, game()).raceDay.program.entryBand.value.x1).toBe(240);
+  });
+});
+
+describe('art.ui.mark.pick, the pencil tick: 8x8 final art, in the needed list', () => {
+  const ID = 'art.ui.mark.pick';
+  const slotOf = (id: string) => slotsJson.slots.find((x) => x.id === id) as Record<string, unknown> | undefined;
+
+  it('is in the needed list', () => {
+    expect(neededSlotIds({ surface: 'dirt', going: 'fast' })).toContain(ID);
+  });
+
+  it('is in slots.json at 8x8, one frame, as final art (not a placeholder) with a PNG file', () => {
+    const s = slotOf(ID)!;
+    expect(s).toBeDefined();
+    expect([s.frameWidth, s.frameHeight, s.frames]).toEqual([8, 8, 1]);
+    expect(s.placeholder).toBe(false);
+    expect(s.file).toMatch(/\.png$/);
+  });
+
+  it('its file is a PNG exactly 8x8', () => {
+    const file = `public/${slotOf(ID)!.file}`;
+    const buf = readFileSync(new URL(`../../${file}`, import.meta.url));
+    expect(buf.subarray(1, 4).toString()).toBe('PNG');
+    expect([buf.readUInt32BE(16), buf.readUInt32BE(20)]).toEqual([8, 8]);
+  });
+
+  it('the loader refuses a slots.json without it, naming the file and the slot', () => {
+    const raw = fresh();
+    raw.slots.slots = raw.slots.slots.filter((x: { id: string }) => x.id !== ID);
+    const err = failure(raw);
+    expect(err.file).toBe(SLOTS);
+    expect(err.message).toContain(ID);
+  });
+
+  it('the loader refuses it as a stand-in with no file, so the release check cannot pass one', () => {
+    const raw = fresh();
+    const slot = raw.slots.slots.find((x: { id: string }) => x.id === ID);
+    slot.file = null;
+    const err = failure(raw);
+    expect(err.file).toBe(SLOTS);
+  });
+});
+
+describe('no staples: the art-director dropped them, so no slot or file exists for one', () => {
+  it('slots.json has no slot with "staple" in its id or file, and the needed list has none', () => {
+    for (const s of slotsJson.slots as { id: string; file: string | null }[]) {
+      expect(s.id.toLowerCase()).not.toContain('staple');
+      expect((s.file ?? '').toLowerCase()).not.toContain('staple');
+    }
+    for (const id of neededSlotIds({ surface: 'dirt', going: 'fast' })) expect(id.toLowerCase()).not.toContain('staple');
+  });
+
+  it('no file under public/assets is named for a staple', () => {
+    const files = readdirSync(new URL('../../public/assets', import.meta.url), { recursive: true }) as string[];
+    expect(files.length).toBeGreaterThan(10);
+    expect(files.filter((f) => /staple/i.test(String(f)))).toEqual([]);
+  });
+
+  it('the raceDay data has no staple field anywhere', () => {
+    expect(JSON.stringify(raceDayJson).toLowerCase()).not.toContain('staple');
   });
 });

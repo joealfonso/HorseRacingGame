@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { RaceEvent, RaceResult } from '../sim/result';
 import { runRace } from '../sim/runRace';
 import { RESULT_CONFIRM_KEYS, resultScreen, tripCalls, tripFinish, tripLines, tripLuck, tripOrders } from './resultScreen';
-import { game, interp, race, rd, seeds } from './testkit';
+import { RESULT_BAND_ROWS, cellOf, expectedSpans, game, interp, paintRects, pixelAt, race, rd, seeds, yellowSpans } from './testkit';
 
 // The result screen (spec 4.6): RS1 to RS5, the layout, the seed, the one action. Expected
 // strings are written from the spec's examples and from the result's own fields, never
@@ -109,8 +109,14 @@ describe('layout (spec 4.6 diagram)', () => {
   const mine = r.finish[2].id;
   const s = resultScreen(r, rd, mine);
 
-  it('three framed boxes: order y0-103, trip y104-175, time y176-239', () => {
-    expect(s.boxes.map((b) => [b.x, b.y, b.tilesW * 8, b.tilesH * 8])).toEqual([[0, 0, 256, 104], [0, 104, 256, 72], [0, 176, 256, 64]]);
+  // Rewritten on purpose (spec 4.6 restyle): the three Navy framed boxes (y0-103, y104-175,
+  // y176-239) became one Parchment page. Where each box edge was, a 1 px Ink rule runs at y103
+  // and y175, and the 8 px where the frame tiles were stays as margin.
+  it('no framed boxes: flat Parchment with a 1 px Ink rule across x8-247 at y103 and y175, and no other', () => {
+    expect(s.boxes).toEqual([]);
+    expect(s.paper).toBe('Parchment');
+    expect(s.rules).toEqual([103, 175].map((y) => ({ x: 8, y, w: 240, h: 1, color: 'Ink' })));
+    expect([...s.rules, ...s.band].some((r) => r.color === 'Navy')).toBe(false);
   });
 
   it('rows sit at y8 + 11 i, and the columns are marker x8, place x16, saddlecloth x42 10 wide, name x56, margin x204-247', () => {
@@ -133,28 +139,34 @@ describe('layout (spec 4.6 diagram)', () => {
     expect(s.rows[7].texts[0].y).toBe(8 + 77); // the eighth row, y85
   });
 
-  it('your row alone is marked: the marker at x8 on your row, your name in Yellow, others in Bone', () => {
+  // Rewritten on purpose (spec 4.6 restyle): your name is Ink on the Yellow highlighter band,
+  // not Yellow text, and the others are Ink, not Bone. The arrow marker at x8 stays, now Ink.
+  it('your row alone is marked: the marker at x8 on your row, your name in Ink, others in Ink too, the band on yours', () => {
     s.rows.forEach((row) => {
+      const name = row.texts.find((t) => t.x === 56)!;
+      expect(name.color).toBe('Ink');
+      expect(row.texts.find((t) => t.x === 16)!.color).toBe('Ink');
       if (row.id === mine) {
         expect(row.yours).toBe(true);
         expect(row.marker).toEqual({ x: 8, y: 8 + 11 * (row.place - 1) });
-        expect(row.texts.find((t) => t.x === 56)!.color).toBe('Yellow');
       } else {
         expect(row.yours).toBe(false);
         expect(row.marker).toBeNull();
-        expect(row.texts.find((t) => t.x === 56)!.color).toBe('Bone');
       }
     });
     expect(s.rows.filter((x) => x.marker)).toHaveLength(1);
+    expect(s.rows.filter((x) => x.yours)).toHaveLength(1);
   });
 
-  it('the trip lines sit at y112 + 11 i from x8, the first in Yellow, in the order name, finish, calls, luck, orders', () => {
+  // Rewritten on purpose (spec 4.6 restyle): the trip heading, your horse's name, is a title in
+  // Maroon with no band (was Yellow), and the other four lines are Ink (were Bone).
+  it('the trip lines sit at y112 + 11 i from x8, the first in Maroon, in the order name, finish, calls, luck, orders', () => {
     const lines = tripLines(r, rd, mine);
     expect(lines).toHaveLength(5);
     lines.forEach((l, i) => {
       const t = s.texts.find((x) => x.y === 112 + 11 * i && x.x === 8)!;
       expect(t.text).toBe(l);
-      expect(t.color).toBe(i === 0 ? 'Yellow' : 'Bone');
+      expect(t.color).toBe(i === 0 ? 'Maroon' : 'Ink');
     });
     expect(lines[0]).toBe(POST_NAME(r, mine));
     expect(lines[4]).toMatch(/^Orders: /);
@@ -551,5 +563,180 @@ describe('RS5: the orders line reads from result.inputs.card', () => {
     expect(tripOrders(c, rd, me)).toBe(tripOrders(r, rd, me));
     c.inputs.card.horses[4].instructions = { early: 'rateEarly', move: 'moveAtThreeEighths', path: 'default' };
     expect(tripOrders(c, rd, me)).toBe('Orders: Rate, 3/8');
+  });
+});
+
+// RS7 as far as it is testable headless (spec 4.6 restyle, DESIGN "Program pages"): the page's
+// colors, the margin column, the band under your row and nothing else, and every text in Ink or
+// Maroon. Whether it looks like a printed chart is for the eye (RS7 is an [E] criterion).
+describe('RS7: the result as the chart page of the program', () => {
+  const MARGIN_LABELS = (() => {
+    const out = new Set<string>();
+    for (let t = 0; t <= 60000; t += 25) out.add(labelOf(t));
+    for (const w of [100, 150, 999]) out.add(labelOf(w * 1000));
+    return [...out];
+  })();
+
+  it('the sim can produce nose, head, neck, quarters, whole lengths and mixed numbers, and none is over 5 characters', () => {
+    for (const must of ['nose', 'head', 'neck', '1/2', '3/4', '1', '1 1/4', '9 3/4', '10']) expect(MARGIN_LABELS, must).toContain(must);
+    for (const l of MARGIN_LABELS) expect(l.length, l).toBeLessThanOrEqual(5);
+  });
+
+  it('the margin column is Maroon and right-aligned to end at x247, for every label the sim can produce and the winner\'s "-"', () => {
+    const base = structuredClone(race(7));
+    const others = base.finish.slice(1);
+    for (let i = 0; i < MARGIN_LABELS.length; i += others.length) {
+      const res = structuredClone(base);
+      res.finish.slice(1).forEach((f, k) => { f.margin = { lengths: 1, label: MARGIN_LABELS[(i + k) % MARGIN_LABELS.length] }; });
+      for (const player of [res.finish[0].id, res.finish[3].id]) {
+        const scr = resultScreen(res, rd, player);
+        scr.rows.forEach((row, p) => {
+          const label = p === 0 ? '-' : res.finish[p].margin!.label;
+          const m = row.texts.find((t) => t.text === label && t.x >= 200)!;
+          expect(m, `label ${label}`).toBeDefined();
+          expect(m.color, `label ${label}`).toBe('Maroon');
+          expect(cellOf(m).x1, `label ${label}`).toBe(247);
+          expect(m.x, `label ${label}`).toBe(248 - 8 * label.length);
+          expect(m.y).toBe(8 + 11 * p);
+          expect(m.x, `label ${label} starts no earlier than x208`).toBeGreaterThanOrEqual(208);
+        });
+      }
+    }
+  });
+
+  it('the spec\'s own examples: "9 3/4" from x208, "nose" from x216, the winner\'s "-" at x240', () => {
+    const res = structuredClone(race(7));
+    res.finish[1].margin = { lengths: 9.75, label: '9 3/4' };
+    res.finish[2].margin = { lengths: 0.01, label: 'nose' };
+    const rows = resultScreen(res, rd, res.finish[0].id).rows;
+    expect(rows[1].texts.find((t) => t.text === '9 3/4')!.x).toBe(208);
+    expect(rows[2].texts.find((t) => t.text === 'nose')!.x).toBe(216);
+    expect(rows[0].texts.find((t) => t.text === '-')).toMatchObject({ x: 240, color: 'Maroon' });
+  });
+
+  it('an 18-character name no longer runs into the margin column: it ends at x199 and the margin starts at x208 or later', () => {
+    const res = structuredClone(race(7));
+    res.inputs.card.horses.find((h) => h.id === res.finish[1].id)!.name = 'Mint Julep Lawsuit';
+    res.finish[1].margin = { lengths: 9.75, label: '9 3/4' };
+    const row = resultScreen(res, rd, res.finish[0].id).rows[1];
+    const name = row.texts.find((t) => t.text === 'Mint Julep Lawsuit')!;
+    const margin = row.texts.find((t) => t.text === '9 3/4')!;
+    expect(cellOf(name).x1).toBe(199);
+    expect(margin.x - (cellOf(name).x1 + 1)).toBeGreaterThanOrEqual(8);
+  });
+
+  it('every place is as built: marker x8, place x16, saddlecloth box x42 10x10, name x56, rows at y8 + 11 i, number inside the box', () => {
+    const res = race(7);
+    resultScreen(res, rd, res.finish[2].id).rows.forEach((row, i) => {
+      const y = 8 + 11 * i;
+      expect(row.texts.find((t) => t.text === ORD(i + 1))).toMatchObject({ x: 16, y, color: 'Ink' });
+      expect(row.texts.find((t) => t.x === 56)).toMatchObject({ y, color: 'Ink' });
+      expect(row.cloth.x).toBe(42);
+      expect(row.cloth.size).toBe(10);
+      // The small-font number (4x6) sits inside the box's 8x8 fill, centered within 1 px.
+      expect(row.cloth.numberX).toBeGreaterThanOrEqual(row.cloth.x + 1);
+      expect(row.cloth.numberX + 3).toBeLessThanOrEqual(row.cloth.x + 8);
+      expect(row.cloth.numberY).toBeGreaterThanOrEqual(row.cloth.y + 1);
+      expect(row.cloth.numberY + 5).toBeLessThanOrEqual(row.cloth.y + 8);
+      expect(Math.abs(row.cloth.numberX + 1.5 - (row.cloth.x + 4.5))).toBeLessThanOrEqual(1);
+      expect(Math.abs(row.cloth.numberY + 2.5 - (row.cloth.y + 4.5))).toBeLessThanOrEqual(1);
+    });
+  });
+
+  it('your row sits on the Yellow band: x5-250, 10 rows from 1 above the row to 1 below, left x8, 7, 6, 5 and right x250, 249, 248, 247', () => {
+    for (const seed of [7, 11, 40]) {
+      const res = race(seed);
+      res.finish.forEach((mineF, p) => {
+        const scr = resultScreen(res, rd, mineF.id);
+        expect(yellowSpans(paintRects(scr.band)), `seed ${seed} place ${p + 1}`).toEqual(expectedSpans(8 + 11 * p - 1, RESULT_BAND_ROWS));
+      });
+    }
+  });
+
+  it('no chisel step sits under the place word, the marker, the saddlecloth box, the name or the margin of your row', () => {
+    const res = race(7);
+    res.finish.forEach((mineF, p) => {
+      const scr = resultScreen(res, rd, mineF.id);
+      const spans = yellowSpans(paintRects(scr.band));
+      const row = scr.rows[p];
+      const y = 8 + 11 * p;
+      const marked = [
+        { x0: 8, x1: 14, y0: y, y1: y + 7 }, // the marker
+        { x0: 42, x1: 51, y0: y - 1, y1: y + 8 }, // the saddlecloth box
+        ...row.texts.map(cellOf),
+      ];
+      for (const c of marked) {
+        for (let yy = c.y0; yy <= c.y1; yy++) {
+          const [a, b] = spans.get(yy)!;
+          expect(a, `place ${p + 1} row ${yy} left of x${c.x0}`).toBeLessThanOrEqual(c.x0);
+          expect(b, `place ${p + 1} row ${yy} right of x${c.x1}`).toBeGreaterThanOrEqual(c.x1);
+        }
+      }
+    });
+  });
+
+  it('the band is only under your row: nothing under the trip heading, the time lines or the other rows', () => {
+    const res = race(7);
+    for (const f of res.finish) {
+      const scr = resultScreen(res, rd, f.id);
+      expect(scr.band).toHaveLength(10);
+      const ys = scr.band.map((r) => r.y);
+      expect(Math.max(...ys)).toBeLessThan(103);
+      const yours = 8 + 11 * (f.place - 1);
+      expect(ys.every((y) => y >= yours - 1 && y <= yours + 8)).toBe(true);
+    }
+  });
+
+  it('every text on the page is Ink, except the trip heading and the margin column, which are Maroon: nothing is Yellow or Bone', () => {
+    for (const seed of seeds(40)) {
+      const res = race(seed);
+      for (const h of res.inputs.card.horses) {
+        const scr = resultScreen(res, rd, h.id);
+        const maroon = [...scr.texts.filter((t) => t.color === 'Maroon'), ...scr.rows.flatMap((r) => r.texts.filter((t) => t.color === 'Maroon'))];
+        const allTexts = [...scr.texts, ...scr.rows.flatMap((r) => r.texts)];
+        for (const t of allTexts) expect(['Ink', 'Maroon'], `${t.text} (seed ${seed})`).toContain(t.color);
+        expect(maroon.length).toBe(1 + 8);
+        expect(scr.texts.filter((t) => t.color === 'Maroon')).toEqual([expect.objectContaining({ x: 8, y: 112 })]);
+      }
+    }
+  });
+
+  it('the time line, the splits, the seed and "Next race" are Ink, at their built positions, with the small-font numbers in Ink', () => {
+    const res = race(7);
+    const scr = resultScreen(res, rd, res.finish[0].id);
+    const t184 = scr.texts.find((t) => t.y === 184)!;
+    expect([t184.x, t184.color]).toEqual([8, 'Ink']);
+    const splitsLabel = scr.texts.find((t) => t.text === 'Splits')!;
+    expect([splitsLabel.x, splitsLabel.y, splitsLabel.color]).toEqual([8, 196, 'Ink']);
+    const nums = scr.texts.filter((t) => t.small);
+    expect(nums).toHaveLength(2); // the splits and the seed
+    for (const n of nums) expect(n.color).toBe('Ink');
+    const seedLabel = scr.texts.find((t) => t.text === 'Seed')!;
+    expect([seedLabel.y, seedLabel.color]).toEqual([208, 'Ink']);
+    const next = scr.texts.find((t) => t.text === 'Next race')!;
+    expect([next.x, next.y, next.color]).toEqual([20, 220, 'Ink']);
+    expect(scr.cursor).toEqual({ x: 8, y: 220 });
+    // The cursor's 8 px (x8-15) leaves the label's first column x20 clear.
+    expect(scr.cursor.x + 8).toBeLessThanOrEqual(next.x);
+  });
+
+  it('the rules never cross a text or the band: the order rows end above y103, the trip sits between the rules, the time lines are below y175', () => {
+    const res = race(7);
+    const scr = resultScreen(res, rd, res.finish[7].id);
+    for (const row of scr.rows) for (const t of row.texts) expect(cellOf(t).y1).toBeLessThan(103);
+    for (const t of scr.texts.filter((x) => x.y >= 112 && x.y < 175)) expect(cellOf(t).y1).toBeLessThan(175);
+    for (const t of scr.texts.filter((x) => x.y > 175)) expect(cellOf(t).y0).toBeGreaterThan(175);
+    expect(Math.max(...scr.band.map((r) => r.y))).toBeLessThan(103);
+    const px = paintRects([...scr.band, ...scr.rules]);
+    expect(pixelAt(px, 100, 103)).toBe('Ink');
+    expect(pixelAt(px, 100, 175)).toBe('Ink');
+  });
+
+  it('the scene draws the saddlecloth box with a 1 px Ink border, the marker and cursor recolored for paper, and no frame boxes (a read of the scene)', () => {
+    const src = readFileSync(new URL('../scenes/ResultScene.ts', import.meta.url), 'utf8');
+    expect(src).toMatch(/fillStyle\(rgbOf\(data\.art\.colors, 'Ink'\)\)\.fillRect\(c\.x, c\.y, c\.size, c\.size\)/);
+    expect(src).toMatch(/fillRect\(c\.x \+ 1, c\.y \+ 1, c\.size - 2, c\.size - 2\)/);
+    expect(src).toContain('art.swap(SLOT_IDS.markerYours, PAPER_MARKER_SWAPS)');
+    expect(src).toContain('art.swap(SLOT_IDS.cursor, PAPER_CURSOR_SWAPS)');
   });
 });
