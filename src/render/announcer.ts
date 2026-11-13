@@ -97,6 +97,19 @@ export function callSchedule(result: RaceResult, rd: RaceDay, raceNumber: number
 }
 
 /**
+ * After a photo, once its caption has named the winner, the bar gives the ordinary winner
+ * call in place of "Too close to call". It takes the photo call's place in the schedule
+ * (the last), so its variant follows the same rotation.
+ */
+export function winnerCallAfterPhoto(result: RaceResult, rd: RaceDay, raceNumber: number, schedule: readonly ScheduledCall[]): string {
+  const lines = rd.copy.calls.winner;
+  const index = schedule.length - 1;
+  const first = result.finish[0];
+  const winner = result.inputs.card.horses.find((h) => h.id === first.id)?.name ?? first.id;
+  return fillTemplate(lines[(((raceNumber + index) % lines.length) + lines.length) % lines.length], { winner });
+}
+
+/**
  * The announcer bar at a playback moment. `playbackOf` turns a call's race time into
  * playback seconds, so typing runs in wall time whatever the speed.
  */

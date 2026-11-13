@@ -8,14 +8,17 @@ import { nextRace, seedFor, type Session } from '../render/session';
 import { PLACEHOLDER_TAG_AT, SLOT_IDS, neededSlotIds, showPlaceholderTag, standIns, trackSlotId } from '../render/slotStatus';
 import { beatBegan, keyDown, keyState, keyUp, type KeyState } from '../render/keys';
 import { PAUSE_BOX, PAUSE_ITEMS, PAUSE_LAYOUT, closedPause, cursorFrame, moveFocus, openPause, type PauseState } from '../render/pause';
+import { PHOTO_AREA, PHOTO_CROP, PHOTO_PANEL, PHOTO_SCALE } from '../render/photo';
 import { phaseOf, skip, startClock, tick, type Clock } from '../render/timeline';
 import { railTiles, type PoleKind } from '../render/view';
 import { runRace } from '../sim/runRace';
 import type { RaceResult } from '../sim/result';
 import { Art, type ArtInfo } from './art';
+import type { ResultData } from './ResultScene';
 
-// The race-day sequence (spec 4.3): the gate, the race, the wire hold and the winner
-// beat, played from the sim's replay, with the HUD, 4x, skips and the pause box. Every
+// The race-day sequence (spec 4.3): the gate, the race, the wire hold, the photo when the
+// result flags one, and the winner beat, played from the sim's replay, with the HUD, 4x,
+// skips and the pause box. When the beat ends the result screen opens by itself. Every
 // position, word and color comes from src/render/raceFrame.ts and the pure modules beside
 // it; this file keeps the clock and the keys and places sprites and text where they say.
 
@@ -28,7 +31,7 @@ export interface RaceData {
 const LAYERS = ['body', 'tack', 'jacket', 'cap'] as const;
 const SLOT = SLOT_IDS.horse;
 
-const DEPTH = { back: 0, far: 10, mid: 20, track: 30, poles: 35, gate: 40, horses: 100, markers: 400, hud: 500, hudTop: 510, pause: 600 } as const;
+const DEPTH = { back: 0, far: 10, mid: 20, track: 30, poles: 35, gate: 40, horses: 100, markers: 400, hud: 500, hudTop: 510, photo: 520, pause: 700 } as const;
 const MID_Y = 56;
 const FAST_TAG_AT = { x: 224, y: 4 } as const;
 type Pose = 'stand' | 'gallop' | 'walk' | 'winner';
@@ -44,6 +47,20 @@ interface HorseObjects {
   key: (layer: (typeof LAYERS)[number], pose: Pose) => string;
   layers: Phaser.GameObjects.Image[];
   number: Phaser.GameObjects.Image;
+  /** The same horse at 2x in the photo, clipped to the photo's rectangle. */
+  photoLayers: Phaser.GameObjects.Image[];
+  photoNumber: Phaser.GameObjects.Image;
+}
+
+interface PhotoObjects {
+  /** The panel's frame tiles, moved together as it steps in. */
+  panel: Phaser.GameObjects.Container;
+  streaks: Phaser.GameObjects.TileSprite;
+  wire: Phaser.GameObjects.Graphics;
+  /** The photo's rectangle, as a mask for the horses. */
+  clip: Phaser.GameObjects.Graphics;
+  arrow: Phaser.GameObjects.Image;
+  captions: Phaser.GameObjects.BitmapText[];
 }
 
 export class RaceScene extends Phaser.Scene {
@@ -77,6 +94,8 @@ export class RaceScene extends Phaser.Scene {
   private flags: Phaser.GameObjects.Image[] = [];
   private pauseObjects: Phaser.GameObjects.GameObject[] = [];
   private pauseCursor!: Phaser.GameObjects.Image;
+  private minimap!: Phaser.GameObjects.Image;
+  private photo!: PhotoObjects;
 
   constructor() {
     super('race');
@@ -132,6 +151,7 @@ export class RaceScene extends Phaser.Scene {
     this.buildWorld();
     this.buildHorses(result);
     this.buildHud();
+    this.buildPhoto();
     this.buildPause();
     this.bindKeys();
     this.draw(raceFrame(this.setup, this.me, this.clock));
@@ -148,6 +168,7 @@ export class RaceScene extends Phaser.Scene {
     }
     const fast = this.keys.down.has('Space') && !this.keys.stale.has('Space');
     this.setClock(tick(this.clock, this.setup.timeline, dt, fast));
+    if (this.leaving) return;
     this.draw(raceFrame(this.setup, this.me, this.clock));
   }
 
@@ -155,6 +176,18 @@ export class RaceScene extends Phaser.Scene {
   private setClock(next: Clock): void {
     if (phaseOf(next) !== phaseOf(this.clock)) this.keys = beatBegan(this.keys);
     this.clock = next;
+    // The winner beat is over (or skipped): the result screen opens by itself (spec 4.6).
+    if (phaseOf(next) === 'done') this.toResult();
+  }
+
+  private toResult(): void {
+    if (this.leaving) return;
+    this.leaving = true;
+    const data: ResultData = {
+      game: this.data0.game, rd: this.data0.rd, art: this.data0.art, session: this.session,
+      result: this.setup.result, playerId: this.me.id, held: [...this.keys.down],
+    };
+    this.scene.start('result', data);
   }
 
   private color(name: string): number {
@@ -229,7 +262,9 @@ export class RaceScene extends Phaser.Scene {
       };
       const layers = LAYERS.map((l) => this.add.image(0, 0, key(l, 'stand'), '0').setOrigin(0, 0));
       const number = this.art.glyph(0, 0, String(h.post % 10), cloth.number);
-      this.horses.set(h.id, { key, layers, number });
+      const photoLayers = LAYERS.map((l, i) => this.add.image(0, 0, key(l, 'gallop'), '0').setOrigin(0, 0).setScale(PHOTO_SCALE).setVisible(false).setDepth(DEPTH.photo + 10 + i));
+      const photoNumber = this.art.glyph(0, 0, String(h.post % 10), cloth.number).setScale(PHOTO_SCALE).setVisible(false).setDepth(DEPTH.photo + 10 + LAYERS.length);
+      this.horses.set(h.id, { key, layers, number, photoLayers, photoNumber });
     }
     this.arrow = this.add.image(0, 0, SLOT_IDS.markerPlayer, '0').setOrigin(0, 0).setDepth(DEPTH.markers);
     for (let i = 0; i < 2; i++) {
@@ -249,7 +284,7 @@ export class RaceScene extends Phaser.Scene {
     }
 
     this.art.box(0, 160, 32, 10, DEPTH.hud);
-    this.add.image(MINIMAP_AT.x, MINIMAP_AT.y, SLOT_IDS.minimap, '0').setOrigin(0, 0).setDepth(DEPTH.hud + 1);
+    this.minimap = this.add.image(MINIMAP_AT.x, MINIMAP_AT.y, SLOT_IDS.minimap, '0').setOrigin(0, 0).setDepth(DEPTH.hud + 1);
     this.stripG = this.add.graphics().setDepth(DEPTH.hud + 1);
     this.dotsG = this.add.graphics().setDepth(DEPTH.hud + 2);
     for (let i = 0; i < this.setup.result.replay.horses.length; i++) {
@@ -265,6 +300,26 @@ export class RaceScene extends Phaser.Scene {
       message: t(8, 221),
       fast: t(FAST_TAG_AT.x, FAST_TAG_AT.y).setDepth(DEPTH.hudTop),
     };
+  }
+
+  /** The photo finish (spec 4.4), hidden until the photo beat; raceFrame says where everything goes. */
+  private buildPhoto(): void {
+    const before = this.children.list.length;
+    this.art.box(PHOTO_PANEL.x, PHOTO_PANEL.y, PHOTO_PANEL.tilesW, PHOTO_PANEL.tilesH, DEPTH.photo);
+    const tiles = this.children.list.slice(before);
+    const panel = this.add.container(0, 0, tiles).setDepth(DEPTH.photo).setVisible(false);
+    // The streaks tile at 1x over the 112x88 crop, the whole sprite doubled with the photo.
+    const streaks = this.add.tileSprite(PHOTO_AREA.x, PHOTO_AREA.y, PHOTO_CROP.behindWire + PHOTO_CROP.pastWire, PHOTO_CROP.rows, SLOT_IDS.photoStreaks, '0')
+      .setOrigin(0, 0).setScale(PHOTO_SCALE).setDepth(DEPTH.photo + 1).setVisible(false);
+    const wire = this.add.graphics().setDepth(DEPTH.photo + 2).setVisible(false);
+    const clip = this.make.graphics({}, false);
+    const mask = clip.createGeometryMask();
+    for (const o of this.horses.values()) {
+      for (const img of [...o.photoLayers, o.photoNumber]) img.setMask(mask);
+    }
+    const arrow = this.add.image(0, 0, SLOT_IDS.markerPlayer, '0').setOrigin(0, 0).setDepth(DEPTH.photo + 100).setVisible(false);
+    const captions = [0, 1].map(() => this.art.text(0, 0, '').setDepth(DEPTH.photo + 100).setVisible(false));
+    this.photo = { panel, streaks, wire, clip, arrow, captions };
   }
 
   private buildPause(): void {
@@ -350,12 +405,10 @@ export class RaceScene extends Phaser.Scene {
         this.session = { ...this.session, pickPost: post };
         this.me = playerView(this.setup, post);
       }
-    } else if (enter && phase === 'done') {
-      this.nextRace();
     } else if (enter) {
       const quarter = this.setup.result.calls.find((c) => c.furlongsToGo === 2)?.time ?? this.setup.timeline.winnerTime;
       this.setClock(skip(this.clock, this.setup.timeline, quarter));
-      this.draw(raceFrame(this.setup, this.me, this.clock));
+      if (!this.leaving) this.draw(raceFrame(this.setup, this.me, this.clock));
     }
   }
 
@@ -462,6 +515,53 @@ export class RaceScene extends Phaser.Scene {
     this.setText('clock', f.clock);
     this.setText('fast', f.fastTag ?? '');
     this.texts.clock.setX(248 - 8 * f.clock.length);
+    // The photo's panel and captions take the HUD's place while it shows.
+    for (const t of Object.values(this.texts)) t.setVisible(f.hudVisible);
+    for (const o of [this.stripG, this.dotsG, this.minimap, ...this.stripNums]) o.setVisible(f.hudVisible);
+    this.drawPhoto(f);
+  }
+
+  private drawPhoto(f: RaceFrame): void {
+    const p = f.photo;
+    const o = this.photo;
+    o.panel.setVisible(p !== null);
+    o.streaks.setVisible(p !== null);
+    o.wire.setVisible(p !== null);
+    if (!p) {
+      o.arrow.setVisible(false);
+      o.captions.forEach((c) => c.setVisible(false));
+      for (const h of this.horses.values()) [...h.photoLayers, h.photoNumber].forEach((img) => img.setVisible(false));
+      return;
+    }
+    o.panel.setY(p.panel.y - PHOTO_PANEL.y);
+    o.streaks.setPosition(p.area.x, p.area.y);
+    o.wire.clear();
+    for (const w of p.wire.stripes) o.wire.fillStyle(this.color(w.color)).fillRect(w.x, w.y, w.w, w.h);
+    o.clip.clear().fillStyle(0xffffff).fillRect(p.area.x, p.area.y, p.area.w, p.area.h);
+    p.horses.forEach((s, rank) => {
+      const h = this.horses.get(s.id);
+      if (!h) return;
+      LAYERS.forEach((layer, i) => {
+        const key = h.key(layer, 'gallop');
+        const img = h.photoLayers[i];
+        if (img.texture.key !== key) img.setTexture(key, String(s.frame));
+        else img.setFrame(String(s.frame));
+        img.setVisible(true).setPosition(s.x, s.y).setDepth(DEPTH.photo + 10 + rank * 10 + i);
+      });
+      const at = this.art.slot(SLOT.tack.gallop).numberAt?.[s.frame] ?? [10, 10];
+      h.photoNumber.setVisible(true).setPosition(s.x + PHOTO_SCALE * at[0], s.y + PHOTO_SCALE * at[1]).setDepth(DEPTH.photo + 10 + rank * 10 + LAYERS.length);
+    });
+    if (p.arrow) o.arrow.setVisible(true).setPosition(p.arrow.x, p.arrow.y);
+    else o.arrow.setVisible(false);
+    o.captions.forEach((c, i) => {
+      const cap = p.captions[i];
+      c.setVisible(cap !== undefined);
+      if (!cap) return;
+      const font = this.art.font(SLOT_IDS.fontMain, cap.color);
+      if (c.font !== font) c.setFont(font);
+      if (c.text !== cap.text) c.setText(cap.text);
+      c.setPosition(cap.x, cap.y);
+    });
   }
 
   private poleKey(kind: PoleKind): string {

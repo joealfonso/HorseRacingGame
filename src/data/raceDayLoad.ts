@@ -29,6 +29,14 @@ export const MAX_JOCKEY_NAME = 22;
 // "4x" at x224-239 in the top bar; the pause box's inner width from the cursor column.
 export const FAST_TAG_CHARS = 2;
 export const PAUSE_CHARS = 12;
+// Photo captions and the result's lines, inside a framed box (spec 4.4 and 4.6).
+export const BOX_CHARS = 30;
+// The result's margin column, x204-247, and "Next race" after the cursor, x20-247.
+export const RESULT_MARGIN_CHARS = 5;
+export const RESULT_NEXT_CHARS = 28; // 228 px: 28 whole cells
+// The result's widest line in pixels: a main-font label, a space, then small-font numbers.
+const BOX_PX = 240;
+const SMALL_PX = 4;
 // The widest value each hole can take, for the fit checks.
 const WIDEST = {
   name: 'M'.repeat(MAX_NAME_LENGTH),
@@ -119,7 +127,7 @@ export function validateRaceDay(
 
   // Every template uses only its own holes and fits its field at its widest.
   const copy = rd.copy;
-  const check = (path: string, template: string, allowed: readonly (keyof typeof WIDEST | 'margin')[], max: number, extra: Record<string, string> = {}) => {
+  const check = (path: string, template: string, allowed: readonly string[], max: number, extra: Record<string, string> = {}) => {
     for (const hole of templateHoles(template)) {
       if (!(allowed as readonly string[]).includes(hole)) add('raceDay', path, `{${hole}} is not allowed here; use ${allowed.length ? allowed.map((a) => `{${a}}`).join(', ') : 'no holes'}`);
     }
@@ -164,12 +172,50 @@ export function validateRaceDay(
     add('raceDay', 'ambient.fromEighthPole', 'lists an ambient item that is not in ambient.order');
   }
 
+  // The photo caption and the result screen (steps 3 and 4).
+  const widest = (xs: readonly string[]) => xs.reduce((a, b) => (b.length > a.length ? b : a), '');
+  check('copy.marginLength', copy.marginLength, ['margin'], BOX_CHARS, { margin: '3/4' });
+  check('copy.marginLengths', copy.marginLengths, ['margin'], BOX_CHARS, { margin: '9 3/4' });
+  const phrase = widest([...Object.values(copy.marginWords), fillTemplate(copy.marginLength, { margin: '3/4' }), fillTemplate(copy.marginLengths, { margin: '9 3/4' })]);
+  check('copy.photo.title', copy.photo.title, [], BOX_CHARS);
+  check('copy.photo.winner', copy.photo.winner, ['winner'], BOX_CHARS);
+  check('copy.photo.margin', copy.photo.margin, ['margin', 'n'], BOX_CHARS, { margin: phrase });
+  const r = copy.result;
+  check('copy.result.winnerMargin', r.winnerMargin, [], RESULT_MARGIN_CHARS);
+  check('copy.result.won', r.won, ['margin'], BOX_CHARS, { margin: phrase });
+  check('copy.result.beaten', r.beaten, ['place', 'margin'], BOX_CHARS, { margin: phrase });
+  for (const k of ['early', 'quarter'] as const) check(`copy.result.${k}`, r[k], ['place'], BOX_CHARS);
+  for (const k of ['earlyLed', 'quarterLed', 'clean', 'start'] as const) check(`copy.result.${k}`, r[k], [], BOX_CHARS);
+  const calls = [widest([fillTemplate(r.early, WIDEST), r.earlyLed]), widest([fillTemplate(r.quarter, WIDEST), r.quarterLed])].join(r.callsJoiner);
+  if (calls.length > BOX_CHARS) add('raceDay', 'copy.result', `the calls line is ${calls.length} characters at its widest ("${calls}"); the line holds ${BOX_CHARS}`);
+  for (const k of ['wire', 'mile'] as const) check(`copy.result.poles.${k}`, r.poles[k], [], BOX_CHARS);
+  // Furlong poles are named by their eighths of a mile; "1 3/8" is the widest up to 12 furlongs.
+  const pole = widest([r.poles.wire, r.poles.mile, '1 3/8']);
+  check('copy.result.near', r.near, ['pole'], BOX_CHARS, { pole });
+  const where = widest([fillTemplate(r.near, { pole }), r.start]);
+  check('copy.result.blocked', r.blocked, ['where'], BOX_CHARS, { where });
+  check('copy.result.steadied', r.steadied, ['where'], BOX_CHARS, { where });
+  check('copy.result.bumped', r.bumped, ['n', 'where'], BOX_CHARS, { where });
+  check('copy.result.rough', r.rough, ['count'], BOX_CHARS, { count: '99' });
   const o = copy.orders;
   const longestOrders = [Object.values(o.early), Object.values(o.move), Object.values(o.path)]
     .map((vals) => vals.reduce((a, b) => (b.length > a.length ? b : a), ''))
     .join(o.joiner);
   if (longestOrders.length > HUD_LINE_CHARS) add('raceDay', 'copy.orders', `the longest short form is ${longestOrders.length} characters ("${longestOrders}"); the line holds ${HUD_LINE_CHARS}`);
   if (o.allDefault.length > HUD_LINE_CHARS) add('raceDay', 'copy.orders.allDefault', `must be ${HUD_LINE_CHARS} characters or fewer`);
+  check('copy.result.orders', r.orders, ['orders'], BOX_CHARS, { orders: widest([longestOrders, o.allDefault]) });
+  for (const k of ['hot', 'honest', 'slow'] as const) check(`copy.result.pace.${k}`, r.pace[k], [], BOX_CHARS);
+  check('copy.result.time', r.time, ['time', 'pace'], BOX_CHARS, { time: '9:59.99', pace: widest(Object.values(r.pace)) });
+  check('copy.result.next', r.next, [], RESULT_NEXT_CHARS);
+  // A label in the main font, a space, then numbers in the small font, inside the box.
+  const splits = Math.ceil(game.race.distanceFurlongs / 2) - 1;
+  const splitsPx = 8 * (r.splits.length + 1) + SMALL_PX * Math.max(0, splits * 8 - 1);
+  if (splitsPx > BOX_PX) add('raceDay', 'copy.result.splits', `the splits line is ${splitsPx} px at its widest; the box holds ${BOX_PX}`);
+  const seedPx = 8 * (r.seed.length + 1) + SMALL_PX * 10;
+  if (seedPx > BOX_PX) add('raceDay', 'copy.result.seed', `the seed line is ${seedPx} px at its widest; the box holds ${BOX_PX}`);
+  if (rd.beats.photoCaptionSeconds.value > rd.beats.photoSeconds.value) {
+    add('raceDay', 'beats.photoCaptionSeconds', `is ${rd.beats.photoCaptionSeconds.value} s; the caption must show within the photo's ${rd.beats.photoSeconds.value} s`);
+  }
 
   const order = ['card', 'race', 'track', 'slots', 'cardLook', 'raceDay'].map((f) => `src/data/${f}.json`);
   for (const file of order) {

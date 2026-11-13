@@ -13,6 +13,7 @@ import type { ArtInfo } from './scenes/art';
 import { BootScene, type BootData } from './scenes/BootScene';
 import { ErrorScene } from './scenes/ErrorScene';
 import { RaceScene } from './scenes/RaceScene';
+import { ResultScene } from './scenes/ResultScene';
 
 // The page background in index.html is the single letterbox color. Phaser takes
 // it from there so the two cannot drift apart.
@@ -84,6 +85,7 @@ async function start(): Promise<void> {
     scale: { mode: Phaser.Scale.NONE, zoom: integerScale(window.innerWidth, window.innerHeight) },
   });
   game.scene.add('race', RaceScene);
+  game.scene.add('result', ResultScene);
   game.scene.add('error', ErrorScene);
   game.scene.add('boot', BootScene, true, { ...boot, present });
 

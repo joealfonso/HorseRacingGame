@@ -364,7 +364,8 @@ y   8 +------------------------------------------+  framed panel x8-247, y8-199
 ```
 
 - The panel steps in from the top by whole 8 px moves, one per frame (25 frames), with `sfx.photo.shutter`.
-- Contents come from `replay.wireFrame` only: every horse at the moment the winner reached the wire, in its lane, on the gallop frame its distance gives. The crop runs from 96 px behind the wire to 16 px past it, so 3 lengths behind.
+- Contents come from `replay.wireFrame` only: every horse at the moment the winner reached the wire, on the gallop frame its distance gives. Across, the crop runs from 96 px behind the wire to 16 px past it, so 3 lengths behind, and horizontal positions are exactly the wire frame's. Up and down, the photo has its own layout (DESIGN.md, art review of 2026-11-13): lanes sit 8 px apart in crop space, not the race view's 4, and the block of occupied lanes is centered in the 88 rows, so each nose has its own height and the horses sit in the middle of the picture. Inner lanes draw first. The wire is 1 px Bone with 1 px Ash on each side, behind the horses.
+- The race view behind the panel is frozen while the photo shows: nothing at the panel's sides moves, the crowd and flag included.
 - Within the photo, positions are at 8 px per foot (the 2x space), so a 0.1-length nose is 6 screen px wide. If the winner and another horse land on the same pixel, the other horse moves back 1 px. The photo must never show a tie or the wrong horse in front.
 - The caption names the winner and the margin to second only. Horses behind the winner can still pass each other before the wire (sim O9), so the photo claims nothing about third.
 - Timing: "Photo finish" for 1.5 s while you look, then the winner line ("{name} wins", Yellow if yours) and "by a nose over #{n}". Advances by itself 3.0 s later, or on Enter. First Enter shows the caption at once, second continues.
@@ -413,7 +414,7 @@ y   0 +------------------------------------------+  order box, 6.5 tiles
   184 | Time 2:01.55, hot pace                    |  lines at y184 + 12*i
   196 | Splits 23.10 46.12 1:10.20 1:35.00        |  numbers in the small font
   208 | Today 4-1-1-0                Seed 1234567 |  step 8; seed number small font
-  220 | > Next race                               |
+  220 | > Next race                               |  cursor x8-15, label from x20
   239 +------------------------------------------+
 ```
 
