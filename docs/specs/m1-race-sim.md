@@ -249,7 +249,30 @@ Still open, all in the early and move orders, for the second pass:
 - **I4 measured by win share fails for the shipped card's closers in hot races** (save it minus the 3/8 move: minus 0.6, 0.0, 0.0, all inside noise). It holds on the equal card and by the measure the I4 test uses.
 - **Stay inside on a neutral track still costs closers** 1.5 to 2 points on the equal card, and on an inside-bias track the equal card's closers gain in place but not in win share.
 
-One rule added by this pass: `instructions.stayInsidePassMarginShare` must be at least `model.traffic.passMarginShare`, or a horse told to stay inside would go around more readily than one that was not. Loading the data fails with a message naming both values if it is lower.
+#### Second pass targets: the early and move orders (added 2026-11-12)
+
+The first pass left the move slot without a real choice. These targets define one. A player cannot see the pace label before the race, but can see how many front-runners are in the field, so the targets are stated by field. All are starting guesses. Measured as before: paired runs, 4,000 seeds or more, one horse changed, equal horses unless stated. "A lone-speed field" has one front-runner among stalkers and closers. "A speed-heavy field" has three or four.
+
+- **V1. The move orders trade by field.** In a lone-speed field the 3/8 move beats save it for stalkers and for closers (style average, at least 1 point of win share, and a better average place). In a speed-heavy field save it beats the 3/8 move by the same margin. The reason should be the one a racing fan expects: on a slow pace the leaders have plenty left, so waiting leaves too much to do, and on a hot pace the horses near it have been pulled along and an early move runs out.
+- **V2. Each move order pays somewhere.** Against no instruction, the 3/8 move is not a loss for stalkers or closers in a lone-speed field (style average at or above minus 0.5 points, average place no worse), and save it is not a loss in a speed-heavy field by the same measure. Each is a loss in the other field. Over all fields each stays between minus 2 and plus 2.
+- **V3. No free upgrade from rating a stalker.** For each stalker, rate early alone and rate early with save it both stay between minus 3 and plus 3 over all races on the equal card (they were plus 3.2 to 3.8 and plus 6.2 to 8.0), and both lose in a lone-speed field, where giving up position to leaders who are not tiring should cost. No combination of two or three instructions on one horse is above plus 3 on the equal card or plus 4 on the shipped card.
+- **V4. The horse still matters, in the direction a fan expects.** Preferred, not required: a horse with stamina and little kick (85 and 55) does better with the 3/8 move than with save it, and a horse with kick and less stamina (85 kick, 55 stamina) does better with save it. Today it is the reverse. If this fights V1, V1 wins and the numbers are reported.
+- **V5. Nothing else moves.** U1 for front-runners, U3 as measured, U4, U5, U6 and U8 still hold. The post slope (U7) is no steeper than minus 0.45 per post for any style. Every existing test passes unchanged. If an existing test and a target disagree, the work stops and the disagreement is reported with numbers. If results change for the frozen inputs, the reference results are regenerated on purpose and `SIM_VERSION` goes to 4.
+
+A target that cannot be met without breaking another is reported with the numbers, not forced.
+
+#### Where the second-pass targets stand (2026-11-12)
+
+None of V1 to V4 is met. Three attempts were measured and dropped, and the model is unchanged from commit 284bf67. The numbers for each attempt are in `docs/DECISIONS.md` under "M1 tuning pass, second pass".
+
+- **V1 and V2 are a known gap.** A slow pace with one front-runner needed a rule that only front-runners fight for the lead. Every version built on that rule broke an existing test: B6 on both cards, and with closers back behind the stalkers also B1, I4, the U1 slow-race count and batch check F3. Existing tests outrank these targets, so the rule was withdrawn. V1 and V2 need the pace and reserve economy redesigned from its own spec.
+- **V3 is a known gap.** The rules that bring a rated stalker toward the band make rating a front-runner worth 4 to 8 points, against U1's 2. The combination furthest over the limit once stalkers are fixed is a front-runner rated and then sent at the 3/8 pole (plus 4.3 on the equal card at 284bf67), which no stalker rule reaches.
+- **V4** was not pursued on its own.
+- **V5 holds**, because nothing changed: 842 tests pass and all nine batch checks pass on seeds 0 to 9999 and 10000 to 19999.
+
+What a player can still exploit, from the playtester's re-measure above: rate early with save it on a stalker, plus 6.2 to 8.0 on equal horses and plus 2.8 to 6.5 on the shipped card.
+
+One rule added by the first pass: `instructions.stayInsidePassMarginShare` must be at least `model.traffic.passMarginShare`, or a horse told to stay inside would go around more readily than one that was not. Loading the data fails with a message naming both values if it is lower.
 
 ## Open questions (answered above)
 
