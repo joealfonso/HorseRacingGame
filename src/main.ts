@@ -7,11 +7,13 @@ import { colorMap, type ColorMap } from './render/colors';
 import { bootErrorLines } from './render/format';
 import { renderSettings } from './render/renderSettings';
 import { integerScale } from './render/scale';
-import { parseSeedParam, type Session } from './render/session';
+import { newSession, parseSeedParam } from './render/session';
 import { ERROR_SCREEN_SLOT_IDS, SLOT_IDS } from './render/slotStatus';
 import type { ArtInfo } from './scenes/art';
 import { BootScene, type BootData } from './scenes/BootScene';
+import { CardScene } from './scenes/CardScene';
 import { ErrorScene } from './scenes/ErrorScene';
+import { OrdersScene } from './scenes/OrdersScene';
 import { RaceScene } from './scenes/RaceScene';
 import { ResultScene } from './scenes/ResultScene';
 
@@ -55,13 +57,13 @@ async function start(): Promise<void> {
     const rd = loadRaceDay(game);
     // The first seed is drawn here, in app code, never inside src/sim/.
     const firstSeed = seed.seed ?? crypto.getRandomValues(new Uint32Array(1))[0];
-    const session: Session = { firstSeed, raceNumber: 0, pickPost: 1 };
+    const session = newSession(firstSeed);
     console.info(`Race day: first seed ${firstSeed}. Add ?seed=${firstSeed} to the address to replay this day.`);
     boot = {
       slots: rd.slots.slots,
       colors: colorMap(rd.palette),
       keys: rd.palette.keyColors,
-      next: { key: 'race', data: { game, rd, session } },
+      next: { key: 'card', data: { game, rd, session } },
     };
   } catch (err) {
     console.error(err instanceof Error ? err.message : err);
@@ -84,6 +86,8 @@ async function start(): Promise<void> {
     // only to whole numbers.
     scale: { mode: Phaser.Scale.NONE, zoom: integerScale(window.innerWidth, window.innerHeight) },
   });
+  game.scene.add('card', CardScene);
+  game.scene.add('orders', OrdersScene);
   game.scene.add('race', RaceScene);
   game.scene.add('result', ResultScene);
   game.scene.add('error', ErrorScene);

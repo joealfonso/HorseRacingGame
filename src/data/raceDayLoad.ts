@@ -8,7 +8,8 @@ import {
   type CardLook, type Palette, type RaceDay, type Slots,
 } from './raceDaySchema';
 import { MAX_NAME_LENGTH, type GameData } from './schema';
-import { templateHoles, fillTemplate } from './template';
+import { allBiasLines, conditionsLine } from './cardWords';
+import { templateHoles, fillTemplate, wrapWords } from './template';
 import { DataError, type DataIssue } from './validate';
 
 export interface RaceDayData {
@@ -36,6 +37,15 @@ export const RESULT_MARGIN_CHARS = 5;
 export const RESULT_NEXT_CHARS = 28; // 228 px: 28 whole cells
 // The result's widest line in pixels: a main-font label, a space, then small-font numbers.
 const BOX_PX = 240;
+// The card and Orders screens (spec 4.1 and 4.2). Style words on a card row, x192-247 (56 px).
+export const CARD_STYLE_CHARS = 7;
+// Orders: a slot's label x20-59, its value x84-211, Go to the post and Back to card from x20.
+export const ORDERS_LABEL_CHARS = 5;
+export const ORDERS_VALUE_CHARS = 16;
+export const ORDERS_ITEM_CHARS = 28;
+// The trainer's line in the dialog box: 28 characters a line, at most 3 lines.
+export const TRAINER_CHARS = 28;
+export const TRAINER_LINES = 3;
 const SMALL_PX = 4;
 // The widest value each hole can take, for the fit checks.
 const WIDEST = {
@@ -169,6 +179,60 @@ export function validateRaceDay(
   check('copy.finished', copy.finished, ['place'], HUD_LINE_CHARS);
   check('copy.fastTag', copy.fastTag, [], FAST_TAG_CHARS);
   for (const k of ['title', 'resume', 'back'] as const) check(`copy.pause.${k}`, copy.pause[k], [], PAUSE_CHARS);
+
+  // The card and Orders screens (step 5).
+  const cc = copy.card;
+  for (const [k, v] of Object.entries(cc.styles)) check(`copy.card.styles.${k}`, v, [], CARD_STYLE_CHARS);
+  check('copy.card.furlongs', cc.furlongs, ['n'], BOX_CHARS, { n: '7' });
+  check('copy.card.mile', cc.mile, [], BOX_CHARS);
+  check('copy.card.miles', cc.miles, ['fraction'], BOX_CHARS, { fraction: '7/8' });
+  for (const t of templateHoles(cc.conditions)) {
+    if (!['distance', 'surface', 'going'].includes(t)) add('raceDay', 'copy.card.conditions', `{${t}} is not allowed here; use {distance}, {surface}, {going}`);
+  }
+  const conditions = conditionsLine(game.race, cc);
+  if (conditions.length > BOX_CHARS) add('raceDay', 'copy.card.conditions', `is ${conditions.length} characters for this race ("${conditions}"); the line holds ${BOX_CHARS}`);
+  for (const k of ['inside', 'outside'] as const) check(`copy.card.bias.laneShort.${k}`, cc.bias.laneShort[k], [], BOX_CHARS);
+  for (const k of ['speed', 'closers'] as const) check(`copy.card.bias.styleShort.${k}`, cc.bias.styleShort[k], [], BOX_CHARS);
+  check('copy.card.bias.both', cc.bias.both, ['lane', 'style'], BOX_CHARS, { lane: '', style: '' });
+  for (const line of allBiasLines(cc)) {
+    if (line.length > BOX_CHARS) add('raceDay', 'copy.card.bias', `"${line}" is ${line.length} characters; the line holds ${BOX_CHARS}`);
+  }
+  check('copy.card.jockey', cc.jockey, ['jockey'], BOX_CHARS, { jockey: 'M'.repeat(MAX_JOCKEY_NAME) });
+  // Stats print as they are, so the line is checked with each horse's real numbers.
+  check('copy.card.stats', cc.stats, ['speed', 'stamina', 'kick'], Infinity);
+  horses.forEach((h, i) => {
+    const line = fillTemplate(cc.stats, { speed: h.stats.speed, stamina: h.stats.stamina, kick: h.stats.kick });
+    if (line.length > BOX_CHARS) add('raceDay', 'copy.card.stats', `is ${line.length} characters for card.json horses[${i}] (${h.name}): "${line}"; the line holds ${BOX_CHARS}`);
+  });
+  check('copy.card.hint', cc.hint, [], BOX_CHARS);
+  check('copy.card.lastPick', cc.lastPick, [], BOX_CHARS);
+  const pd = copy.paddock;
+  check('copy.paddock.title', pd.title, [], BOX_CHARS);
+  const longStyle = Object.values(pd.styles).reduce((a, b) => (b.length > a.length ? b : a), '');
+  check('copy.paddock.postLine', pd.postLine, ['style', 'post'], BOX_CHARS, { style: longStyle });
+  for (const k of ['early', 'move', 'path'] as const) {
+    check(`copy.paddock.labels.${k}`, pd.labels[k], [], ORDERS_LABEL_CHARS);
+    for (const [v, label] of Object.entries(pd.values[k])) check(`copy.paddock.values.${k}.${v}`, label, [], ORDERS_VALUE_CHARS);
+  }
+  check('copy.paddock.go', pd.go, [], ORDERS_ITEM_CHARS);
+  check('copy.paddock.back', pd.back, [], ORDERS_ITEM_CHARS);
+  const trainerLines: [string, string][] = [
+    ...(['early', 'move', 'path'] as const).flatMap((k) => Object.entries(pd.trainer[k]).map(([v, line]): [string, string] => [`copy.paddock.trainer.${k}.${v}`, line])),
+    ['copy.paddock.trainer.go', pd.trainer.go], ['copy.paddock.trainer.back', pd.trainer.back],
+  ];
+  for (const [path, line] of trainerLines) {
+    check(path, line, [], Infinity);
+    const wrapped = wrapWords(line, TRAINER_CHARS);
+    if (wrapped.length > TRAINER_LINES || wrapped.some((l) => l.length > TRAINER_CHARS)) {
+      add('raceDay', path, `wraps to ${wrapped.length} lines of up to ${Math.max(...wrapped.map((l) => l.length))} characters; the dialog holds ${TRAINER_LINES} lines of ${TRAINER_CHARS}`);
+    }
+  }
+  // The paddock's rows name 16x16 tile slots that are in the registry.
+  rd.paddock.rows.value.forEach(({ slot: id }, i) => {
+    const sl0 = sl.slots.find((x) => x.id === id);
+    if (!sl0) add('raceDay', `paddock.rows.value[${i}].slot`, `"${id}" is not a slot in src/data/slots.json`);
+    else if (sl0.frameWidth !== 16 || sl0.frameHeight !== 16) add('raceDay', `paddock.rows.value[${i}].slot`, `"${id}" must be a 16x16 tile`);
+  });
 
   // RV11: the slowest winning time the sim allows, with a photo, fits the brief's cap.
   const slowest = game.tuning.checks.winningTimeBandSeconds.value.max;

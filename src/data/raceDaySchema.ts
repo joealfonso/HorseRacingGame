@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { INSTRUCTIONS, marked } from './schema';
+import { GOINGS_BY_SURFACE, INSTRUCTIONS, RUNNING_STYLES, SURFACES, marked } from './schema';
 
 // Schemas for the race-day screens' data: the palette, the art and audio slot registry,
 // each horse's look, and the view values and copy. Like schema.ts, no JSON is imported
@@ -72,6 +72,10 @@ export const SLOT_IDS = {
   photoStreaks: 'art.photo.bg.streaks',
   // Step 4, the result screen: your marker on the order of finish.
   markerYours: 'art.ui.marker.yours',
+  // Step 5, the Orders screen's paddock: the trainer's 2-frame coffee idle and the ground tile.
+  paddockTrainer: 'art.paddock.trainer',
+  paddockGround: 'art.paddock.ground',
+  paddockRail: 'art.paddock.rail',
   horse: {
     body: { gallop: 'art.race.horse.body.gallop', stand: 'art.race.horse.body.stand', walk: 'art.race.horse.body.walk' },
     tack: { gallop: 'art.race.horse.tack.gallop', stand: 'art.race.horse.tack.stand', walk: 'art.race.horse.tack.walk' },
@@ -173,12 +177,17 @@ export const slotsSchema = z.strictObject({ slots: z.array(slot).min(1) }).super
 
 // Card look --------------------------------------------------------------------------
 
+/** The card's blurb line: 28 characters (spec 11, from data). */
+export const BLURB_CHARS = 28;
+
 export const COATS = ['bay', 'dark bay or brown', 'chestnut', 'black'] as const;
 
 // Keyed by horse id. Colors are checked against the palette by the loader.
 export const cardLookSchema = z.record(z.string(), z.strictObject({
   coat: z.enum(COATS, { error: `unknown coat, use one of ${COATS.join(', ')} (gray needs an age and roan the markings layer, neither in M1)` }),
   silks: z.strictObject({ body: text, cap: text }),
+  // One line of character on the card (spec 4.1). Left out, the line is blank.
+  blurb: text.max(BLURB_CHARS, { error: `must be ${BLURB_CHARS} characters or fewer` }).optional(),
 }));
 
 // Race day ---------------------------------------------------------------------------
@@ -187,6 +196,12 @@ const variants = z.array(text).min(1, { error: 'needs at least one line' });
 const ordersCopy = (keys: readonly string[]) => z.strictObject(
   Object.fromEntries(keys.filter((k) => k !== 'default').map((k) => [k, text])) as Record<string, typeof text>,
 );
+// One string per value of an order slot, the default included, keyed by INSTRUCTIONS.
+const everyValue = (keys: readonly string[]) => z.strictObject(
+  Object.fromEntries(keys.map((k) => [k, text])) as Record<string, typeof text>,
+);
+const byKeys = (keys: readonly string[]) => z.strictObject(Object.fromEntries(keys.map((k) => [k, text])) as Record<string, typeof text>);
+const ALL_GOINGS = [...new Set(Object.values(GOINGS_BY_SURFACE).flat())];
 
 export const raceDaySchema = z.strictObject({
   view: z.strictObject({
@@ -221,6 +236,21 @@ export const raceDaySchema = z.strictObject({
     // Hold Space (spec 3.4).
     fastSpeed: marked(positive),
     maxFrameMs: marked(positive),
+  }),
+  // Spec 5: a held arrow on the card or Orders repeats after repeatDelayMs, every repeatEveryMs.
+  menus: z.strictObject({
+    repeatDelayMs: marked(positive),
+    repeatEveryMs: marked(positive),
+  }),
+  // The Orders screen's paddock strip (spec 4.2): the 16x16 tile slot on each of its three
+  // 16 px rows, top first, and whether odd tiles flip (the rail's posts pair every 32 px);
+  // where the trainer and your horse stand; and the trainer's coffee idle (DESIGN Charm).
+  paddock: z.strictObject({
+    rows: marked(z.array(z.strictObject({ slot: text, flipOddTiles: z.boolean() })).length(3, { error: 'must list one tile row for each of the 3 rows' })),
+    trainerAt: marked(z.tuple([whole.min(0).max(255), whole.min(0).max(239)])),
+    horseAt: marked(z.tuple([whole.min(0).max(255), whole.min(0).max(239)])),
+    cupDownSeconds: marked(positive),
+    cupUpSeconds: marked(positive),
   }),
   beats: z.strictObject({
     pickSeconds: marked(z.number().min(0)),
@@ -277,6 +307,41 @@ export const raceDaySchema = z.strictObject({
     nextRace: text,
     fastTag: text,
     pause: z.strictObject({ title: text, resume: text, back: text }),
+    // The card (spec 4.1).
+    card: z.strictObject({
+      styles: byKeys(RUNNING_STYLES),
+      furlongs: text,
+      mile: text,
+      miles: text,
+      conditions: text,
+      surfaces: byKeys(SURFACES),
+      goings: byKeys(ALL_GOINGS),
+      bias: z.strictObject({
+        fair: text,
+        lane: z.strictObject({ inside: text, outside: text }),
+        style: z.strictObject({ speed: text, closers: text }),
+        both: text,
+        laneShort: z.strictObject({ inside: text, outside: text }),
+        styleShort: z.strictObject({ speed: text, closers: text }),
+      }),
+      jockey: text,
+      stats: text,
+      hint: text,
+      lastPick: text,
+    }),
+    // Orders, the paddock (spec 4.2). Values and trainer lines are keyed by INSTRUCTIONS.
+    paddock: z.strictObject({
+      styles: byKeys(RUNNING_STYLES),
+      postLine: text,
+      title: text,
+      labels: z.strictObject({ early: text, move: text, path: text }),
+      values: z.strictObject({ early: everyValue(INSTRUCTIONS.early), move: everyValue(INSTRUCTIONS.move), path: everyValue(INSTRUCTIONS.path) }),
+      go: text,
+      back: text,
+      trainer: z.strictObject({
+        early: everyValue(INSTRUCTIONS.early), move: everyValue(INSTRUCTIONS.move), path: everyValue(INSTRUCTIONS.path), go: text, back: text,
+      }),
+    }),
     beforeFirstCall: text,
     leads: text,
     behind: text,

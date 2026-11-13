@@ -247,7 +247,8 @@ export function raceFrame(setup: RaceSetup, me: PlayerView, at: number | Clock):
     const onWall = triggersOnWall(me.triggers.filter((tr) => tr.race === undefined || !wasSkipped(c, tr.race)), (rt) => photoWall(toWall(rt)));
     shownMessage = messageAt(messageSchedule(onWall, rd.hud.messageSeconds.value, rd.hud.messageMaxWaitSeconds.value), photoWall(p));
   }
-  const message = phase === 'gate' ? rd.copy.pickPrompt : shownMessage ?? (phase === 'done' ? rd.copy.nextRace : '');
+  // The card picks the horse now (step 5), so the gate has no prompt.
+  const message = phase === 'gate' ? '' : shownMessage ?? (phase === 'done' ? rd.copy.nextRace : '');
 
   const laneMax = result.inputs.tuning.laneMax.value;
   const D = model.distance;
