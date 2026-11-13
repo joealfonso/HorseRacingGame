@@ -3,6 +3,7 @@ import { fillTemplate } from '../data/template';
 import { marginLabel } from '../sim/margins';
 import type { RaceResult } from '../sim/result';
 import { formatClock, formatFraction, marginPhrase, ordersShort, ordinal } from './format';
+import { INK, PAPER, SECOND_INK, bandRects, rightAlignedX, rule, type PageRect } from './page';
 import { FEET_PER_FURLONG, raceDistance, sampleAt } from './view';
 
 // The result screen (spec 4.6), as pure functions of the result and your horse. Every
@@ -10,16 +11,16 @@ import { FEET_PER_FURLONG, raceDistance, sampleAt } from './view';
 // `result.finish`, the trip from `result.calls`, `result.finish` and `replay.events`, the
 // orders from `result.inputs.card`, the time, pace and splits from the result, and the
 // seed from `result.seed`. The session record ("Today 4-1-1-0") is not built (spec 13).
+// It is drawn as the chart page of the program (spec 4.6, DESIGN Program pages): flat
+// Parchment, Ink type, Ink rules where the old box edges were, the margin column in Maroon.
 
-/** Three framed boxes: the order of finish y0-103, the trip y104-175, the time y176-239. */
-export const RESULT_BOXES = [
-  { x: 0, y: 0, tilesW: 32, tilesH: 13 },
-  { x: 0, y: 104, tilesW: 32, tilesH: 9 },
-  { x: 0, y: 176, tilesW: 32, tilesH: 8 },
-] as const;
+/** No framed boxes on the chart page: the 8 px where the frame tiles were stays as margin. */
+export const RESULT_BOXES: readonly { x: number; y: number; tilesW: number; tilesH: number }[] = [];
+/** Ink rules where the box edges were (spec 4.6). */
+export const RESULT_RULES = [103, 175] as const;
 
-/** Columns of an order row (spec 4.6): marker, place, saddlecloth box, name, margin. */
-export const RESULT_ROW = { y: 8, dy: 11, marker: 8, place: 16, cloth: 42, clothSize: 10, name: 56, marginRight: 248 } as const;
+/** Columns of an order row (spec 4.6): marker, place, saddlecloth box, name, margin (Maroon, last cell ending at x247). */
+export const RESULT_ROW = { y: 8, dy: 11, marker: 8, place: 16, cloth: 42, clothSize: 10, name: 56, marginLastX: 247 } as const;
 export const RESULT_TRIP = { x: 8, y: 112, dy: 11 } as const;
 export const RESULT_TIME = { x: 8, y: 184, dy: 12, right: 248 } as const;
 /** The cursor uses all 8 columns of x8-15, so the label starts 4 px past its cell (DESIGN, HUD). */
@@ -129,7 +130,7 @@ export function tripLines(result: RaceResult, rd: RaceDay, playerId: string): st
 
 // The screen ----------------------------------------------------------------------------
 
-export type ResultColor = 'Bone' | 'Yellow';
+export type ResultColor = 'Ink' | 'Maroon';
 export interface ResultText { text: string; x: number; y: number; color: ResultColor; small?: boolean }
 
 export interface ResultRow {
@@ -137,33 +138,41 @@ export interface ResultRow {
   id: string;
   post: number;
   yours: boolean;
-  /** Your marker's top-left, on your row only. */
+  /** Your arrow marker's top-left (drawn in Ink on the band), on your row only. */
   marker: { x: number; y: number } | null;
-  /** The 10x10 saddlecloth box (Ash border, cloth fill) and its small-font number. */
+  /** The 10x10 saddlecloth box (1 px Ink border, cloth fill) and its small-font number. */
   cloth: { x: number; y: number; size: number; numberX: number; numberY: number };
   texts: ResultText[];
 }
 
 export interface ResultScreen {
   boxes: typeof RESULT_BOXES;
+  /** Flat full-screen paper. */
+  paper: string;
+  rules: PageRect[];
+  /** The highlighter band under your order row, one rect per row. Drawn first. */
+  band: PageRect[];
   rows: ResultRow[];
-  /** The trip, the time lines, the seed and Next race. */
+  /** The trip (its heading in Maroon), the time lines, the seed and Next race. */
   texts: ResultText[];
   cursor: { x: number; y: number };
 }
 
-/** The margin column holds 5 characters, right-aligned so the numbers line up. */
+/** A number right-aligned to end before `right` (exclusive), in cells of `w` px. */
 const rightAt = (text: string, right: number, w = MAIN_W) => right - w * text.length;
 
 export function resultScreen(result: RaceResult, rd: RaceDay, playerId: string): ResultScreen {
   const copy = rd.copy.result;
   const R = RESULT_ROW;
   const nameOf = new Map(result.inputs.card.horses.map((h) => [h.id, h.name]));
+  let band: PageRect[] = [];
   const rows: ResultRow[] = result.finish.map((f, i) => {
     const y = R.y + R.dy * i;
     const yours = f.id === playerId;
     const margin = f.margin?.label ?? copy.winnerMargin;
     const clothY = y - 1;
+    // Your row: the band from 1 row above the row's 8 to 1 below.
+    if (yours) band = bandRects(rd.program.resultBand.value, y - 1);
     return {
       place: f.place,
       id: f.id,
@@ -172,30 +181,38 @@ export function resultScreen(result: RaceResult, rd: RaceDay, playerId: string):
       marker: yours ? { x: R.marker, y } : null,
       cloth: { x: R.cloth, y: clothY, size: R.clothSize, numberX: R.cloth + 3, numberY: clothY + 2 },
       texts: [
-        { text: ordinal(f.place), x: R.place, y, color: 'Bone' },
-        { text: nameOf.get(f.id) ?? f.id, x: R.name, y, color: yours ? 'Yellow' : 'Bone' },
-        { text: margin, x: rightAt(margin, R.marginRight), y, color: 'Bone' },
+        { text: ordinal(f.place), x: R.place, y, color: INK },
+        { text: nameOf.get(f.id) ?? f.id, x: R.name, y, color: INK },
+        { text: margin, x: rightAlignedX(margin, R.marginLastX), y, color: SECOND_INK },
       ],
     };
   });
 
   const texts: ResultText[] = tripLines(result, rd, playerId)
-    .map((text, i) => ({ text, x: RESULT_TRIP.x, y: RESULT_TRIP.y + RESULT_TRIP.dy * i, color: i === 0 ? 'Yellow' as const : 'Bone' as const }));
+    .map((text, i) => ({ text, x: RESULT_TRIP.x, y: RESULT_TRIP.y + RESULT_TRIP.dy * i, color: i === 0 ? SECOND_INK : INK }));
 
   const T = RESULT_TIME;
   const winner = result.finish[0];
-  texts.push({ text: fillTemplate(copy.time, { time: formatClock(winner.time, true), pace: copy.pace[result.pace.label] }), x: T.x, y: T.y, color: 'Bone' });
+  texts.push({ text: fillTemplate(copy.time, { time: formatClock(winner.time, true), pace: copy.pace[result.pace.label] }), x: T.x, y: T.y, color: INK });
   const splits = result.fractions.slice(0, -1).map((f) => formatFraction(f.time)).join(' ');
-  texts.push({ text: copy.splits, x: T.x, y: T.y + T.dy, color: 'Bone' });
-  texts.push({ text: splits, x: T.x + MAIN_W * (copy.splits.length + 1), y: T.y + T.dy + SMALL_DY, color: 'Bone', small: true });
+  texts.push({ text: copy.splits, x: T.x, y: T.y + T.dy, color: INK });
+  texts.push({ text: splits, x: T.x + MAIN_W * (copy.splits.length + 1), y: T.y + T.dy + SMALL_DY, color: INK, small: true });
   // The seed, right-aligned on the third line, its number in the small font (spec 13, item 11).
   const seed = String(result.seed);
   const seedX = rightAt(seed, T.right, SMALL_W);
-  texts.push({ text: copy.seed, x: seedX - MAIN_W * (copy.seed.length + 1), y: T.y + 2 * T.dy, color: 'Bone' });
-  texts.push({ text: seed, x: seedX, y: T.y + 2 * T.dy + SMALL_DY, color: 'Bone', small: true });
-  texts.push({ text: copy.next, x: RESULT_NEXT.x, y: RESULT_NEXT.y, color: 'Bone' });
+  texts.push({ text: copy.seed, x: seedX - MAIN_W * (copy.seed.length + 1), y: T.y + 2 * T.dy, color: INK });
+  texts.push({ text: seed, x: seedX, y: T.y + 2 * T.dy + SMALL_DY, color: INK, small: true });
+  texts.push({ text: copy.next, x: RESULT_NEXT.x, y: RESULT_NEXT.y, color: INK });
 
-  return { boxes: RESULT_BOXES, rows, texts, cursor: { x: RESULT_NEXT.cursorX, y: RESULT_NEXT.y } };
+  return {
+    boxes: RESULT_BOXES,
+    paper: PAPER,
+    rules: RESULT_RULES.map((y) => rule(y)),
+    band,
+    rows,
+    texts,
+    cursor: { x: RESULT_NEXT.cursorX, y: RESULT_NEXT.y },
+  };
 }
 
 /** The keys that choose Next race (spec 4.6). */

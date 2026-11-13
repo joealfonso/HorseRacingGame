@@ -47,6 +47,21 @@
     "repeatDelayMs": { "value": 400, "status": "starting guess", "note": "Spec 5: a held arrow on the card or Orders repeats after this long." },
     "repeatEveryMs": { "value": 120, "status": "starting guess", "note": "Spec 5: and then this often." }
   },
+  "program": {
+    "entryBand": {
+      "value": { "x0": 16, "x1": 250, "rows": 19, "leftSteps": [3, 2, 1, 0], "rightSteps": [0, 1, 2, 3] },
+      "status": "starting guess",
+      "note": "DESIGN Program pages: the highlighter band behind a program entry on the Card and Orders, from 1 row above the entry to 1 below. Rows split into four groups, extra rows to the top; group g's first column is x0 + leftSteps[g], its last x1 - rightSteps[g] (chisel ends)."
+    },
+    "resultBand": {
+      "value": { "x0": 5, "x1": 250, "rows": 10, "leftSteps": [3, 2, 1, 0], "rightSteps": [0, 1, 2, 3] },
+      "status": "starting guess",
+      "note": "DESIGN Program pages: your order row on the Result, the row's 8 rows plus 1 above and 1 below."
+    },
+    "swipeHalfX1": { "value": 132, "status": "starting guess", "note": "DESIGN Program pages: the swipe's frame 1 is the band from x0 to here, with the chisel end at this end." },
+    "swipeFrame1Seconds": { "value": 0.1, "status": "starting guess" },
+    "swipeFrame2Seconds": { "value": 0.25, "status": "starting guess", "note": "The whole band and the tick, held, then the cut to Orders." }
+  },
   "paddock": {
     "rows": {
       "value": [
@@ -125,14 +140,10 @@
         "laneShort": { "inside": "Inside good", "outside": "Outside good" },
         "styleShort": { "speed": "speed holding", "closers": "closers rolling" }
       },
-      "jockey": "Jockey {jockey}",
-      "stats": "Speed {speed}  Stamina {stamina}  Kick {kick}",
-      "hint": "Enter: pick this horse",
-      "lastPick": "Your pick last race"
+      "heads": { "speed": "Speed", "stamina": "Stamina", "kick": "Kick" },
+      "jockeyUp": "{jockey} up"
     },
     "paddock": {
-      "styles": { "frontRunner": "Front-runner", "stalker": "Stalker", "closer": "Closer" },
-      "postLine": "{style}, post {post}",
       "title": "Orders",
       "labels": { "early": "Early", "move": "Move", "path": "Path" },
       "values": {

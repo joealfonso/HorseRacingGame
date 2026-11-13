@@ -310,3 +310,15 @@ Two or three lines for each non-obvious choice.
 **The paddock rail is the strip's top row.** On y160-175 the fence crossed the trainer's face and the horse's back line, so the redrawn rail tile goes on y144-159 and the ground on the two rows below; the planks land at y153-154 and y157-158, above both figures. Only `paddock.rows` in `raceDay.json` changed.
 
 **A screen trusts its own record of held keys, not the one it was handed.** A quick tap's keyup can reach the old screen before the new one listens, so a key handed on as held lost its next press on every hand-off of the loop, which broke LP4's three presses. Now `down` in `src/render/keys.ts` holds only keys this screen saw go down, and `stale` the keys handed over as held. A keydown for a key in `down` never acts, flagged as a repeat or not, so a held key inside one screen (across race beats too) never acts twice even if the browser drops the flag. A non-repeat keydown for any other key acts, held over or not. One case is left: a key held across a hand-off in a browser that also drops the repeat flag acts once, then is in `down`.
+
+## M1 race day, program pages (Card, Orders top, Result as print)
+
+**One entry function for the Card and Orders.** `programEntry` in `src/render/page.ts` draws an entry from that horse, its saddlecloth and `tuning.statRange` only, so nothing about the other horses can reach it (CD4), and Orders calls the same function at the same x positions (OR4). A page is plain rects, text and images in draw order, and `src/scenes/paper.ts` draws any of them, so the three pages share one painter.
+
+**The band's shape and the swipe are data; the entry columns are code.** `program.entryBand`, `program.resultBand`, `swipeHalfX1` and the two swipe timings live in `raceDay.json`, as DESIGN asks ("Code draws it from these numbers in data"). The entry and page columns stay constants beside each screen, as every earlier screen's layout does, since they are the spec's grid rather than tuning.
+
+**A stat must be at most 99.** The program prints each stat in two small-font digits before its bar, and a third digit would run into the bar at x50. `tuning.statRange` allows 100, so the race-day loader rejects a card stat over 99 with the horse named, the way it caps jockey names. If 100 is ever wanted, the number column needs a third digit and the bars move.
+
+**The paper cursor and marker are code recolors.** `Art.swap` applies exact palette swaps all at once (Yellow to Gold and Gold to Auburn for the horseshoe; Yellow and Gold to Ink for the arrow marker), cached per swap set, so no extra art slots are needed. The Navy screens keep the plain slots.
+
+**The old Card and Orders copy is gone.** `copy.card.jockey`, `stats`, `hint`, `lastPick` and `copy.paddock.styles` and `postLine` described the detail box and the old horse box, which the program page replaces; `copy.card.heads` and `jockeyUp` take their place.
