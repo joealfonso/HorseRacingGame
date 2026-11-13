@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RaceResult } from '../sim/result';
-import { ambientState, fullTileAt, midZones, swapsAt, zoneTiles, type AmbientId } from './ambient';
+import { ambientState, fullTileAt, midZones, swapsAt, turnArt, zoneTiles, type AmbientId, type MidZone } from './ambient';
 import { makeRaceSetup, playerView, raceFrame, type RaceFrame } from './raceFrame';
 import { makeTimeline, phaseOf, startClock, tick, type Clock } from './timeline';
 import { art, race, rd, seeds } from './testkit';
@@ -348,17 +348,16 @@ describe('CH1: one full infield tile per turn, the slice elsewhere, and the flag
 });
 
 describe('CH1: each mid-layer pixel belongs to one zone\'s art', () => {
-  // WAITING ON THE ENGINEER (round three ruling): where a stretch zone and a turn zone would
-  // overlap, the stretch wins and the turn's art is clipped. Today the grandstand and the
-  // infield tiles overlap near each stretch end, the gate frames included. This reads the
-  // frame's tile lists; if the fix clips by adding a field to the infield tiles, this test
-  // should be taught that field.
+  // Where a stretch zone and a turn zone would overlap, the stretch wins and the turn's art
+  // is clipped (CH1). Round four: the last slice is now cropped to fit instead of dropped, so
+  // an infield piece is no longer always 16 px (a slice) or 32 px (the full tile). Each piece
+  // is measured by its own width, `width`, drawn from `srcX`, covering screen x to x + width - 1.
   const spans = (f: RaceFrame) => ({
     stretch: [
       ...f.standXs.map((x) => [x, x + art.standTileWidth] as const),
       ...f.crowdTiles.map((t) => [t.x, t.x + CROWD_W] as const),
     ],
-    turn: f.infieldTiles.map((t) => [t.x, t.x + (t.full ? INFIELD_W : FILL_W)] as const),
+    turn: f.infieldTiles.map((t) => [t.x, t.x + t.width] as const),
   });
   const overlap = (a: readonly [number, number], b: readonly [number, number]) => Math.min(a[1], b[1]) - Math.max(a[0], b[0]);
 
@@ -381,6 +380,16 @@ describe('CH1: each mid-layer pixel belongs to one zone\'s art', () => {
     for (const s of stretch) for (const t of turn) expect(overlap(s, t), `stretch ${s} turn ${t}`).toBeLessThanOrEqual(0);
   });
 
+  it('CH1: at the gate for the whole gate beat, seed 1 pick 1, no column is covered twice', () => {
+    const r = race(1);
+    const setup = makeRaceSetup(r, rd, 0, art);
+    const me = playerView(setup, 1);
+    for (let p = 0; p < setup.timeline.doorsAt; p += 0.25) {
+      const { stretch, turn } = spans(raceFrame(setup, me, p));
+      for (const s of stretch) for (const t of turn) expect(overlap(s, t), `p ${p} stretch ${s} turn ${t}`).toBeLessThanOrEqual(0);
+    }
+  });
+
   it('CH1: the zones themselves can overlap by design, which is why the stretch must win', () => {
     const setup = makeRaceSetup(race(1), rd, 0, art);
     const m = setup.zones;
@@ -388,5 +397,195 @@ describe('CH1: each mid-layer pixel belongs to one zone\'s art', () => {
     expect(midZones(setup.model)).toEqual(setup.zones);
     expect(zoneTiles({ kind: 'turn', from: 100, to: 164 }, 0, 32)).toEqual([{ x: 100, k: 0 }, { x: 132, k: 1 }]);
     expect(zoneTiles({ kind: 'turn', from: 100, to: 164 }, 20, 32)).toEqual([{ x: 80, k: 0 }, { x: 112, k: 1 }]);
+  });
+});
+
+describe('CH1: no hole where a turn\'s art meets a stretch\'s', () => {
+  // The rule's other half: the turn's art is clipped at the first pixel the stand covers, so
+  // nothing between the two zones is left empty. Only the zones can say where art is due, so
+  // the test works in mid-layer columns: a screen column c is mid column c + midScroll.
+  //  - Due a turn tile: a column inside a turn zone and outside every stretch's extent.
+  //  - Due a stand tile: a column inside a stretch's extent (laid from the zone's start in
+  //    whole stand tiles, the last running past the zone's end).
+  // Columns in no zone at all are not due anything and are skipped. That is the region left of
+  // the gate behind the start, and the backstretch, which has no zone art until step 6. A hole
+  // is a due column nothing covers, so those known-empty regions cannot be mistaken for one.
+  const STAND_W = art.standTileWidth;
+  const extent = (z: { from: number; to: number }) => ({ from: z.from, to: z.to === Infinity ? Infinity : z.from + Math.ceil((z.to - z.from) / STAND_W) * STAND_W });
+
+  function holes(seed: number, post = 1): { bad: string[]; meeting: number; frames: number } {
+    const r = race(seed);
+    const tl = makeTimeline(rd, r.finish[0].time);
+    const setup = makeRaceSetup(r, rd, 0, art);
+    const me = playerView(setup, post);
+    const turnZones = setup.zones.filter((z) => z.kind === 'turn');
+    const stands = setup.zones.filter((z) => z.kind === 'stretch').map(extent);
+    const bad: string[] = [];
+    let meeting = 0;
+    let n = 0;
+    let c = startClock();
+    let afterDone = 0;
+    while (afterDone < 4) {
+      c = tick(c, tl, 0.1, false);
+      if (phaseOf(c) === 'done') afterDone += 0.1;
+      const f = raceFrame(setup, me, c);
+      n++;
+      const stand = new Array<boolean>(256).fill(false);
+      const turn = new Array<boolean>(256).fill(false);
+      for (const x of f.standXs) for (let i = Math.max(0, x); i < Math.min(256, x + STAND_W); i++) stand[i] = true;
+      for (const t of f.infieldTiles) for (let i = Math.max(0, t.x); i < Math.min(256, t.x + t.width); i++) turn[i] = true;
+      for (let col = 0; col < 256; col++) {
+        const m = col + f.midScroll;
+        const inStand = stands.some((z) => m >= z.from && m < z.to);
+        const inTurn = turnZones.some((z) => m >= z.from && m < z.to);
+        if (inStand && !stand[col]) bad.push(`seed ${seed} wall ${c.wall.toFixed(1)} col ${col}: stand column uncovered`);
+        if (inTurn && !inStand && !turn[col]) bad.push(`seed ${seed} wall ${c.wall.toFixed(1)} col ${col}: turn column uncovered`);
+        if (inStand && turn[col]) bad.push(`seed ${seed} wall ${c.wall.toFixed(1)} col ${col}: covered by both`);
+        // Count the columns where the two zones meet on screen, so the test knows it saw one.
+        if (col > 0 && ((inStand && !stands.some((z) => m - 1 >= z.from && m - 1 < z.to) && turnZones.some((z) => m - 1 >= z.from && m - 1 < z.to)) || (!inStand && inTurn && stands.some((z) => m - 1 >= z.from && m - 1 < z.to)))) meeting++;
+      }
+    }
+    return { bad, meeting, frames: n };
+  }
+
+  it('CH1: over many seeds, gate to done screen, every column due art is covered once and none is left empty', () => {
+    let meetings = 0;
+    let frames = 0;
+    for (const seed of seeds(12)) {
+      for (const post of [1, 6]) {
+        const h = holes(seed, post);
+        expect(h.bad.slice(0, 3), `seed ${seed} post ${post}: ${h.bad.length} bad columns`).toEqual([]);
+        meetings += h.meeting;
+        frames += h.frames;
+      }
+    }
+    expect(frames).toBeGreaterThan(24 * 600);
+    // The test did see zones meet (at the gate, among others), so it is not passing on nothing.
+    expect(meetings).toBeGreaterThan(500);
+  });
+
+  it('CH1: the gate beat of seed 1, pick 1, has no bare strip between hedge and stand', () => {
+    const r = race(1);
+    const setup = makeRaceSetup(r, rd, 0, art);
+    const f = raceFrame(setup, playerView(setup, 1), 2);
+    const covered = new Array<boolean>(256).fill(false);
+    for (const x of f.standXs) for (let i = Math.max(0, x); i < Math.min(256, x + STAND_W); i++) covered[i] = true;
+    for (const t of f.infieldTiles) for (let i = Math.max(0, t.x); i < Math.min(256, t.x + t.width); i++) covered[i] = true;
+    const stands = setup.zones.filter((z) => z.kind === 'stretch').map(extent);
+    const firstStandCol = f.standXs.length ? Math.max(0, Math.min(...f.standXs)) : 256;
+    // Walk left from the first stand column to the hedge: there is no uncovered column in between,
+    // down to where the turn zone itself begins (the start line).
+    let col = firstStandCol - 1;
+    let run = 0;
+    while (col >= 0 && !covered[col] && stands.every((z) => col + f.midScroll < z.from || col + f.midScroll >= z.to)) {
+      run++;
+      col--;
+    }
+    expect(run, 'bare columns left of the first stand column').toBe(0);
+  });
+});
+
+describe('CH1: the infield pieces', () => {
+  const pieces = (seed: number) => frames(seed, 0.2).flatMap(({ f }) => f.infieldTiles.map((t) => ({ t, f })));
+
+  it('CH1: every piece has whole-pixel x, srcX and width, and srcX + width inside its slot', () => {
+    let n = 0;
+    for (const seed of seeds(8)) {
+      for (const { t } of pieces(seed)) {
+        expect(Number.isInteger(t.x) && Number.isInteger(t.srcX) && Number.isInteger(t.width), JSON.stringify(t)).toBe(true);
+        expect(t.srcX).toBeGreaterThanOrEqual(0);
+        expect(t.width).toBeGreaterThan(0);
+        expect(t.srcX + t.width, JSON.stringify(t)).toBeLessThanOrEqual(t.full ? INFIELD_W : FILL_W);
+        n++;
+      }
+    }
+    expect(n).toBeGreaterThan(500);
+  });
+
+  it('CH1: a cropped piece is never the full tile with the pole: the full tile is always whole', () => {
+    let fulls = 0;
+    let cropped = 0;
+    for (const seed of seeds(8)) {
+      for (const { t } of pieces(seed)) {
+        if (t.full) {
+          expect([t.srcX, t.width], `seed ${seed}`).toEqual([0, INFIELD_W]);
+          fulls++;
+        } else if (t.width < FILL_W) cropped++;
+      }
+    }
+    expect(fulls).toBeGreaterThan(10);
+    expect(cropped).toBeGreaterThan(0); // the course does crop a slice at a stand
+  });
+
+  it('CH1: whole slices are srcX 0 and 16 wide; a cropped slice touches the stand it was cropped for', () => {
+    for (const seed of seeds(8)) {
+      for (const { t, f } of pieces(seed)) {
+        if (t.full || t.width === FILL_W) {
+          if (!t.full) expect(t.srcX).toBe(0);
+          continue;
+        }
+        // A left-cropped piece (srcX > 0) starts where a stand ends; a right-cropped one (srcX 0)
+        // ends where a stand starts. A crop edge off screen has its stand off screen too.
+        if (t.srcX > 0) {
+          expect(t.srcX + t.width, `seed ${seed} piece ${JSON.stringify(t)}`).toBe(FILL_W);
+          if (t.x > 0) expect(f.standXs.some((sx) => sx + art.standTileWidth === t.x), `seed ${seed} piece ${JSON.stringify(t)} stands ${f.standXs}`).toBe(true);
+        } else if (t.x + t.width < 256) {
+          expect(f.standXs.some((sx) => sx === t.x + t.width), `seed ${seed} piece ${JSON.stringify(t)} stands ${f.standXs}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it('CH1: the flag still sits on a full, uncropped tile', () => {
+    let flags = 0;
+    const [ax] = art.flagAt!;
+    for (const seed of seeds(8)) {
+      for (const { f } of frames(seed, 0.2)) {
+        for (const flag of f.flags) {
+          const host = f.infieldTiles.find((t) => t.full && t.x + ax === flag.x);
+          expect(host, `flag at ${flag.x}`).toBeDefined();
+          expect([host!.srcX, host!.width]).toEqual([0, INFIELD_W]);
+          flags++;
+        }
+      }
+    }
+    expect(flags).toBeGreaterThan(30);
+  });
+});
+
+describe('CH1: turnArt on made-up zones (stand 32 wide, slice 16, full tile 32)', () => {
+  const turn: MidZone = { kind: 'turn', from: 0, to: 64 };
+  const stretch = (from: number, to: number): MidZone => ({ kind: 'stretch', from, to });
+
+  it('with no stand every slice is whole, and one full tile sits on the 32 px grid', () => {
+    const t = turnArt(turn, [], 32, 16, 32);
+    expect(t.fills).toEqual([0, 16, 32, 48].map((x) => ({ x, srcX: 0, w: 16 })));
+    expect(t.full === 0 || t.full === 32).toBe(true);
+  });
+
+  it('a stand starting inside a slice crops that slice to the columns before it, and drops what lies under the stand', () => {
+    const t = turnArt(turn, [stretch(40, Infinity)], 32, 16, 32);
+    expect(t.fills).toEqual([{ x: 0, srcX: 0, w: 16 }, { x: 16, srcX: 0, w: 16 }, { x: 32, srcX: 0, w: 8 }]);
+    // Nothing is covered twice and nothing between is left empty: 0..39 all drawn.
+    expect(t.fills.reduce((n, f) => n + f.w, 0)).toBe(40);
+  });
+
+  it('a stand ending inside a slice crops that slice to the columns after it, from the right srcX', () => {
+    // Extent: from -100 in whole 32 px tiles: 5 tiles, to 60.
+    const t = turnArt(turn, [stretch(-100, 40)], 32, 16, 32);
+    expect(t.fills).toEqual([{ x: 60, srcX: 12, w: 4 }]);
+    expect(t.full).toBeNull();
+  });
+
+  it('a cropped slice never carries the full tile: when only a cropped slice is left beside a whole one there is no full tile', () => {
+    const t = turnArt(turn, [stretch(24, Infinity)], 32, 16, 32);
+    expect(t.fills).toEqual([{ x: 0, srcX: 0, w: 16 }, { x: 16, srcX: 0, w: 8 }]);
+    expect(t.full).toBeNull();
+  });
+
+  it('a stand covering the whole turn leaves nothing', () => {
+    const t = turnArt(turn, [stretch(-32, Infinity)], 32, 16, 32);
+    expect(t.fills).toEqual([]);
+    expect(t.full).toBeNull();
   });
 });

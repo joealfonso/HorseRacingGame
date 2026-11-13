@@ -661,7 +661,7 @@ Each step is one reviewable change. Joseph can watch after every step.
 - **IN2 [T]** A key held when a screen opens is ignored until it is released.
 - **AX1 [E]** With reduced motion on, the far and mid layers and ambient loops hold still.
 - **AX2 [T]** The `aria-live` region holds the result and error text.
-- **CH1 [T]** While the field runs, at most 3 ambient things animate at once; from the 1/8 pole only the crowd strip does; ambient swap rates are in wall time and at most 4 a second. Each screen pixel of the mid layer belongs to one zone's art: where a stretch zone and a turn zone would overlap, the stretch wins and the turn's art is clipped. In step 2 the flag flies on the turns only; a flag for the stretch and the backstretch waits for the art-director to place one (step 6).
+- **CH1 [T]** While the field runs, at most 3 ambient things animate at once; from the 1/8 pole only the crowd strip does; ambient swap rates are in wall time and at most 4 a second. Each screen pixel of the mid layer belongs to one zone's art: where a stretch zone and a turn zone would overlap, the stretch wins and the turn's art is clipped at the first pixel the stand or its crowd covers, with the last slice cropped to fit, so no pixel is covered twice and none between the two zones is left empty. In step 2 the flag flies on the turns only; a flag for the stretch and the backstretch waits for the art-director to place one (step 6).
 - **CH2 [E]** The charm test from DESIGN, on a 10-second clip of the race, the paddock and the winner's circle.
 
 ## 11. Needs from the sim

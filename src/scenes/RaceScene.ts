@@ -393,7 +393,10 @@ export class RaceScene extends Phaser.Scene {
       const it = f.infieldTiles[i];
       img.setVisible(it !== undefined);
       // Full tiles draw over the fill slices, so the pole sits on unbroken lawn.
-      if (it) img.setX(it.x).setFrame(it.full ? '0' : 'fill').setDepth(DEPTH.mid + (it.full ? 1 : 0));
+      if (!it) return;
+      // A cropped slice: shift the image left by srcX so its first drawn column lands at x.
+      img.setFrame(it.full ? '0' : 'fill').setDepth(DEPTH.mid + (it.full ? 1 : 0)).setX(it.x - it.srcX);
+      img.setCrop(it.srcX, 0, it.width, img.frame.height);
     });
     place(this.flags, f.flags);
 

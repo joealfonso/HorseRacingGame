@@ -56,27 +56,42 @@ export const stretchExtent = (z: MidZone, standW: number): { from: number; to: n
   ({ from: z.from, to: z.to === Infinity ? Infinity : z.from + Math.ceil((z.to - z.from) / standW) * standW });
 
 export interface TurnArt {
-  /** Mid x of each pole-free fill slice left after clipping. */
-  fills: number[];
+  /**
+   * The pole-free fill slices left after clipping, in mid x. A slice the stand covers part
+   * of is cropped to the uncovered columns: `srcX` is the first column of the slice drawn,
+   * `w` how many, and `x` where that first column lands. Whole slices have srcX 0, w fillW.
+   */
+  fills: { x: number; srcX: number; w: number }[];
   /** Mid x of the one full tile with the pole and flag, or null if the clipped turn is too short for it. */
   full: number | null;
 }
 
 /**
  * A turn's infield art, clipped where a stretch's grandstand covers it (CH1: the stretch
- * wins). Slices sit on the turn's own grid of fillW and a slice touching the stand is left
- * out whole, so no half tile shows. The full tile sits on the turn's fullW grid in the
- * middle of the longest unclipped run, so the pole is never the piece that gets cut.
+ * wins, and no pixel is covered by both). Slices sit on the turn's own grid of fillW. A
+ * slice the stand covers part of is cropped to the columns it does not, in whole pixels,
+ * so the hedge runs right up to the stand's first drawn pixel with no gap (the hedge
+ * repeats every 8 px, so a cropped slice still reads). The full tile sits on the turn's
+ * fullW grid in the middle of the longest run of whole slices, so it is never cropped.
  */
 export function turnArt(turn: MidZone, stretches: readonly MidZone[], standW: number, fillW: number, fullW: number): TurnArt {
   const covers = stretches.map((z) => stretchExtent(z, standW));
-  const clear = (a: number, b: number) => covers.every((c) => b <= c.from || a >= c.to);
-  const fills: number[] = [];
+  const fills: TurnArt['fills'] = [];
   const runs: number[][] = [];
   for (let k = 0; turn.from + k * fillW < turn.to; k++) {
     const x = turn.from + k * fillW;
-    if (!clear(x, x + fillW)) continue;
-    fills.push(x);
+    // The uncovered part of [x, x + fillW): cut back from each stand that reaches into it.
+    let a = x;
+    let b = x + fillW;
+    for (const c of covers) {
+      if (c.to <= a || c.from >= b) continue;
+      if (c.from <= a) a = Math.max(a, c.to);
+      else b = Math.min(b, c.from);
+      if (a >= b) break;
+    }
+    if (a >= b) continue;
+    fills.push({ x: a, srcX: a - x, w: b - a });
+    if (b - a < fillW) continue; // a cropped slice never carries the full tile
     const run = runs[runs.length - 1];
     if (run && run[run.length - 1] === k - 1) run.push(k);
     else runs.push([k]);

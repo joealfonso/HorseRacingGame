@@ -119,8 +119,13 @@ export interface RaceFrame {
   ambient: AmbientState;
   /** Flipped on odd mid-layer tiles, like the rails, so the strip repeats every two tiles. */
   crowdTiles: { x: number; frame: number; flip: boolean }[];
-  /** Pole-free fill slices (full false) under the one full tile per turn (full true), which carries the flag. */
-  infieldTiles: { x: number; full: boolean }[];
+  /**
+   * Pole-free fill slices (full false) and the one full tile per turn (full true), which
+   * carries the flag. Draw columns srcX to srcX + width - 1 of the slice (or tile) with the
+   * first of them at screen x: a slice next to the grandstand is cropped so it ends, or
+   * starts, exactly at the stand's edge. Whole pieces have srcX 0 and their full width.
+   */
+  infieldTiles: { x: number; full: boolean; srcX: number; width: number }[];
   flags: { x: number; y: number; frame: number }[];
   farScroll: number;
   midScroll: number;
@@ -235,11 +240,11 @@ export function raceFrame(setup: RaceSetup, me: PlayerView, at: number | Clock):
   const tilesOf = (kind: MidZone['kind'], w: number | undefined) => (w ? zones.filter((z) => z.kind === kind).flatMap((z) => zoneTiles(z, midScroll, w)) : []);
   const crowdRaw = tilesOf('stretch', art.crowdTileWidth);
   const fullW = art.infieldTileWidth ?? 0;
-  const fillW = art.infieldFillWidth ?? fullW;
   const onScreen = (x: number, w: number) => x + w > 0 && x < SCREEN_W;
-  const fullTiles = setup.turns.flatMap((ta) => (ta.full === null ? [] : [{ x: ta.full - midScroll, full: true }]))
-    .filter((f) => onScreen(f.x, fullW));
-  const fills = setup.turns.flatMap((ta) => ta.fills.map((m) => ({ x: m - midScroll, full: false }))).filter((f) => onScreen(f.x, fillW));
+  const fullTiles = setup.turns.flatMap((ta) => (ta.full === null ? [] : [{ x: ta.full - midScroll, full: true, srcX: 0, width: fullW }]))
+    .filter((f) => onScreen(f.x, f.width));
+  const fills = setup.turns.flatMap((ta) => ta.fills.map((m) => ({ x: m.x - midScroll, full: false, srcX: m.srcX, width: m.w })))
+    .filter((f) => onScreen(f.x, f.width));
   const infieldTiles = [...fills, ...fullTiles];
   const flagSpots = art.flagAt
     ? fullTiles.map((f) => ({ x: f.x + art.flagAt![0], y: MID_TOP + art.flagAt![1] }))
