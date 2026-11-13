@@ -16,6 +16,8 @@ Amended 2026-11-12 by art-director with the M1 race-day answers below: edits to 
 
 Amended 2026-11-12 by art-director after the first art review (P0 batch). Changed: the stand-in saddlecloth box (7x9, so every number has fill above and below), the stand-in leg rule (legs at least as long as the barrel is deep, not longer, because the 32x24 frame cannot hold both), the edge marker (8x9, so it keeps a full Ink outline and gets a center row for its tip), the gate's end posts and outline spelled out, a stroke rule for the main font, the intake checklist file paths (slot path under public/assets/, scripts in scripts/art/), and the saddlecloth and furlong pole sources. One approved-era rule was loosened, the leg rule, and only for the P0 stand-in; the Horses line "long legs" is unchanged.
 
+Amended 2026-11-13 by art-director after the fourth art review (Card, Orders, paddock art). Added: the 3-color rule for people, with Ink allowed to part two same-color parts (an exception to "interior edges use the shade color", for people only, because a 3-color person has no shade slot), the round-face rule, the scale of people beside race horses, the paddock strip's row order with its Turf far band, and a rule keeping background lines off faces and a horse's back line. No approved rule was removed. The interior-edge exception is a narrow bend of a rule from the approved draft, stated here so Joseph can see it.
+
 Amended 2026-11-13 by art-director after the third art review (photo and result screens). Added: the photo's own vertical layout (lanes 8 px apart, the occupied block centered), Ash flanks on the photo wire, the frozen race view behind the photo, spacing for icons in text rows, and the small font's baseline when it shares a line. Changed: the photo is no longer a literal vertical crop of race-view rows y77-164; horizontal positions are unchanged. No approved rule was loosened.
 
 Amended 2026-11-12 by art-director after the second art review (step 2 batch). Added or settled: rider outlines across layers, the walk and winner stand-in frames, what "stands in the irons" means at 32x24 and how the raised arm is drawn, the crowd strip's rows, colors and tiling, the infield slice rule and opaque mid-layer zones, and a ban on national and state flags. One line touches an approved rule and is left for Joseph: the crowd strip is a second layer over the grandstand and counts as its own tile for the 4-color rule (see Charm, Crowd).
@@ -131,6 +133,7 @@ Left out. The rules it would tighten are 8 sprites per scanline (with flicker) a
 - Sky is hard-edged horizontal bands (Sky, Sky Pale, Dusk at evening). No blends.
 - Time of day and weather change by palette remap to darker or wetter entries, never by an overlay.
 - Silhouette test: fill a sprite with Ink. If the pose does not read, redraw it.
+- Keep long background lines (rails, planks, horizon bands) off faces and off a horse's back line. If one would cross there, move the line, not the figure.
 
 ## Horses
 
@@ -294,6 +297,9 @@ Layout. The M1 pixel placement is in docs/specs/m1-race-day.md 4.3, and the desi
 ## Overworld and menus
 
 - Top-down 16x16 tile world. People are 16x24 with a slightly big head. That is where the humor lives.
+- A person is one sprite with 3 opaque colors: Ink (outline, hair, hat or dark clothes), a skin tone, and one clothing color. Each material is one flat tone. There is no slot for a shade, so where two parts of one color meet (an arm over a coat), a 1 px Ink line parts them. This is the one exception to "interior edges use the shade color", and it holds for people only. Shading for people waits for layered people, as with horses.
+- Faces are round and friendly. In profile, the face's front edge curves out and back over 4 to 5 rows, and the nose is a 1 px bump with the same edge 1 px behind it above and below. No hooked or pointed nose, no edge-line mouth that reads as the underside of a nose, no big moustache. Humor comes from props, poses and words, not from a caricatured face.
+- Scale beside race-size horses: a person stands 22 px (rows 2-23 of the 16x24 frame), so the shoulders land near the horse's withers and the big head rides above them.
 - Kentucky plank fences are Ink or Bone. Barns use Ink, Bone, Maroon trim, Pine roofs. (guess)
 - Night (foaling at 2 a.m.) is a remap toward Navy, Coal and Slate.
 
@@ -326,7 +332,7 @@ Charm comes from a world busy with its own small business, a race day with cerem
 
 Race day (M1):
 
-- Orders (paddock) screen: the trainer, 16x24, stands beside your horse with a 2-frame idle, lifting a coffee cup (cup down 1.5 s, up 0.5 s, in data), so the orders come from a person, not a form. Your horse stays on its stand frame with the jockey up. No tail swish in M1, so the trainer carries the screen.
+- Orders (paddock) screen: the trainer, 16x24, stands beside your horse with a 2-frame idle, lifting a coffee cup (cup down 1.5 s, up 0.5 s, in data), so the orders come from a person, not a form. Your horse stays on its stand frame with the jockey up. No tail swish in M1, so the trainer carries the screen. The paddock strip (y144-191) has three tile rows. The fence row is on top, y144-159: a Turf band on rows 0-6 (the hedge beyond the paddock, like the infield hedge), then Grass with the two-plank Bone and Mist fence. Plain lawn fills y160-191, where the figures stand clear of every plank. The darker far band and the fence above the heads give the strip its depth. No cast shadows, because race-view horses have none.
 - Card and Orders screens: horse blurbs and the trainer's lines are short copy from data with some personality, so the screens have a voice.
 - Card and Orders screens: the horseshoe cursor bobs 1px on a slow 2-frame loop, 0.5 s a frame, so the screen never looks frozen while you decide.
 - Post parade: the field walks by on the 2-frame walk in post order behind one outrider on a pony, left to right on the outside path, 5 s, every race, Enter skips, so the race opens with a procession. (To check against Churchill's actual post parade: direction, and whether each runner has a pony escort. If it runs right to left, flip the sprites, which is allowed.)
