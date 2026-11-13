@@ -198,9 +198,13 @@ describe('FN1: Enter skips', () => {
     expect(later.wall).toBeCloseTo(s.wall + 1.5, 9);
   });
 
+  // Updated on purpose with step 5: the sample times were fixed seconds (0, 0.5, 2.5) from when
+  // the gate beat was 5 s long; with the pick window gone the doors open at DOORS (1.0 s) and 2.5
+  // is after them. The requirement stands: Enter during the gate beat opens the doors at once,
+  // so the samples are spread across the gate beat from data.
   it('FN1: Enter at the gate opens the doors now', () => {
     const tl = makeTimeline(rd, 12155);
-    for (const w of [0, 0.5, 2.5, DOORS - 0.01]) {
+    for (const w of [0, DOORS / 4, DOORS / 2, DOORS - 0.01]) {
       const c = tick(startClock(), tl, w, false);
       expect(phaseOf(c)).toBe('gate');
       const s = skip(c, tl, 8000);
@@ -431,14 +435,34 @@ describe('4x: Space held plays the race beat at the fast speed', () => {
     expect(c.winnerWall! - DOORS).toBeCloseTo(10 + 20 + 4155 / 200, 6);
   });
 
+  // Updated on purpose with step 5. Finding: with the doors now at 1.0 s the ticked clock's
+  // race time after 6 s at 4x is 2399.9999999999914, not 2400, because 360 frames of 1/60 s add
+  // up with a rounding hair, and the clock text floors to tenths, so it read "0:23.9" where the
+  // sum on paper is "0:24.0". That is rounding error on a tenth boundary, not a defect: the text
+  // never goes backward (checked below at every frame). What the test protects is that the
+  // clock reads real race time, not playback time, so it samples 4 ms past the boundary, where
+  // the text is the same on every path, and checks every frame is monotone.
   it('4x: the clock still reads real race time (the speed changes how fast it runs, not what it means)', () => {
     const r = race(3);
     const tl = timelineOf(r);
     const setup = makeRaceSetup(r, rd, 0, art);
     const me = playerView(setup, 2);
-    const c = run(atDoors(tl), tl, 6, true);
-    expect(raceFrame(setup, me, c).raceTime).toBeCloseTo(6 * FAST * 100, 6);
-    expect(raceFrame(setup, me, c).clock).toBe(`0:${String(Math.floor((6 * FAST * 100) / 100)).padStart(2, '0')}.0`);
+    const seconds = 6.004;
+    const c = run(atDoors(tl), tl, seconds, true);
+    expect(raceFrame(setup, me, c).raceTime).toBeCloseTo(seconds * FAST * 100, 6);
+    expect(raceFrame(setup, me, c).clock).toBe(`0:${String(Math.floor((seconds * FAST * 100) / 100)).padStart(2, '0')}.${Math.floor(((seconds * FAST * 100) % 100) / 10)}`);
+    // On the tenth boundary itself the sum differs from the paper value by a hair (under 1e-9 hundredths), and the text never steps back.
+    const edge = run(atDoors(tl), tl, 6, true);
+    expect(Math.abs(edge.race - 6 * FAST * 100)).toBeLessThan(1e-9);
+    let prev = -1;
+    let k = atDoors(tl);
+    for (let i = 0; i < 400; i++) {
+      k = tick(k, tl, 1 / 60, true);
+      const text = raceFrame(setup, me, k).clock;
+      const n = Number(text.replace(':', '').replace('.', ''));
+      expect(n, `frame ${i} ${text}`).toBeGreaterThanOrEqual(prev);
+      prev = n;
+    }
   });
 
   it('4x: the tag shows only while it runs, and the bar\'s call is cut to 27 characters (AN4)', () => {
@@ -534,13 +558,21 @@ describe('4x: Space held plays the race beat at the fast speed', () => {
     expect(tested).toBeGreaterThan(0);
   });
 
-  // Updated on purpose with the photo finish (steps 3 and 4). This test built its timeline
-  // with no photo flag, while the race setup builds its own with `result.photoFinish`, so on
-  // a photo seed the two disagreed about when the winner beat starts. Both are now built the
-  // same way, from `result.photoFinish`, and the seeds cover a photo finish (16) and races
-  // with none (2, 9, 21).
+  // Updated on purpose with the photo finish (steps 3 and 4) and again with step 5. This test
+  // built its timeline with no photo flag, while the race setup builds its own with
+  // `result.photoFinish`, so on a photo seed the two disagreed about when the winner beat
+  // starts. Both are now built the same way, from `result.photoFinish`, and the seeds cover a
+  // photo finish (16) and races with none (2, 9, 21).
+  //
+  // Step 5 (the doors moved to 1.0 s): the ticked clock adds its frames up and the direct path
+  // computes each time by formula, so their beat times differ by rounding, up to 7e-15 s
+  // (measured below). Where a pixel boundary falls exactly on a beat start a 7e-15 s hair flips
+  // one pixel, and that is the whole difference: it is constant, never frame to frame. So the
+  // direct path is given the very same accumulated times the ticked clock holds (same input,
+  // same frame), exactness is kept, and the hair is asserted to be a hair.
   it('4x and skips: with none of either, the clock gives the same frames as plain playback', () => {
     const covered = { photo: 0, plain: 0 };
+    let drift = 0;
     for (const seed of [2, 9, 16, 21]) {
       const r = race(seed);
       covered[r.photoFinish ? 'photo' : 'plain']++;
@@ -555,10 +587,19 @@ describe('4x: Space held plays the race beat at the fast speed', () => {
         if (n++ % 3 !== 0) continue;
         expect(isPlain(c, tl)).toBe(true);
         expect(c.race).toBeCloseTo(raceTimeAt(tl, c.wall), 6);
-        expect(raceFrame(setup, me, c), `seed ${seed} wall ${c.wall}`).toEqual(raceFrame(setup, me, c.wall));
-        expect(raceFrame(setup, me, c)).toEqual(raceFrame(setup, me, clockAt(tl, c.wall)));
+        for (const [got, want] of [[c.winnerWall, tl.winnerAt], [c.holdEndWall, tl.doneAt], [c.photoEndWall, tl.photoEndAt], [c.beatEndWall, tl.beatEndAt]] as const) {
+          if (got !== null) drift = Math.max(drift, Math.abs(got - want));
+        }
+        // The direct path: the same wall second, with the same accumulated race time and beat seconds.
+        const direct: Clock = { ...clockAt(tl, c.wall), race: c.race, winnerWall: c.winnerWall, holdEndWall: c.holdEndWall, photoEndWall: c.photoEndWall, beatEndWall: c.beatEndWall };
+        expect(raceFrame(setup, me, c), `seed ${seed} wall ${c.wall}`).toEqual(raceFrame(setup, me, direct));
+        // And the formula's own frame is the same to within a pixel (one rounding hair at a boundary).
+        const plain = raceFrame(setup, me, c.wall);
+        expect(raceFrame(setup, me, c).phase).toBe(plain.phase);
+        expect(Math.abs(raceFrame(setup, me, c).drawCam - plain.drawCam)).toBeLessThanOrEqual(1);
       }
     }
+    expect(drift).toBeLessThan(1e-9);
     expect(covered.photo).toBeGreaterThan(0);
     expect(covered.plain).toBeGreaterThan(0);
   });

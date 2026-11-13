@@ -308,12 +308,16 @@ describe('cardLook.json is rejected when broken', () => {
       expectRejected(raw, F.look, `h1.silks.${part}`);
     }
   });
+  // Updated on purpose with step 5: this test used `blurb` as its example of an unknown
+  // field, and `blurb` is now a real optional field (28 characters at most). What it protects
+  // is that a field the schema does not know is refused with the file and the field named, so
+  // it uses `nickname`. The blurb has its own tests in raceDayCardOrders.test.ts.
   it('an unknown extra field', () => {
     const raw = fresh();
-    raw.cardLook.h1.blurb = 'x';
+    raw.cardLook.h1.nickname = 'x';
     const err = failure(raw);
     expect(err.file).toBe(F.look);
-    expect(err.message).toContain('blurb');
+    expect(err.message).toContain('nickname');
   });
 });
 
@@ -695,8 +699,16 @@ describe('RV11: the loader rejects a sequence over the cap, naming the file and 
     expect(sequenceSeconds(raceDayJson as never, slowest, true)).toBeLessThanOrEqual(90);
   });
 
+  // Updated on purpose with step 5: these two tests assumed a 4 s pick window in the sequence
+  // (`beats.pickSeconds`), which is now 0 because picking moved to the Card. They are built from
+  // the beats in data, so they hold whatever the pick window is. What they protect is the same:
+  // a sequence over the cap is refused, one exactly at it passes, and one a hundredth over fails.
+  const b = raceDayJson.beats;
+  const seqOf = (winnerBeat: number) => b.pickSeconds.value + b.gateStillSeconds.value + slowest / raceDayJson.playback.speed.value
+    + b.wireHoldSeconds.value + b.photoSeconds.value + winnerBeat;
+
   it.each([
-    ['a winner beat of 20 s', (r: Raw) => { r.raceDay.beats.winnerBeatSeconds.value = 20; }],
+    ['a winner beat long enough to pass the cap', (r: Raw) => { r.raceDay.beats.winnerBeatSeconds.value = raceDayJson.beats.maxSequenceSeconds.value - seqOf(0) + 1; }],
     ['a photo of 30 s', (r: Raw) => { r.raceDay.beats.photoSeconds.value = 30; }],
     ['a slow playback of 1x', (r: Raw) => { r.raceDay.playback.speed.value = 1; }],
     ['a pick window of 40 s', (r: Raw) => { r.raceDay.beats.pickSeconds.value = 40; }],
@@ -707,7 +719,7 @@ describe('RV11: the loader rejects a sequence over the cap, naming the file and 
   });
 
   it('RV11: exactly at the cap passes and a hundredth over fails', () => {
-    const seq = 4 + 1 + slowest / 2 + 1 + 4.5 + 2.5; // pick, still, race, hold, photo, winner beat
+    const seq = seqOf(b.winnerBeatSeconds.value); // pick, still, race, hold, photo, winner beat, all from data
     const ok = edit((r) => { r.raceDay.beats.maxSequenceSeconds.value = seq; });
     expect(() => validateRaceDay(ok, game())).not.toThrow();
     const over = edit((r) => { r.raceDay.beats.maxSequenceSeconds.value = seq - 0.01; });

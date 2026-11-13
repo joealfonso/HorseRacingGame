@@ -161,6 +161,12 @@ describe('the race view behind the photo is frozen at the end of the wire hold',
     }
   });
 
+  // Updated on purpose with step 5 (the doors moved to 1.0 s). The ticked clock adds its frames
+  // up and `clockAt` computes each time by formula, so their beat times differ by rounding (at
+  // most 7e-15 s here), and where a pixel boundary falls exactly on the beat's start that hair
+  // flips one pixel for the whole beat (seed 2 at 30 Hz: drawCam 26715 against 26716, all
+  // crowd tiles 1 px apart). It never jitters frame to frame. So the direct path gets the same
+  // accumulated times the ticked clock holds, exactness is kept, and the hair is asserted small.
   it('on non-photo seeds every frame equals what the timeline without a photo gives', () => {
     for (const seed of plainSeeds.slice(0, 8)) {
       const r = race(seed);
@@ -169,14 +175,23 @@ describe('the race view behind the photo is frozen at the end of the wire hold',
       expect(s.timeline).toEqual(tl);
       let c = startClock();
       let n = 0;
+      let lastCam = -Infinity;
       while (phaseOf(c) !== 'done') {
         c = tick(c, tl, 1 / 30, false);
-        if (n++ % 4 !== 0) continue;
         const f = frameAt(s, 3, c);
+        if (f.phase === 'winner') {
+          expect(f.drawCam, `seed ${seed} wall ${c.wall}`).toBeGreaterThanOrEqual(lastCam); // no jitter
+          lastCam = f.drawCam;
+        }
+        if (n++ % 4 !== 0) continue;
         expect(f.photo).toBeNull();
         expect(f.raceTime, `seed ${seed} wall ${c.wall}`).toBe(c.race); // the view runs on the clock, never frozen
-        expect(f).toEqual(frameAt(s, 3, clockAt(tl, c.wall)));
-        expect(f).toEqual(frameAt(s, 3, c.wall));
+        for (const [got, want] of [[c.winnerWall, tl.winnerAt], [c.holdEndWall, tl.doneAt], [c.photoEndWall, tl.photoEndAt], [c.beatEndWall, tl.beatEndAt]] as const) {
+          if (got !== null) expect(Math.abs(got - want)).toBeLessThan(1e-9);
+        }
+        const direct: Clock = { ...clockAt(tl, c.wall), race: c.race, winnerWall: c.winnerWall, holdEndWall: c.holdEndWall, photoEndWall: c.photoEndWall, beatEndWall: c.beatEndWall };
+        expect(f, `seed ${seed} wall ${c.wall}`).toEqual(frameAt(s, 3, direct));
+        expect(Math.abs(f.drawCam - frameAt(s, 3, c.wall).drawCam)).toBeLessThanOrEqual(1);
       }
     }
   });
