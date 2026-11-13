@@ -294,3 +294,44 @@ describe('the two new slots: art.photo.bg.streaks (16x16) and art.ui.marker.your
     expect(s.placeholder).toBe(true);
   });
 });
+
+describe('the photo needs 8 x laneMax plus the 24-row frame to fit its 88 rows', () => {
+  const withLanes = (n: number): GameData => {
+    const g = game();
+    g.tuning.laneMax.value = n;
+    return g;
+  };
+
+  it('the shipped laneMax is 8, and it loads (8 x 8 + 24 = 88 fits exactly)', () => {
+    expect(game().tuning.laneMax.value).toBe(8);
+    expect(() => validateRaceDay(fresh(), withLanes(8))).not.toThrow();
+  });
+
+  it('laneMax 9 is rejected, naming tuning.json and laneMax.value, and saying why', () => {
+    try {
+      validateRaceDay(fresh(), withLanes(9));
+      throw new Error('should have been rejected');
+    } catch (e) {
+      expect(e).toBeInstanceOf(DataError);
+      const err = e as DataError;
+      expect(err.file).toBe('src/data/tuning.json');
+      expect(err.issues.map((i) => i.path)).toContain('laneMax.value');
+      expect(err.message).toContain('laneMax.value');
+      expect(err.message).toMatch(/8 x laneMax/);
+      expect(err.message).toMatch(/24/);
+      expect(err.message).toMatch(/88/);
+    }
+  });
+
+  it('smaller values load, larger ones fail', () => {
+    for (const n of [1, 4, 7]) expect(() => validateRaceDay(fresh(), withLanes(n))).not.toThrow();
+    for (const n of [10, 12]) expect(() => validateRaceDay(fresh(), withLanes(n))).toThrow(DataError);
+  });
+
+  it('a taller horse frame tightens the limit: with a 32-row frame laneMax 8 no longer fits', () => {
+    const raw = fresh();
+    raw.slots.slots.find((x: { id: string }) => x.id === 'art.race.horse.body.gallop').frameHeight = 32;
+    expect(() => validateRaceDay(raw, withLanes(7))).not.toThrow();
+    expect(() => validateRaceDay(raw, withLanes(8))).toThrow(DataError);
+  });
+});

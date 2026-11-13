@@ -184,6 +184,11 @@ export function raceFrame(setup: RaceSetup, me: PlayerView, at: number | Clock):
   // The wall second view time reached race time rt: past the freeze, that is when the clock reached rt + span.
   const toWall = plain ? (rt: number) => playbackAt(timeline, rt)
     : (rt: number) => (rt <= frozenT ? wallAtRace(c, rt) : c.photoEndWall === null ? Infinity : wallAtRace(c, rt + span));
+  // Wall time with the photo taken out: it stands still for the photo and runs on after
+  // it. The message line and the ambient loops pause on it, so nothing is used up unseen.
+  const holdEnd = c.holdEndWall;
+  const photoWall = (w: number) => (!photoBegun || holdEnd === null || w <= holdEnd || !Number.isFinite(w) ? w
+    : c.photoEndWall === null || w <= c.photoEndWall ? holdEnd : w - (c.photoEndWall - holdEnd));
   const cam = cameraX(model, me.id, t);
   const horses = horsesAt(result, cfg, t);
   const drawn = drawnHorsesAt(model, setup.runs, t);
@@ -237,8 +242,10 @@ export function raceFrame(setup: RaceSetup, me: PlayerView, at: number | Clock):
   else {
     // FN1: a message from a skipped stretch is dropped, not shown late, and so is the
     // "Back in stride" that follows it (it carries its event's race time).
-    const onWall = triggersOnWall(me.triggers.filter((tr) => tr.race === undefined || !wasSkipped(c, tr.race)), toWall);
-    shownMessage = messageAt(messageSchedule(onWall, rd.hud.messageSeconds.value, rd.hud.messageMaxWaitSeconds.value), p);
+    // Placed and shown on the photo-excluded wall time: a message on screen or queued when
+    // the photo begins waits behind it, and the 3 s drop rule counts in the same time.
+    const onWall = triggersOnWall(me.triggers.filter((tr) => tr.race === undefined || !wasSkipped(c, tr.race)), (rt) => photoWall(toWall(rt)));
+    shownMessage = messageAt(messageSchedule(onWall, rd.hud.messageSeconds.value, rd.hud.messageMaxWaitSeconds.value), photoWall(p));
   }
   const message = phase === 'gate' ? rd.copy.pickPrompt : shownMessage ?? (phase === 'done' ? rd.copy.nextRace : '');
 
@@ -271,9 +278,7 @@ export function raceFrame(setup: RaceSetup, me: PlayerView, at: number | Clock):
     : [];
   const visible = new Set<AmbientId>([...(crowdRaw.length ? ['crowd' as const] : []), ...(flagSpots.length ? ['flag' as const] : [])]);
   // Behind the photo the ambient loops stop where they were, and pick up from there after it.
-  const ambientWall = c.holdEndWall === null ? p
-    : c.photoEndWall === null ? c.holdEndWall : p - (c.photoEndWall - c.holdEndWall);
-  const ambient = ambientState(rd, { wall: ambientWall, eighthWall, visible });
+  const ambient = ambientState(rd, { wall: photoWall(p), eighthWall, visible });
 
   const fastTag = c.fast ? rd.copy.fastTag : null;
   // After the photo has named the winner, "Too close to call" gives way to the winner call.

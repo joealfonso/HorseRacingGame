@@ -86,6 +86,13 @@ export const SLOT_IDS = {
   },
 } as const;
 
+/**
+ * The photo finish's crop is 88 rows tall and puts lanes 8 rows apart (DESIGN, Race view).
+ * Here so the loader can check that the widest lane block fits; src/render/photo.ts uses them.
+ */
+export const PHOTO_CROP_ROWS = 88;
+export const PHOTO_LANE_ROWS = 8;
+
 /** The track surface slot for a race's surface and going. */
 export const trackSlotId = (surface: string, going: string): string => `art.track.${surface}.${going}`;
 

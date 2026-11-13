@@ -1,4 +1,4 @@
-import type { RaceDay } from '../data/raceDaySchema';
+import { PHOTO_CROP_ROWS, PHOTO_LANE_ROWS, type RaceDay } from '../data/raceDaySchema';
 import { fillTemplate } from '../data/template';
 import type { RaceResult } from '../sim/result';
 import { marginPhrase } from './format';
@@ -18,7 +18,7 @@ export const PHOTO_PANEL = { x: 8, y: 8, tilesW: 30, tilesH: 24 } as const;
 /** The photo inside it: x16-239, y16-191 when landed. */
 export const PHOTO_AREA = { x: 16, y: 16, w: 224, h: 176 } as const;
 /** The crop in race-view pixels: columns from 96 behind the wire to 16 past it, rows y77-164. */
-export const PHOTO_CROP = { behindWire: 96, pastWire: 16, top: 77, rows: 88 } as const;
+export const PHOTO_CROP = { behindWire: 96, pastWire: 16, top: 77, rows: PHOTO_CROP_ROWS } as const;
 /** Captions below the panel at 1x; the arrow above it at 1x, rows y3-6. */
 export const PHOTO_CAPTION = { x: 8, y: [204, 216] } as const;
 export const PHOTO_ARROW_Y = 3;
@@ -43,7 +43,7 @@ export function photoNose(distance: number, raceDistanceHundredths: number, cfg:
 }
 
 /** Crop rows between neighbouring lanes in the photo: twice the race view's 4, so every nose has its own height. */
-export const PHOTO_LANE_ROWS = 8;
+export { PHOTO_LANE_ROWS };
 
 /**
  * Top crop row of a horse's frame (before the 2x). The block of occupied lanes, from

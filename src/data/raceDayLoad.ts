@@ -4,7 +4,7 @@ import palette from './palette.json';
 import raceDay from './raceDay.json';
 import slots from './slots.json';
 import {
-  cardLookSchema, missingNeeded, neededSlotIds, paletteSchema, raceDaySchema, sequenceSeconds, slotsSchema,
+  PHOTO_CROP_ROWS, PHOTO_LANE_ROWS, SLOT_IDS, cardLookSchema, missingNeeded, neededSlotIds, paletteSchema, raceDaySchema, sequenceSeconds, slotsSchema,
   type CardLook, type Palette, type RaceDay, type Slots,
 } from './raceDaySchema';
 import { MAX_NAME_LENGTH, type GameData } from './schema';
@@ -89,6 +89,14 @@ export function validateRaceDay(
   // Every slot the screens draw must be in the registry, or the scene would have nothing to draw.
   for (const id of missingNeeded(sl.slots, neededSlotIds(game.race))) {
     add('slots', 'slots', `has no slot "${id}"; the race-day screens need it`);
+  }
+
+  // The photo puts lanes PHOTO_LANE_ROWS apart in its PHOTO_CROP_ROWS-row crop: the block
+  // from the rail to the widest lane, plus one frame, must fit, or horses lose rows.
+  const frameH = sl.slots.find((x) => x.id === SLOT_IDS.horse.body.gallop)?.frameHeight;
+  const laneMax = game.tuning.laneMax.value;
+  if (frameH !== undefined && PHOTO_LANE_ROWS * laneMax + frameH > PHOTO_CROP_ROWS) {
+    add('tuning', 'laneMax.value', `is ${laneMax}; the photo finish needs ${PHOTO_LANE_ROWS} x laneMax + the ${frameH}-row frame (src/data/slots.json ${SLOT_IDS.horse.body.gallop}.frameHeight) to fit its ${PHOTO_CROP_ROWS} rows, so at most ${Math.floor((PHOTO_CROP_ROWS - frameH) / PHOTO_LANE_ROWS)}`);
   }
 
   // Colors by name, from the palette.
@@ -217,7 +225,7 @@ export function validateRaceDay(
     add('raceDay', 'beats.photoCaptionSeconds', `is ${rd.beats.photoCaptionSeconds.value} s; the caption must show within the photo's ${rd.beats.photoSeconds.value} s`);
   }
 
-  const order = ['card', 'race', 'track', 'slots', 'cardLook', 'raceDay'].map((f) => `src/data/${f}.json`);
+  const order = ['card', 'race', 'track', 'tuning', 'slots', 'cardLook', 'raceDay'].map((f) => `src/data/${f}.json`);
   for (const file of order) {
     const list = issues.get(file);
     if (list) throw new DataError(file, list);

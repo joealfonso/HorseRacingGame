@@ -265,6 +265,9 @@ describe('the top bar across the photo', () => {
   });
 });
 
+const ORD = ['th', 'st', 'nd', 'rd'];
+const homeText = (name: string, place: number) => fillTemplate(rd.copy.messages.home, { name, place: `${place}${ORD[place < 4 ? place : 0]}` });
+
 describe('messages across the photo', () => {
   /** The runs of one message text in a sampled sequence: [text, first p, last p]. */
   function runs(s: RaceSetup, post: number, from: number, to: number, dt: number) {
@@ -299,7 +302,13 @@ describe('messages across the photo', () => {
     expect(seen).toBeGreaterThan(80);
   });
 
-  it('a message on screen when the photo begins runs out its time: shown for its two seconds, not cut at the photo, not repeated', () => {
+  // Updated on purpose (ruling after the reviewer's re-check). This test used to say a
+  // message on screen when the photo begins runs out its two seconds behind the panel,
+  // where the HUD is hidden, so the player could lose it. The ruling is the other way: the
+  // message line pauses with the photo. Counting only frames where the HUD is visible, a
+  // message on screen when the photo begins is seen for its full 2 seconds in total (part
+  // before the photo, the rest after it), is not seen while the photo is up, and is not repeated.
+  it('a message on screen when the photo begins is seen for its full two seconds in total, split around the photo, never while the photo is up, not repeated', () => {
     let tested = 0;
     for (const seed of photoSeeds) {
       const r = race(seed);
@@ -309,18 +318,24 @@ describe('messages across the photo', () => {
         const fin = r.finish.find((f) => f.id === h.id)!;
         const start = DOORS + fin.time / 100 / SPEED; // the wall second the home message is due
         if (!(start < tl.doneAt - 0.3 && start + 2 > tl.doneAt + 0.2)) continue;
-        const text = fillTemplate(rd.copy.messages.home, { name: h.name, place: `${fin.place}${['th', 'st', 'nd', 'rd'][fin.place < 4 ? fin.place : 0]}` });
-        // Only where nothing else is queued in front of it.
-        if (frameAt(s, h.post, start + 0.02).message !== text) continue;
-        expect(frameAt(s, h.post, tl.doneAt - 0.01).message, `seed ${seed} ${h.id} at the photo`).toBe(text);
-        expect(frameAt(s, h.post, tl.doneAt + 0.01).message).toBe(text); // not cut off when the photo starts
-        expect(frameAt(s, h.post, start + 1.95).message).toBe(text);
-        const gone = frameAt(s, h.post, start + 2.05).message;
-        expect(gone).not.toBe(text);
-        const rs = runs(s, h.post, start - 0.2, tl.beatEndAt + 2, 1 / 30).filter((x) => x.text === text);
-        expect(rs).toHaveLength(1);
-        expect(rs[0].to - rs[0].from).toBeGreaterThan(1.9 - 0.1);
-        expect(rs[0].to - rs[0].from).toBeLessThanOrEqual(2.0);
+        const text = homeText(h.name, fin.place);
+        if (frameAt(s, h.post, start + 0.02).message !== text) continue; // only where nothing is queued in front
+        const dt = 1 / 60;
+        let seen = 0;
+        const visibleRuns: number[] = [];
+        let inRun = false;
+        for (let p = start - 0.2; p < tl.beatEndAt - 0.01; p += dt) {
+          const f = frameAt(s, h.post, p);
+          if (f.phase === 'photo') expect(f.hudVisible).toBe(false); // nothing is seen behind the panel
+          const on = f.hudVisible && f.message === text;
+          if (on) { seen += dt; if (!inRun) visibleRuns.push(p); }
+          inRun = on || (inRun && !f.hudVisible); // the photo's frames do not break a run
+        }
+        expect(seen, `seed ${seed} ${h.id} seen`).toBeGreaterThan(2 - 3 * dt);
+        expect(seen).toBeLessThan(2 + 3 * dt);
+        expect(visibleRuns, `seed ${seed} ${h.id} runs`).toHaveLength(1);
+        // Part before the photo, and the rest straight after it.
+        expect(frameAt(s, h.post, tl.photoEndAt + 0.01).message).toBe(text);
         tested++;
       }
       if (tested >= 12) break;
@@ -342,5 +357,112 @@ describe('messages across the photo', () => {
 
   it('the photo\'s own wall time never counts against a message: PHOTO is the photo\'s data length', () => {
     expect(PHOTO).toBe(4.5);
+  });
+});
+
+// The message line pauses with the photo (ruling after the reviewer's re-check): messages
+// are seen for their two seconds in time the player can see, whatever the keys.
+describe('"home in Nth" is seen once, in every way of playing the sequence', () => {
+  type Mode = 'none' | 'enter' | 'space';
+  const DT = 1 / 30;
+
+  /** Every frame of a whole sequence played in one mode, for one player, from `from` wall seconds. */
+  function play(s: RaceSetup, post: number, mode: Mode, from: (c: Clock) => boolean) {
+    const tl = s.timeline;
+    const out: { f: RaceFrame; wall: number }[] = [];
+    let c = startClock();
+    let phaseSince = 0;
+    let last = phaseOf(c);
+    let presses = 0;
+    let started = false;
+    for (let guard = 0; phaseOf(c) !== 'done' && guard < 10000; guard++) {
+      c = tick(c, tl, DT, mode === 'space');
+      const ph = phaseOf(c);
+      if (ph !== last) { last = ph; phaseSince = c.wall; }
+      if (mode === 'enter' && c.wall - phaseSince >= 0.2 && ((ph === 'hold' && presses === 0) || (ph === 'photo' && presses < 3))) { c = skip(c, tl, 0); presses++; }
+      if (!started && from(c)) started = true;
+      if (started) out.push({ f: frameAt(s, post, c), wall: c.wall });
+    }
+    return out;
+  }
+
+  /** What the player saw of one message: the visible time, the number of separate showings, and the first frame. */
+  function seenOf(frames: { f: RaceFrame }[], text: string) {
+    let n = 0;
+    let runs = 0;
+    let inRun = false;
+    let first = -1;
+    frames.forEach(({ f }, i) => {
+      if (!f.hudVisible) return; // the photo's frames neither show nor break a showing
+      const on = f.message === text;
+      if (on) { n++; if (first < 0) first = i; if (!inRun) runs++; }
+      inRun = on;
+    });
+    return { seen: n * DT, runs, first };
+  }
+
+  const check = (seed: number, post: number, mode: Mode, s: RaceSetup) => {
+    const r = s.result;
+    const h = r.inputs.card.horses.find((x) => x.post === post)!;
+    const fin = r.finish.find((f) => f.id === h.id)!;
+    const text = homeText(h.name, fin.place);
+    const frames = play(s, post, mode, (c) => c.race >= fin.time - 100);
+    const shown = frames.filter((x) => x.f.hudVisible);
+    const { seen, runs, first } = seenOf(frames, text);
+    const tag = `seed ${seed} post ${post} ${mode}`;
+    expect(runs, tag).toBeLessThanOrEqual(1); // never twice
+    expect(seen, tag).toBeGreaterThan(0); // seen for some time
+    // Seen for its two seconds, unless the winner beat ending (and the result screen opening)
+    // cuts it short: that was true before the photo existed. Then it is seen until the end.
+    const visibleAfterFirst = shown.filter((x) => frames.indexOf(x) >= first).length * DT;
+    expect(seen, tag).toBeGreaterThan(Math.min(2, visibleAfterFirst) - 3 * DT);
+    expect(seen, tag).toBeLessThan(2 + 3 * DT);
+  };
+
+  it('the reviewer\'s cases: seed 645 post 5 with no keys, seed 57 post 3 with Space held, seed 16 post 1', () => {
+    for (const [seed, post, mode] of [[645, 5, 'none'], [57, 3, 'space'], [16, 1, 'none'], [16, 1, 'enter'], [16, 1, 'space'], [645, 5, 'enter'], [645, 5, 'space'], [57, 3, 'none']] as const) {
+      expect(race(seed).photoFinish, `seed ${seed}`).toBe(true);
+      check(seed, post, mode, setupOf(race(seed)));
+    }
+  });
+
+  it('every horse as the player\'s, on photo seeds, with no keys, with Enter, and with Space held', () => {
+    let n = 0;
+    for (const seed of photoSeeds.slice(0, 7)) {
+      const s = setupOf(race(seed));
+      for (const h of race(seed).inputs.card.horses) {
+        for (const mode of ['none', 'enter', 'space'] as const) { check(seed, h.post, mode, s); n++; }
+      }
+    }
+    expect(n).toBe(168);
+  });
+
+  it('a message queued behind another when the photo begins still shows after it, in order; time behind the photo does not trigger the 3 s drop', () => {
+    const r = structuredClone(race(16));
+    const me = r.finish[1]; // home soon after the winner
+    const winnerAt = DOORS + r.finish[0].time / 100 / SPEED;
+    // A luck event for the player as the winner crosses: its message is on screen for the first
+    // second of its two when the photo begins, so the home message queued behind it waits more
+    // than the 3 s drop limit in real seconds (the photo is 4.5 s) but under it in seconds seen.
+    r.replay.events = [{ type: 'blocked', horse: me.id, otherHorse: null, time: r.finish[0].time }];
+    const s = setupOf(r);
+    const tl = s.timeline;
+    const name = nameOf(r, me.id);
+    const blocked = fillTemplate(rd.copy.messages.blocked, { name });
+    const home = homeText(name, 2);
+    const frames = play(s, me.post, 'none', (c) => c.wall >= winnerAt - 1);
+    const order: string[] = [];
+    for (const { f } of frames) if (f.hudVisible && f.message !== '' && f.message !== order[order.length - 1]) order.push(f.message);
+    expect(order.slice(0, 2), 'blocked first, then home').toEqual([blocked, home]);
+    const b = seenOf(frames, blocked);
+    expect(b.seen).toBeGreaterThan(2 - 3 * DT);
+    expect(b.seen).toBeLessThan(2 + 3 * DT);
+    expect(b.runs).toBe(1);
+    // The home message waited behind it for more than the photo's length in real seconds, and was not dropped.
+    const h = seenOf(frames, home);
+    expect(h.runs).toBe(1);
+    expect(h.seen).toBeGreaterThan(0);
+    expect(PHOTO).toBeGreaterThan(rd.hud.messageMaxWaitSeconds.value); // the photo alone outlasts the drop rule
+    expect(tl.photoEndAt - tl.doneAt).toBe(PHOTO);
   });
 });
