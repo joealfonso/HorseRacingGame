@@ -942,3 +942,19 @@ It fails the 18.6 test "reads in 2 seconds as horses racing at a track, seen fro
 ### 21.4 Where the mock stands
 
 Every sheet in 18.6 is now accepted, with the two intake fixes in 21.1 on the cover picture. The mock is ready for Joseph's approval of the look. Still open for him: question 8 (a real track's name on the masthead) and the copy note on the "Lemonade tested" news item (18.4). The DESIGN.md text held in 18.5, 19.4 and 20.3 is unchanged by this verdict.
+
+## 22. Art-director intake review (2026-11-14)
+
+Judged from the 3x preview sheets in docs/mocks/book-and-window/assets/ (cover-art, cover-art-gray, cover-regular-before-after, cover-regular-silhouette, display-font, window-parts). I also checked the five rows at the end of docs/ASSETS.md against the intake checklist and checked the cover's eye pixels in scripts/art/book.mjs. Every row has the source (original, the committed script named), the license (project-owned), the date, what changed, and the AI use. The verify script's palette and color-count checks cover checklist items 6 and 7.
+
+| asset | verdict | reason |
+|---|---|---|
+| `art.book.cover.art` | **ACCEPT** | It passes the 21.1 test: neither fix made the silhouette worse. In the Ink fill, the head is now round, the neck is short, and the stoop reads as a seated older lady leaning toward the finish. "Before" read as a block on a post. The bell shape the artist notes is the stooped shoulder line, and it reads as rounded shoulders, not a costume. The face is plain paper about 11 px wide with the 1x2 eye at px44 (py25-26, a row higher than in 21.1 because the head moved up; accepted) and the nose edge. The added 2-row fringe under the brim has a job: it frames the face from above so the head doesn't start at the brim's Ink underside. Accepted. The horses, inks and grayscale are unchanged from the accepted mock. **Its ASSETS.md row stands once one change is made:** it says "Nothing else changed from the accepted mock", but the fringe is a change. Add "a 2-row paper fringe under the brim" to the row's changes. Checklist item 1 asks for what was changed. No pixel change. |
+| `font.ui.display` | **ACCEPT** | All 41 glyphs, the same hand as the 11 accepted in the mock: 2 px stems and bars, 10x14 in a 12x16 cell. The sample lines on Maroon read cleanly as a masthead at 3x, including the pangrams and "AL'S PARK & DOWNS.". The slashed zero matches the main font and keeps 0 apart from O. The ampersand is heavy but reads at once as "&", and in a masthead weight is right. No change. Its ASSETS.md row stands. |
+| `art.window.booth` | **ACCEPT** | Pixels identical to the mock accepted in 20.1. The sign plate carries no baked text ("Windows" comes from data, DESIGN HUD: no text baked into images). At most 8 colors per 16x16 cell, verified. No outline, as still-picture art. Its ASSETS.md row stands. |
+| `art.window.clerk` | **ACCEPT** | Identical to the accepted mock. Four colors (Ink, Cocoa, Turf, Bone), drawn fresh at 32x48 and not scaled from `art.hub.clerk`. The stamp frame's hand reads as coming down on the tote machine. Rows 46-47 are transparent so the counter shows under him, which is correct for a frame at y34-81 over a counter at y80. Its ASSETS.md row stands. |
+| `art.window.program` | **ACCEPT** | Identical to the accepted mock. Ink outline, Parchment, the 2-row Maroon masthead band, no type. Its ASSETS.md row stands. |
+
+All five are accepted. The only open item is the one-line edit to the cover's ASSETS.md row above, which the artist makes. These are now the reference assets for their kinds (DESIGN Do: "The first accepted asset of each kind becomes the reference"): the cover for any later printed illustration, the display font for mastheads, and the 32x48 clerk for close-up people.
+
+The DESIGN.md text held in 18.5, 19.4 and 20.3 goes in with the build, as listed there. This review adds nothing to it.
