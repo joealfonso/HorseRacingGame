@@ -94,7 +94,7 @@ export const bettingSchema = z.strictObject({
       shortFavorite: z.strictObject({ oddsOrShorter: oddsLabel, fieldsPercentMin: shareOf(0, 100) }),
       longshot: z.strictObject({ oddsOrLonger: oddsLabel, fieldsPercentMin: shareOf(0, 100) }),
       flatField: z.strictObject({ from: oddsLabel, to: oddsLabel, fieldsPercentMax: shareOf(0, 100) }),
-      calibration: z.strictObject({ groupEdgesPercent: z.array(z.number()).min(1), withinPoints: z.number().min(0) }),
+      calibration: z.strictObject({ groupEdgesPercent: z.array(z.number()).min(1).refine((a) => a.every((e, i) => i === 0 || e > a[i - 1]), { error: 'must be strictly rising' }), withinPoints: z.number().min(0) }),
       blindRuleReturnPerDollarMax: z.number(),
     })),
   }),

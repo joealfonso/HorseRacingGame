@@ -410,3 +410,25 @@ describe('ST1 (amended): horse problems are reported against stable.json, whiche
     expect(err.message).not.toContain('card.json');
   });
 });
+
+describe('HN3: the calibration groups in betting.json', () => {
+  const real = () => rawBetting();
+  const edges = (raw: Raw): number[] => raw.betting.harness.bands.value.calibration.groupEdgesPercent;
+
+  it('HN3: the shipped group edges rise', () => {
+    const e = edges(real());
+    expect(e.length).toBeGreaterThan(0);
+    e.forEach((x, i) => { if (i > 0) expect(x).toBeGreaterThan(e[i - 1]); });
+  });
+
+  it.each([
+    ['out of order', [5, 20, 10, 35]],
+    ['repeated', [5, 10, 10, 35]],
+  ])('HN3: group edges that are %s are refused, naming betting.json and the field', (_what, bad) => {
+    const raw = real();
+    raw.betting.harness.bands.value.calibration.groupEdgesPercent = bad;
+    const err = failure(raw);
+    expect(err.message).toContain('src/data/betting.json');
+    expect(err.message).toContain('groupEdgesPercent');
+  });
+});

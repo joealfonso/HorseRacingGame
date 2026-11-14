@@ -397,3 +397,7 @@ Kick is the remainder, so a stalker can wobble up to 8 from a third: p08 and p11
 **The $10 bettors bet the largest offered amount up to $10.** Under the 25 percent cap a bankroll under $40 cannot bet $10, so the bettor drops to $5 or $2 rather than passing. The day ends broke under $2 as in the game.
 
 **"Random" is the average over every horse**, as HN3 says, with every horse bet $2 and priced with its own $2 in the pool. The bands are judged on expected returns from the holdout; calibration compares the crowd's estimate with the real races, as PB5 did.
+
+**A cached day is checked against the live draw.** On every run each cached day's horse ids and race seeds are compared with `drawnDay`; a mismatch is a miss, the day is re-simulated and overwritten, and one log line says how many were stale. The key still does not hash the draw code, so a change to the estimate or holdout seed code that keeps the same fields and race seeds, or to what a day holds, still needs `HARNESS_CACHE_VERSION` bumped.
+
+**Day files are written whole or not at all.** A day is written to a temporary name and renamed into place. A file that does not parse or lacks the expected shape is a miss with one log line naming it, not a crash. An empty calibration group is now a failed check. The selftest settles one day with the slim result and with the real `RaceResult` and requires the same bankroll.

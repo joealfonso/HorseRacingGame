@@ -8,7 +8,7 @@
 // harness-only stream) and the real race. Those are cached per day, so a change that only
 // moves prices (the crowd values, the pool, the takeout) reruns no sim.
 import { fork, type ChildProcess } from 'node:child_process';
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, truncateSync, writeFileSync } from 'node:fs';
 import { cpus, loadavg, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { dayContext, drawnDay, goToPost, newDay, programFor, settle, type DayContext, type DrawnRace } from '../src/bet/day';
@@ -41,7 +41,11 @@ for (const name of [HOLDOUT_STREAM, RANDOM_STREAM]) {
     throw new Error(`harness stream "${name}" collides with a game or sim stream`);
   }
 }
-// Bump when what a cached day holds changes.
+// Bump on a change the load-time check cannot see. Every cached day is compared with the live
+// drawnDay: each race's horse ids and race seed. A change to the draw or to the race seed stream
+// that moves either is caught there and the day is re-simulated, no bump needed. Still needs a
+// bump: a change to the estimate or holdout seed code (runEstimate, estimateSeedsOf, holdoutSeeds)
+// that keeps the same fields and race seeds, or to what a cached day holds.
 const HARNESS_CACHE_VERSION = 1;
 const FLAT_DOLLARS = 2;
 const FEEL_DOLLARS = 10;
@@ -120,13 +124,59 @@ function cacheKey(ctx: DayContext, runs: number): string {
 
 const load1 = () => loadavg()[0].toFixed(2);
 
+const isNumbers = (x: unknown, n: number): boolean => Array.isArray(x) && x.length === n && x.every((v) => typeof v === 'number');
+
+/** True when x has the shape of a cached day for this seed. */
+function isDaySims(x: unknown, daySeed: number): x is DaySims {
+  const d = x as DaySims | null;
+  if (typeof d !== 'object' || d === null || d.daySeed !== daySeed || !Array.isArray(d.races)) return false;
+  return d.races.every((r) => typeof r === 'object' && r !== null && typeof r.race === 'number' && typeof r.raceSeed === 'number'
+    && typeof r.winner === 'number' && Array.isArray(r.horseIds) && r.horseIds.every((id) => typeof id === 'string')
+    && isNumbers(r.crowdWins, r.horseIds.length) && isNumbers(r.holdWins, r.horseIds.length));
+}
+
+/** True when the cached day has the live draw's races, horse ids and race seeds. */
+function matchesLiveDraw(ctx: DayContext, day: DaySims): boolean {
+  const live = drawnDay(ctx, day.daySeed);
+  return live.length === day.races.length && live.every((d, i) => {
+    const r = day.races[i];
+    return r.race === d.race && r.raceSeed === d.raceSeed && r.horseIds.length === d.horseIds.length && r.horseIds.every((id, k) => id === d.horseIds[k]);
+  });
+}
+
+/** Writes to a temporary name in the same directory, then renames into place, so a reader never sees half a file. */
+function writeDay(file: string, day: DaySims): void {
+  const tmp = `${file}.tmp-${process.pid}`;
+  writeFileSync(tmp, JSON.stringify(day));
+  renameSync(tmp, file);
+}
+
 async function simsFor(
   launcher: string, ctx: DayContext, seeds: number[], runs: number, workers: number, dir: string, log: (line: string) => void,
 ): Promise<{ days: DaySims[]; computed: number }> {
   mkdirSync(dir, { recursive: true });
   const path = (s: number) => join(dir, `day-${s}.json`);
   const have = new Map<number, DaySims>();
-  for (const s of seeds) if (existsSync(path(s))) have.set(s, JSON.parse(readFileSync(path(s), 'utf8')) as DaySims);
+  let stale = 0;
+  for (const s of seeds) {
+    if (!existsSync(path(s))) continue;
+    let day: unknown;
+    try {
+      day = JSON.parse(readFileSync(path(s), 'utf8'));
+    } catch {
+      day = null;
+    }
+    if (!isDaySims(day, s)) {
+      log(`cache: ${path(s)} is unreadable or has the wrong shape, treated as a miss`);
+      continue;
+    }
+    if (!matchesLiveDraw(ctx, day)) {
+      stale++;
+      continue;
+    }
+    have.set(s, day);
+  }
+  if (stale > 0) log(`cache: ${stale} cached days were stale (horse ids or race seeds differ from the live draw), re-simulating them`);
   const todo = seeds.filter((s) => !have.has(s));
   if (todo.length > 0) {
     log(`sims: ${todo.length} days to run (${seeds.length - todo.length} cached) on ${Math.min(workers, todo.length)} workers, load ${load1()}`);
@@ -141,7 +191,7 @@ async function simsFor(
       for (let w = 0; w < Math.min(workers, todo.length); w++) {
         const kid = fork(launcher, ['--worker'], { stdio: ['ignore', 'inherit', 'inherit', 'ipc'] });
         kid.on('message', (day: DaySims) => {
-          writeFileSync(path(day.daySeed), JSON.stringify(day));
+          writeDay(path(day.daySeed), day);
           have.set(day.daySeed, day);
           done++;
           if (done % Math.max(1, Math.floor(todo.length / 50)) === 0 || done === todo.length) {
@@ -181,6 +231,15 @@ const realRet = (t: Tally) => (t.staked === 0 ? NaN : t.back / t.staked - 1);
 const se = (sq: number, mean: number, n: number) => (n < 2 ? NaN : Math.sqrt(Math.max(0, sq / n - mean * mean) / (n - 1)));
 const seExp = (t: Tally) => se(t.esq, expRet(t), t.bets);
 const seReal = (t: Tally) => se(t.rsq, realRet(t), t.bets);
+
+/**
+ * A stand-in for runRace's result. settle (src/bet/day.ts) reads exactly two fields: result.seed
+ * (checked against the race's seed) and result.finish[0].post (the winner). The selftest settles
+ * a day with this and with the real result and requires the same bankroll.
+ */
+function slimResult(seed: number, winner: number): RaceResult {
+  return { seed, finish: [{ post: winner }] } as unknown as RaceResult;
+}
 
 const sgn = (x: number) => (Number.isNaN(x) ? '   n/a' : `${x >= 0 ? '+' : ''}${x.toFixed(3)}`);
 const pct = (x: number) => (Number.isNaN(x) ? 'n/a' : (x * 100).toFixed(1));
@@ -303,8 +362,7 @@ function measure(ctx: DayContext, harness: Harness, days: DaySims[], runs: numbe
         const offered = offeredAmounts(state.bankrollCents, rules).filter((a) => a <= FEEL_DOLLARS);
         const post = who === 'favorite' ? firstMax(program.crowdDollars) + 1 : createStream(day.daySeed, RANDOM_STREAM, String(d.race)).int(1, d.horseIds.length);
         state = goToPost(ctx, state, program, offered.length === 0 ? null : { post, dollars: offered[offered.length - 1] });
-        // settle reads only the result's seed and winner; the cached sims hold both.
-        state = settle(ctx, state, { seed: d.raceSeed, finish: [{ post: r.winner }] } as unknown as RaceResult);
+        state = settle(ctx, state, slimResult(d.raceSeed, r.winner));
       }
       feel[who].push(state.bankrollCents);
       if (state.ended === 'broke') feel[`${who}Broke`]++;
@@ -361,6 +419,7 @@ function measure(ctx: DayContext, harness: Harness, days: DaySims[], runs: numbe
     const label = `${pct(g.lo).replace('.0', '')} to ${g.hi === Infinity ? 'up' : pct(g.hi).replace('.0', '')}`;
     if (g.n === 0) {
       out.push(`  ${label.padEnd(15)} none`);
+      check(`calibration ${label}`, 'at least one horse in the group', 'group is empty', false);
       continue;
     }
     const est = g.est / g.n, act = g.wins / g.n;
@@ -471,6 +530,40 @@ async function selftest(launcher: string, ctx: DayContext, h: Harness): Promise<
   say('1 worker and 3 workers give the same summary', one.text === three.text, `${one.computed} and ${three.computed} days simulated`);
   const again = await harness(launcher, ctx, h, { ...base, workers: 3, cache: join(root, 'b') }, true);
   say('the cache reproduces a fresh run', again.text === three.text && again.computed === 0, `${again.computed} days simulated on the rerun`);
+  // A cached day whose horse ids were tampered with, and a day file cut short: both re-simulated.
+  const dirB = join(root, 'b', cacheKey(ctx, base.runs));
+  const tampered = join(dirB, `day-${base.from + 1}.json`);
+  const day = JSON.parse(readFileSync(tampered, 'utf8')) as DaySims;
+  day.races[0].horseIds = [...day.races[0].horseIds].reverse();
+  writeFileSync(tampered, JSON.stringify(day));
+  const afterTamper = await harness(launcher, ctx, h, { ...base, workers: 1, cache: join(root, 'b') }, true);
+  say('a cached day with tampered horse ids is detected and re-simulated', afterTamper.computed === 1 && afterTamper.text === three.text, `${afterTamper.computed} day simulated`);
+  const cut = join(dirB, `day-${base.from + 2}.json`);
+  truncateSync(cut, Math.floor(readFileSync(cut).length / 2));
+  const afterCut = await harness(launcher, ctx, h, { ...base, workers: 1, cache: join(root, 'b') }, true);
+  say('a truncated day file is detected and re-simulated', afterCut.computed === 1 && afterCut.text === three.text, `${afterCut.computed} day simulated`);
+  const settled = await harness(launcher, ctx, h, { ...base, workers: 1, cache: join(root, 'b') }, true);
+  say('after the repairs the cache is whole again', settled.computed === 0 && settled.text === three.text);
+  // settle with the slim result and with the real runRace result.
+  {
+    const sims = JSON.parse(readFileSync(join(dirB, `day-${base.from}.json`), 'utf8')) as DaySims;
+    const play = (real: boolean) => {
+      let state = newDay(ctx, base.from);
+      for (const d of drawnDay(ctx, base.from)) {
+        if (state.ended !== null) break;
+        const r = sims.races[d.race - 1];
+        const program = programFor(ctx, d, { runs: base.runs, wins: r.crowdWins });
+        const offered = offeredAmounts(state.bankrollCents, ctx.rules).filter((a) => a <= FEEL_DOLLARS);
+        // Back the winner on odd races so the day has both wins and losses.
+        const post = d.race % 2 === 1 ? r.winner : 1;
+        state = goToPost(ctx, state, program, offered.length === 0 ? null : { post, dollars: offered[offered.length - 1] });
+        state = settle(ctx, state, real ? runRace(d.input, d.raceSeed) : slimResult(d.raceSeed, r.winner));
+      }
+      return state;
+    };
+    const slim = play(false), real = play(true);
+    say('settle gives the same bankroll with the slim result and the real RaceResult', slim.bankrollCents === real.bankrollCents && slim.records.length === real.records.length && JSON.stringify(slim.records) === JSON.stringify(real.records), `${money(slim.bankrollCents)} and ${money(real.bankrollCents)}, ${slim.records.length} races`);
+  }
   // In process, no workers at all: the same sims as the pool's.
   const direct = simulateDay(ctx, base.from, base.runs);
   const cached = JSON.parse(readFileSync(join(root, 'b', cacheKey(ctx, base.runs), `day-${base.from}.json`), 'utf8'));
