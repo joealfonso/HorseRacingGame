@@ -125,7 +125,7 @@ y   4  Race 3 of 8                                    Bank $100.00     L1: Ink, 
 **Bet placed** (Enter on the ticket): the punch beat, 0.6 s (data).
 - The pencil tick appears in the entry's margin cell (x8-15), as a fan ticks a program.
 - The header's bankroll drops by the stake (the stake leaves at Go to the post, which this is).
-- The footer becomes a printed tote ticket: a Bone slip at x8-247, y212-235, with a 1 px Ink border on the left, right and bottom and a torn top edge as DESIGN's "Program pages, Betting additions" gives it (2 px teeth on rows y212 and y213); line 1 at x16 with its cell top at y215 and line 2 at x16 with its cell top at y225, both Ink. The bankroll cuts to its new figure; it never counts down. Line 1 reads "Race 3, $10 to win on #3" (longest 25) and line 2 "Legally A Horse at 5-2" (longest 26). Both are Ink.
+- The footer becomes a printed tote ticket: a Bone slip at x8-247, y209-235, with Ink left, right and bottom borders and an irregular torn top edge from the fixed 24-column pattern in DESIGN's "Program pages, Betting additions". It covers the rule at y210, which is not drawn while the slip shows; line 1 at x16 with its cell top at y215 and line 2 at x16 with its cell top at y225, both Ink. The bankroll cuts to its new figure; it never counts down. Line 1 reads "Race 3, $10 to win on #3" (longest 25) and line 2 "Legally A Horse at 5-2" (longest 26). Both are Ink.
 - Then the page cuts to the race.
 
 **Pass** (Enter on Pass): no band, no tick, no ticket. The page cuts to the race at once.
@@ -203,7 +203,7 @@ y   4  That's the card                                  Day #12345       title M
    24  -------------------------------------------------------------   rule
    32  Started with                                       $100.00
    44  Ended with                                         $127.40
-   56  Change                                             +$27.40       Pine with +, Red with -, Ink "Even"
+   56  Change                                             +$27.40       Turf with +, Red with -, Ink "Even"
    68  Bets made                                           5 of 8       bets of races run
    80  Winners hit                                              2
    92  Best price hit                                         9-2       "None" if no winner
@@ -309,7 +309,16 @@ These extend UI1 to UI6 and SAFE1 to SAFE4 in `betting-simple.md`. All of those 
 
 ## 10. For the art-director
 
-Ruled 2026-11-13. All eight items below are settled in DESIGN.md under "Program pages, Betting additions", and those rulings win over the text of this spec where they differ. In short: bars at 40 px accepted; odds in Ink, main font, right-aligned to x247 with the cell top at +8 of the entry, an "Odds" head in Ink at x216-247, and no treatment of any kind for the favorite; a pending price is a single "-" at x240-247; the pencil tick sits in the margin at x8-15, rows +5 to +12, means "bet placed", and is never drawn in the same cell as the cursor (if both, the tick wins); the band means "the horse you are betting on" from ticket open to the result; the tote ticket has a torn top edge; on paper money up is Pine with a plus sign and money down Red with a minus sign, on the End of day "Change" figure only; the End of day title is Maroon, never Red, with "Day" in the main font and the seed in the small font, right-aligned to x247; prices and the bankroll cut to new figures and never roll; no currency icon, no casino or real-money looks, and no celebration effect tied to money. No new art assets.
+Final rulings from the mock (2026-11-13, after Joseph approved it). These win over anything above that differs, and DESIGN.md has the exact pixels:
+
+- **Column heads** (y47, main font, Ink), each starting at its column's stat number: "Speed" x40-79, "Stam." x98-137, "Kick" x156-187, "Odds" right-aligned at x216-247. Centered over the bars they read as one sentence. "Stamina" is printed "Stam." because the stat columns are 58 px apart and the word is 56. The stamina head's text comes from copy in data.
+- **The tote ticket** is a Bone slip at x8-247, y209-235, with an irregular torn top edge and square corners. Text stays at x16 with cell tops y215 and y225.
+- **Money up on paper is Turf**, not Pine, which read as nearly black. Still only on the End of day "Change" figure.
+- **The End of day page lists the day's card.** A 1 px Ink rule at y124, then one row per race actually run, cell tops at y128 + 11 * i: "Race {r}" at x8; the 10x10 saddlecloth box of the horse you bet on at x64-73 (rows y-1 to y+8, Ink border, small-font number); its odds from x80; and the ticket right-aligned to x247, "Paid $70.00" or "Lost $10". On a pass: no box, no odds, "Passed" at x64. All Ink: no Turf, no Red, no band, no tick, no total. A broke day lists only the races run. "New day" stays at y220. New copy: "Race {r}", "Paid {total}", "Lost {amount}", "Passed". This replaces the "Rejected" and "Later" notes that left a race-by-race list out.
+- **BE1** also checks the day's card: one row per race run with the right box, odds and ticket, for a scripted day, a broke day and a day of passes.
+- Everything else in the mock is accepted as drawn.
+
+Ruled 2026-11-13. All eight items below are settled in DESIGN.md under "Program pages, Betting additions", and those rulings win over the text of this spec where they differ. In short: bars at 40 px accepted; odds in Ink, main font, right-aligned to x247 with the cell top at +8 of the entry, an "Odds" head in Ink at x216-247, and no treatment of any kind for the favorite; a pending price is a single "-" at x240-247; the pencil tick sits in the margin at x8-15, rows +5 to +12, means "bet placed", and is never drawn in the same cell as the cursor (if both, the tick wins); the band means "the horse you are betting on" from ticket open to the result; the tote ticket has a torn top edge; on paper money up is Turf with a plus sign and money down Red with a minus sign, on the End of day "Change" figure only; the End of day title is Maroon, never Red, with "Day" in the main font and the seed in the small font, right-aligned to x247; prices and the bankroll cut to new figures and never roll; no currency icon, no casino or real-money looks, and no celebration effect tied to money. No new art assets.
 
 1. **Bars at 40 px** instead of 50 px, with heads centered over the bars. This amends "Stat bars" in Program pages.
 2. **The odds column:** Ink or Maroon. I recommend Ink. Maroon's three uses are fixed, and the price should read as print, not as a heading.
