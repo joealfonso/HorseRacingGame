@@ -2,8 +2,9 @@ import type { RaceDay } from '../data/raceDaySchema';
 import type { RaceResult } from '../sim/result';
 import { ambientState, midZones, turnArt, zoneTiles, type AmbientId, type AmbientState, type MidZone, type TurnArt } from './ambient';
 import { callForBar, callSchedule, announcerAt, winnerCallAfterPhoto, type ScheduledCall } from './announcer';
-import { callAt, finishLine, formatClock, ordersShort, positionLine } from './format';
-import { messageAt, messageSchedule, messageTriggers, triggersOnWall, type Shown, type Trigger } from './messages';
+import { fillTemplate } from '../data/template';
+import { callAt, finishLine, formatClock, marginWords, ordersShort, positionLine } from './format';
+import { PRIORITY, messageAt, messageSchedule, messageTriggers, triggersOnWall, type Shown, type Trigger } from './messages';
 import { minimapDot, minimapGeometry, minimapWire, type MinimapGeometry } from './minimap';
 import { photoFrame, photoHorses, photoNamesWinner, type PhotoFrame } from './photo';
 import { stripAt, stripOrders } from './strip';
@@ -75,7 +76,15 @@ export function makeRaceSetup(result: RaceResult, rd: RaceDay, raceNumber: numbe
   };
 }
 
-export interface PlayerView { id: string; post: number; name: string; orders: string; messages: Shown[]; triggers: Trigger[] }
+export interface PlayerView {
+  id: string; post: number; name: string; orders: string; messages: Shown[]; triggers: Trigger[];
+  /**
+   * No horse of yours (a pass on the betting program, betting-screens.md section 4): no
+   * marker, the camera on the leader, and the HUD's first two lines on the leader at the
+   * latest call. `id` matches no horse.
+   */
+  watching?: boolean;
+}
 
 /** Your horse's part of the view. Rebuilt when the pick changes at the gate. */
 export function playerView(setup: RaceSetup, post: number): PlayerView {
@@ -91,6 +100,46 @@ export function playerView(setup: RaceSetup, post: number): PlayerView {
     messages: messageSchedule(triggers, rd.hud.messageSeconds.value, rd.hud.messageMaxWaitSeconds.value),
     triggers,
   };
+}
+
+/**
+ * A betting race with a ticket (betting-screens.md section 4): your horse is the horse bet
+ * on, HUD line 3 is the bet ("$10 to win, 5-2"), and when the winner crosses the wire the
+ * message line adds whether the ticket is good. Nothing about money waits on the wire here.
+ */
+export function bettorView(setup: RaceSetup, post: number, betLine: string): PlayerView {
+  const me = playerView(setup, post);
+  const winner = setup.result.finish[0];
+  const msg = setup.rd.copy.msg;
+  const wire: Trigger = {
+    at: winner.time / 100 / setup.timeline.speed, priority: PRIORITY.ticket,
+    text: winner.id === me.id ? msg.won : msg.lost, race: winner.time, delay: 0,
+  };
+  const triggers = [...me.triggers, wire].sort((a, b) => a.at - b.at || a.priority - b.priority);
+  const rd = setup.rd;
+  return { ...me, orders: betLine, triggers, messages: messageSchedule(triggers, rd.hud.messageSeconds.value, rd.hud.messageMaxWaitSeconds.value) };
+}
+
+/** A passed betting race: no horse of yours, "Just watching" on HUD line 3, no wire message. */
+export function watchingView(setup: RaceSetup): PlayerView {
+  const { rd, timeline } = setup;
+  const triggers = messageTriggers(setup.result, rd, '', timeline.speed);
+  return {
+    id: '', post: 0, name: '', orders: rd.copy.hud.watching, triggers,
+    messages: messageSchedule(triggers, rd.hud.messageSeconds.value, rd.hud.messageMaxWaitSeconds.value),
+    watching: true,
+  };
+}
+
+/** HUD lines 1 and 2 with no horse of yours: the leader at the latest call and its lead ("Leads by 1 1/2"). Blank before the first call. */
+export function leaderLines(result: RaceResult, rd: RaceDay, t: number): { name: string; position: string } {
+  const call = callAt(result.calls, t);
+  const leader = call?.horses.find((h) => h.position === 1);
+  if (!call || !leader) return { name: '', position: '' };
+  const second = call.horses.find((h) => h.position === 2);
+  const name = result.inputs.card.horses.find((h) => h.id === leader.id)?.name ?? leader.id;
+  const margin = marginWords(second?.lengthsBehind ?? 0, result.inputs.tuning.marginLabelBounds.value, rd.copy);
+  return { name, position: fillTemplate(rd.copy.hud.leads, { margin }) };
 }
 
 export interface HorseSprite {
@@ -189,7 +238,7 @@ export function raceFrame(setup: RaceSetup, me: PlayerView, at: number | Clock):
   const holdEnd = c.holdEndWall;
   const photoWall = (w: number) => (!photoBegun || holdEnd === null || w <= holdEnd || !Number.isFinite(w) ? w
     : c.photoEndWall === null || w <= c.photoEndWall ? holdEnd : w - (c.photoEndWall - holdEnd));
-  const cam = cameraX(model, me.id, t);
+  const cam = cameraX(model, me.watching ? null : me.id, t);
   const horses = horsesAt(result, cfg, t);
   const drawn = drawnHorsesAt(model, setup.runs, t);
   const stand = phase === 'gate';
@@ -313,9 +362,11 @@ export function raceFrame(setup: RaceSetup, me: PlayerView, at: number | Clock):
       ? photoFrame(result, rd, timeline, c, photoHorses(result, cfg, art.noseX, art.gallopFrames, me.id), me.id, cfg.playerArrowDx)
       : null,
     hudVisible: phase !== 'photo',
-    name: me.name,
-    position: finishLine(result.finish, me.id, t, rd.copy)
-      ?? positionLine(callAt(result.calls, t), me.id, me.post, result.inputs.tuning.marginLabelBounds.value, rd.copy),
+    ...(me.watching ? leaderLines(result, rd, t) : {
+      name: me.name,
+      position: finishLine(result.finish, me.id, t, rd.copy)
+        ?? positionLine(callAt(result.calls, t), me.id, me.post, result.inputs.tuning.marginLabelBounds.value, rd.copy),
+    }),
     orders: me.orders,
     clock: winnerIn ? formatClock(winner.time, true) : formatClock(t, false),
     message,

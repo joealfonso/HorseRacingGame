@@ -9,7 +9,10 @@ import { firstReachBy, raceDistance } from './view';
 // for messageSeconds of playback each, queued by priority, a waiting one dropped after
 // messageMaxWaitSeconds. Times here are playback seconds from the gate opening.
 
-export const PRIORITY = { yours: 0, other: 1, orders: 2 } as const;
+// `ticket` is the betting wire message ("That ticket is good"), only in the betting loop.
+// It comes before your horse's own "home in 1st" at the same moment, so it is never the one
+// left waiting long enough to be dropped.
+export const PRIORITY = { ticket: -1, yours: 0, other: 1, orders: 2 } as const;
 
 export interface Trigger {
   at: number;
@@ -66,7 +69,8 @@ export function messageSchedule(triggers: readonly Trigger[], showSeconds: numbe
   let free = -Infinity;
   while (left.length > 0) {
     const start = Math.max(free, Math.min(...left.map((m) => m.at)));
-    for (let i = left.length - 1; i >= 0; i--) if (left[i].at < start - maxWaitSeconds) left.splice(i, 1);
+    // The wire message about a ticket is never dropped for waiting (BR3), whatever the two timings are tuned to.
+    for (let i = left.length - 1; i >= 0; i--) if (left[i].priority !== PRIORITY.ticket && left[i].at < start - maxWaitSeconds) left.splice(i, 1);
     const ready = left.filter((m) => m.at <= start);
     if (ready.length === 0) continue;
     const best = ready.reduce((a, b) => (b.priority < a.priority || (b.priority === a.priority && b.at < a.at) ? b : a));

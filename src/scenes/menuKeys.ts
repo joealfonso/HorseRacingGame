@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { firstSight } from './keyEvents';
 import { REPEATING_KEYS, heldKeys, keyDown, keyState, keyUp, repeatsBetween, type KeyState } from '../render/keys';
 
 // Keys for the card and Orders screens: the held-key guard from src/render/keys.ts (IN2:
@@ -20,6 +21,7 @@ export class MenuKeys {
     if (!kb) return;
     kb.addCapture('SPACE,ENTER,UP,DOWN,LEFT,RIGHT,ESC,BACKSPACE');
     const onDown = (e: KeyboardEvent) => {
+      if (!firstSight(e)) return;
       const r = keyDown(this.keys, e.code, e.repeat);
       this.keys = r.state;
       if (!r.act) return;
@@ -27,6 +29,7 @@ export class MenuKeys {
       this.act(e.code);
     };
     const onUp = (e: KeyboardEvent) => {
+      if (!firstSight(e)) return;
       this.keys = keyUp(this.keys, e.code);
       if (this.held?.code === e.code) this.held = null;
     };

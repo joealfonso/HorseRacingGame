@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { Slot } from '../data/raceDaySchema';
 import type { ColorMap } from '../render/colors';
 import { heldKeys, keyDown, keyState, keyUp, type KeyState } from '../render/keys';
+import { firstSight } from './keyEvents';
 import { prepareSlots, type ArtInfo } from './art';
 
 // Loads every slot file that exists, then hands the art state to the next scene, with the
@@ -32,8 +33,8 @@ export class BootScene extends Phaser.Scene {
   preload(): void {
     this.keys = keyState();
     const kb = this.input.keyboard;
-    const onDown = (e: KeyboardEvent) => { this.keys = keyDown(this.keys, e.code, e.repeat).state; };
-    const onUp = (e: KeyboardEvent) => { this.keys = keyUp(this.keys, e.code); };
+    const onDown = (e: KeyboardEvent) => { if (firstSight(e)) this.keys = keyDown(this.keys, e.code, e.repeat).state; };
+    const onUp = (e: KeyboardEvent) => { if (firstSight(e)) this.keys = keyUp(this.keys, e.code); };
     kb?.on('keydown', onDown);
     kb?.on('keyup', onUp);
     this.events.once('shutdown', () => { kb?.off('keydown', onDown); kb?.off('keyup', onUp); });

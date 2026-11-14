@@ -1,0 +1,214 @@
+import Phaser from 'phaser';
+import { goToPost, type DayState, type DrawnRace, type RaceProgram } from '../bet/day';
+import type { Bet } from '../bet/market';
+import { offeredAmounts } from '../bet/money';
+import type { RaceDayData } from '../data/raceDayLoad';
+import { rgbOf } from '../render/colors';
+import { PAPER_CURSOR_SWAPS } from '../render/page';
+import { cursorFrame } from '../render/pause';
+import {
+  PROGRAM_SLOT_IDS, initialProgramState, lastBetDollars, programHorses, programKey, programScreen, type ProgramState,
+} from '../render/programScreen';
+import { PLACEHOLDER_TAG_AT, SLOT_IDS, showPlaceholderTag, standIns } from '../render/slotStatus';
+import { Art, type ArtInfo } from './art';
+import { betErrorLines, nextDay, programIfReady, raceDayFor, type BetDay } from './betDay';
+import { MenuKeys } from './menuKeys';
+import { PagePainter } from './paper';
+import type { RaceData } from './RaceScene';
+
+// The betting program page (docs/specs/betting-screens.md section 3): read the field and
+// its prices, open the ticket at the foot of the page, change the amount, place the bet or
+// pass. The first screen of a day and the one every result returns to. Everything drawn
+// comes from src/render/programScreen.ts and every price from src/bet; this file places
+// it, keeps the timers (the band's swipe, the punch beat) and forwards the keys.
+
+export interface ProgramData {
+  bet: BetDay;
+  /** The day before this race goes to the post. */
+  day: DayState;
+  art: ArtInfo;
+  /** Keys still down from the screen before, ignored until released (IN2). */
+  held?: string[];
+}
+
+export class ProgramScene extends Phaser.Scene {
+  private data0!: ProgramData;
+  private drawn!: DrawnRace;
+  private rd!: RaceDayData;
+  private day!: DayState;
+  private program: RaceProgram | null = null;
+  private state: ProgramState = initialProgramState();
+  private keys!: MenuKeys;
+  private art!: Art;
+  private page!: PagePainter;
+  private cursor!: Phaser.GameObjects.Image;
+  private seconds = 0;
+  /** Seconds since the ticket opened, for the band's 2-frame swipe. */
+  private swipeSeconds = 0;
+  /** Seconds since the bet was placed, for the punch beat. */
+  private punchSeconds = 0;
+  private leaving = false;
+
+  constructor() {
+    super('program');
+  }
+
+  create(data: ProgramData): void {
+    this.data0 = data;
+    this.seconds = 0;
+    this.swipeSeconds = 0;
+    this.punchSeconds = 0;
+    this.leaving = false;
+    this.state = initialProgramState();
+    this.art = new Art(this, data.art);
+    // Interim until the End of day page: a day that has ended starts the next one (section 6).
+    if (data.day.ended !== null) {
+      this.leaving = true;
+      const next = nextDay(data.bet, data.day);
+      this.scene.start('program', { ...next, art: data.art, held: data.held } satisfies ProgramData);
+      return;
+    }
+    this.day = data.day;
+    this.drawn = data.bet.drawn[data.day.nextRace - 1];
+    this.rd = raceDayFor(data.bet, this.drawn);
+    // This race's estimate first, then the next race's, which runs while this one is read and watched (UI5).
+    data.bet.estimates.request(this.drawn);
+    const after = data.bet.drawn[data.day.nextRace];
+    if (after) data.bet.estimates.request(after);
+    this.program = this.tryProgram();
+    if (this.leaving) return;
+
+    this.cameras.main.setBackgroundColor(rgbOf(data.art.colors, 'Parchment'));
+    this.page = new PagePainter(this, this.art, 1);
+    this.cursor = this.add.image(0, 0, this.art.swap(SLOT_IDS.cursor, PAPER_CURSOR_SWAPS), '0').setOrigin(0, 0).setDepth(5);
+    const drawnSlots = standIns(data.art.slots, data.art.states, PROGRAM_SLOT_IDS);
+    this.add.image(PLACEHOLDER_TAG_AT.x, PLACEHOLDER_TAG_AT.y, SLOT_IDS.placeholderTag, '0').setOrigin(0, 0).setDepth(10)
+      .setVisible(showPlaceholderTag(drawnSlots));
+    this.redraw();
+
+    const m = this.rd.raceDay.menus;
+    this.keys = new MenuKeys(this, data.held ?? [], { delaySeconds: m.repeatDelayMs.value / 1000, everySeconds: m.repeatEveryMs.value / 1000 }, (code) => this.act(code));
+  }
+
+  update(_time: number, delta: number): void {
+    if (!this.data0 || this.leaving) return;
+    const rd = this.rd.raceDay;
+    const dt = Math.min(Math.max(0, delta), rd.playback.maxFrameMs.value) / 1000;
+    this.seconds += dt;
+    const problem = this.program === null ? this.data0.bet.estimates.failure(this.drawn) : null;
+    if (problem !== null) return this.fail(new Error(`the odds could not be worked out: ${problem}`));
+    // The odds arrive whole: every price appears in the same frame.
+    if (this.program === null) {
+      this.program = this.tryProgram();
+      if (this.program !== null) this.redraw();
+    }
+    const mode = this.state.mode.kind;
+    if (mode === 'placed') {
+      this.punchSeconds += dt;
+      if (this.punchSeconds >= rd.program.punchSeconds.value) this.toRace(this.day);
+      return;
+    }
+    if (mode === 'ticket' && this.swipeSeconds < rd.program.swipeFrame1Seconds.value) {
+      this.swipeSeconds += dt;
+      if (this.swipeSeconds >= rd.program.swipeFrame1Seconds.value) this.redraw();
+    }
+    this.keys.update(dt);
+    const frames = this.art.frames(SLOT_IDS.cursor);
+    this.cursor.setFrame(String(frames > 1 ? cursorFrame(this.seconds, rd.ambient.cursorSwapsPerSecond.value) : 0));
+  }
+
+  private tryProgram(): RaceProgram | null {
+    try {
+      return programIfReady(this.data0.bet, this.drawn);
+    } catch (err) {
+      this.fail(err);
+      return null;
+    }
+  }
+
+  private redraw(): void {
+    const d = this.data0;
+    const s = programScreen({
+      ctx: d.bet.ctx, rd: this.rd.raceDay, look: this.rd.cardLook, drawn: this.drawn, program: this.program, day: this.day,
+      state: this.state, bandFrame: this.swipeSeconds < this.rd.raceDay.program.swipeFrame1Seconds.value ? 1 : 2,
+    });
+    const p = this.page;
+    p.clear();
+    p.rects([...s.band, ...s.rules, ...s.slip]);
+    p.texts([...s.header, ...s.heads, ...s.odds, ...s.footer]);
+    for (const e of s.rows) p.entry(e);
+    // DESIGN: the tick and the cursor never share the margin cell; while the ticket prints, no cursor.
+    this.cursor.setVisible(s.cursor !== null);
+    if (s.cursor) this.cursor.setPosition(s.cursor.x, s.cursor.y);
+  }
+
+  private act(code: string): void {
+    if (this.leaving) return;
+    const r = programKey(this.state, code, {
+      horses: programHorses(this.drawn).length,
+      ready: this.program !== null,
+      offered: offeredAmounts(this.day.bankrollCents, this.data0.bet.ctx.rules),
+      lastDollars: lastBetDollars(this.day),
+    });
+    const before = this.state;
+    if (r.outcome?.kind === 'pass') return this.pass();
+    if (r.outcome?.kind === 'bet') return this.placeBet({ post: r.outcome.post, dollars: r.outcome.dollars });
+    if (r.state.focus === before.focus && JSON.stringify(r.state.mode) === JSON.stringify(before.mode)) return;
+    // The band swipes on as the ticket opens; Esc takes it off at once with no swipe back.
+    if (before.mode.kind !== 'ticket' && r.state.mode.kind === 'ticket') this.swipeSeconds = 0;
+    this.state = r.state;
+    this.redraw();
+  }
+
+  /** Go to the post with the bet: the stake leaves the bankroll now, then the punch beat (BP10). */
+  private placeBet(bet: Bet): void {
+    if (this.program === null) return;
+    try {
+      this.day = goToPost(this.data0.bet.ctx, this.day, this.program, bet);
+    } catch (err) {
+      return this.fail(err);
+    }
+    this.state = { focus: this.state.focus, mode: { kind: 'placed' } };
+    this.punchSeconds = 0;
+    this.redraw();
+  }
+
+  /**
+   * Pass: no money moves and no mark is drawn; the page cuts to the race at once. While the
+   * odds are still pending, Go to the post waits for them at the end of the race, since the
+   * result's $2 price needs the crowd's money (a pass stakes nothing, so nothing changes).
+   */
+  private pass(): void {
+    let day = this.day;
+    if (this.program !== null) {
+      try {
+        day = goToPost(this.data0.bet.ctx, day, this.program, null);
+      } catch (err) {
+        return this.fail(err);
+      }
+    }
+    this.toRace(day);
+  }
+
+  private toRace(day: DayState): void {
+    if (this.leaving) return;
+    this.leaving = true;
+    const ticket = day.open?.ticket ?? null;
+    const data: RaceData = {
+      game: this.drawn.input,
+      rd: this.rd,
+      art: this.data0.art,
+      ticket: { raceNumber: this.drawn.race - 1, seed: this.drawn.raceSeed, post: ticket?.post ?? 0, orders: { early: 'default', move: 'default', path: 'default' } },
+      held: this.keys.down(),
+      bet: { day: this.data0.bet, state: day, drawn: this.drawn },
+    };
+    this.scene.start('race', data);
+  }
+
+  private fail(err: unknown): void {
+    if (this.leaving) return;
+    this.leaving = true;
+    console.error(err);
+    this.scene.start('error', { lines: betErrorLines(this.data0.day.daySeed, this.data0.day.nextRace, err), art: this.data0.art });
+  }
+}

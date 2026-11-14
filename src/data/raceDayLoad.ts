@@ -7,8 +7,8 @@ import {
   PHOTO_CROP_ROWS, PHOTO_LANE_ROWS, SLOT_IDS, cardLookSchema, missingNeeded, neededSlotIds, paletteSchema, raceDaySchema, sequenceSeconds, slotsSchema,
   type CardLook, type Palette, type RaceDay, type Slots,
 } from './raceDaySchema';
-import { MAX_NAME_LENGTH, type GameData } from './schema';
-import { allBiasLines, conditionsLine } from './cardWords';
+import { MAX_NAME_LENGTH, type GameData, type Race } from './schema';
+import { allBiasLines, conditionsLine, programConditionsLine, programPlaceLine } from './cardWords';
 import { templateHoles, fillTemplate, wrapWords } from './template';
 import { DataError, type DataIssue } from './validate';
 
@@ -288,6 +288,8 @@ export function validateRaceDay(
   if (splitsPx > BOX_PX) add('raceDay', 'copy.result.splits', `the splits line is ${splitsPx} px at its widest; the box holds ${BOX_PX}`);
   const seedPx = 8 * (r.seed.length + 1) + SMALL_PX * 10;
   if (seedPx > BOX_PX) add('raceDay', 'copy.result.seed', `the seed line is ${seedPx} px at its widest; the box holds ${BOX_PX}`);
+  checkBettingCopyWidths(copy, check, add);
+
   if (rd.beats.photoCaptionSeconds.value > rd.beats.photoSeconds.value) {
     add('raceDay', 'beats.photoCaptionSeconds', `is ${rd.beats.photoCaptionSeconds.value} s; the caption must show within the photo's ${rd.beats.photoSeconds.value} s`);
   }
@@ -298,6 +300,91 @@ export function validateRaceDay(
     if (list) throw new DataError(file, list);
   }
   return { palette: pal, slots: sl, cardLook: look, raceDay: rd };
+}
+
+// The betting screens (docs/specs/betting-screens.md sections 3 to 5 and 8). The longest
+// values the spec names: a bankroll of $165,000.00, a $100 stake, a $20,620.00 return,
+// 4-character odds, and a $2 price under $1,000.
+export const BET_WIDEST = { bank: '$165,000.00', stake: '$100', total: '$20,620.00', odds: '99-1', twoDollar: '$999.90', race: '8' } as const;
+// Program header line 1 (race left, bank right) and the footer lines, x8-247.
+export const PROGRAM_LINE_CHARS = 30;
+// Column heads: Speed from x40, Stam. from x98 and Kick from x156 each hold 7 cells before
+// the next head; Odds is right-aligned in x216-247.
+export const PROGRAM_HEAD_CHARS = { speed: 7, stamina: 7, kick: 7, odds: 4 } as const;
+// Text after the cursor, x20-247: Pass this race, the ticket's lines.
+export const PROGRAM_CURSOR_LINE_CHARS = 28;
+// The printed tote ticket's lines, from x16 inside the Ink border at x247.
+export const PRINTED_TICKET_CHARS = 28;
+// The result's action after the cursor, x20-99, beside the bank right-aligned to x247.
+export const RESULT_ACTION_CHARS = 10;
+
+type Check = (path: string, template: string, allowed: readonly string[], max: number, extra?: Record<string, string>) => void;
+
+function checkBettingCopyWidths(copy: RaceDay['copy'], check: Check, add: (file: string, path: string, message: string) => void): void {
+  const W = BET_WIDEST;
+  const p = copy.program;
+  const bank = fillTemplate(p.bank, { amount: W.bank });
+  check('copy.program.bank', p.bank, ['amount'], PROGRAM_LINE_CHARS, { amount: W.bank });
+  check('copy.program.race', p.race, ['r', 'n'], PROGRAM_LINE_CHARS, { r: W.race, n: W.race });
+  const line1 = fillTemplate(p.race, { r: W.race, n: W.race }).length + 1 + bank.length;
+  if (line1 > PROGRAM_LINE_CHARS) add('raceDay', 'copy.program.race', `with "${bank}" beside it, line 1 is ${line1} characters at its widest; the line holds ${PROGRAM_LINE_CHARS}`);
+  check('copy.program.pass', p.pass, [], PROGRAM_CURSOR_LINE_CHARS);
+  check('copy.program.passLine', p.passLine, [], PROGRAM_LINE_CHARS);
+  check('copy.program.pending', p.pending, [], PROGRAM_LINE_CHARS);
+  for (const k of ['speed', 'stamina', 'kick', 'odds'] as const) check(`copy.program.heads.${k}`, p.heads[k], [], PROGRAM_HEAD_CHARS[k]);
+  for (const k of ['fair', 'inside', 'outside', 'speed', 'closers'] as const) check(`copy.program.bias.${k}`, p.bias[k], [], PROGRAM_LINE_CHARS);
+
+  const t = copy.ticket;
+  check('copy.ticket.confirm', t.confirm, [], PROGRAM_CURSOR_LINE_CHARS);
+  check('copy.ticket.amount', t.amount, ['amount', 'n'], PROGRAM_CURSOR_LINE_CHARS - 1 - t.confirm.length, { amount: W.stake });
+  check('copy.ticket.pays', t.pays, ['amount', 'total'], PROGRAM_CURSOR_LINE_CHARS, { amount: W.stake, total: W.total });
+  check('copy.ticket.printed[0]', t.printed[0], ['r', 'amount', 'n'], PRINTED_TICKET_CHARS, { r: W.race, amount: W.stake });
+  check('copy.ticket.printed[1]', t.printed[1], ['name', 'odds'], PRINTED_TICKET_CHARS, { odds: W.odds });
+
+  check('copy.hud.bet', copy.hud.bet, ['amount', 'odds'], HUD_LINE_CHARS, { amount: W.stake, odds: W.odds });
+  check('copy.hud.watching', copy.hud.watching, [], HUD_LINE_CHARS);
+  const margin = [copy.marginWords.nose, copy.marginWords.head, copy.marginWords.neck, '9 3/4'].reduce((a, b) => (b.length > a.length ? b : a));
+  check('copy.hud.leads', copy.hud.leads, ['margin'], HUD_LINE_CHARS, { margin });
+  check('copy.msg.won', copy.msg.won, [], MESSAGE_CHARS);
+  check('copy.msg.lost', copy.msg.lost, [], MESSAGE_CHARS);
+
+  const r = copy.result;
+  check('copy.result.paid', r.paid, ['amount', 'total'], BOX_CHARS, { amount: W.stake, total: W.total });
+  check('copy.result.lost', r.lost, ['amount', 'odds'], BOX_CHARS, { amount: W.stake, odds: W.odds });
+  check('copy.result.passed', r.passed, [], BOX_CHARS);
+  check('copy.result.winPrice', r.winPrice, ['price'], BOX_CHARS, { price: W.twoDollar });
+  check('copy.result.end', r.end, [], RESULT_ACTION_CHARS);
+}
+
+/**
+ * The betting program's header lines 3 and 4 for every race of the day (betting-screens.md
+ * BP4): each 30 characters or fewer, or DataError naming day.json and the race.
+ */
+export function checkProgramLines(races: readonly Race[], raceDay: RaceDay): void {
+  const issues: DataIssue[] = [];
+  races.forEach((race, i) => {
+    const lines: Array<[string, string]> = [
+      ['track', programPlaceLine(race, raceDay.copy.card)],
+      ['trackBias', programConditionsLine(race, raceDay.copy.card, raceDay.copy.program.bias)],
+    ];
+    for (const [field, line] of lines) {
+      if (line.length > PROGRAM_LINE_CHARS) issues.push({ path: `races[${i}].${field}`, message: `the program prints "${line}", ${line.length} characters; the line holds ${PROGRAM_LINE_CHARS}` });
+    }
+  });
+  if (issues.length > 0) throw new DataError('src/data/day.json', issues);
+}
+
+/**
+ * Copy the betting screens hold tighter than the Card loop's checks in validateRaceDay, run
+ * at boot beside checkProgramLines. The betting result prints "Next race" from the cursor
+ * with the bank right-aligned on the same line, so it gets RESULT_ACTION_CHARS (10), not
+ * the Card loop's RESULT_NEXT_CHARS (28), which validateRaceDay still applies.
+ */
+export function checkBettingCopy(raceDay: RaceDay): void {
+  const next = raceDay.copy.result.next;
+  if (next.length > RESULT_ACTION_CHARS) {
+    throw new DataError('src/data/raceDay.json', [{ path: 'copy.result.next', message: `is ${next.length} characters; the betting result prints it beside the bank, where ${RESULT_ACTION_CHARS} fit` }]);
+  }
 }
 
 // The only place these JSON files are read.

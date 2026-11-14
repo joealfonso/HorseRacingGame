@@ -60,7 +60,8 @@
     },
     "swipeHalfX1": { "value": 132, "status": "starting guess", "note": "DESIGN Program pages: the swipe's frame 1 is the band from x0 to here, with the chisel end at this end." },
     "swipeFrame1Seconds": { "value": 0.1, "status": "starting guess" },
-    "swipeFrame2Seconds": { "value": 0.25, "status": "starting guess", "note": "The whole band and the tick, held, then the cut to Orders." }
+    "swipeFrame2Seconds": { "value": 0.25, "status": "starting guess", "note": "The whole band and the tick, held, then the cut to Orders." },
+    "punchSeconds": { "value": 0.6, "status": "starting guess", "note": "Betting screens spec section 3: after Enter on the ticket, the tick, the lower bankroll and the printed tote ticket hold this long, then the cut to the race." }
   },
   "paddock": {
     "rows": {
@@ -203,8 +204,30 @@
       "poles": { "wire": "wire", "mile": "mile" },
       "splits": "Splits",
       "seed": "Seed",
-      "next": "Next race"
+      "next": "Next race",
+      "paid": "{amount} to win paid {total}",
+      "lost": "Lost {amount} at {odds}",
+      "passed": "No bet. Watched for free.",
+      "winPrice": "$2 to win paid {price}",
+      "end": "End of day"
     },
+    "program": {
+      "race": "Race {r} of {n}",
+      "bank": "Bank {amount}",
+      "pass": "Pass this race",
+      "passLine": "Sit this one out and watch.",
+      "pending": "The crowd is still betting.",
+      "heads": { "speed": "Speed", "stamina": "Stam.", "kick": "Kick", "odds": "Odds" },
+      "bias": { "fair": "playing fair", "inside": "rail is good", "outside": "outside good", "speed": "speed holding", "closers": "closers' day" }
+    },
+    "ticket": {
+      "amount": "< {amount} >  on #{n}",
+      "confirm": "Enter: bet",
+      "pays": "{amount} to win pays {total}",
+      "printed": ["Race {r}, {amount} to win on #{n}", "{name} at {odds}"]
+    },
+    "hud": { "bet": "{amount} to win, {odds}", "watching": "Just watching", "leads": "Leads by {margin}" },
+    "msg": { "won": "That ticket is good", "lost": "No luck this time" },
     "orders": {
       "allDefault": "Rider's call",
       "joiner": ", ",

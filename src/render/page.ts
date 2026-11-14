@@ -58,7 +58,7 @@ export function bandRects(shape: BandShape, top: number, x1 = shape.x1): PageRec
 }
 
 /** CD3: bar length in px from the stat range in tuning, never from the card's own spread. */
-export function statBarLength(stat: number, statMin: number, statMax: number, width = ENTRY.barW): number {
+export function statBarLength(stat: number, statMin: number, statMax: number, width: number = ENTRY.barW): number {
   if (statMax <= statMin) return 0;
   return Math.min(width, Math.max(0, Math.floor(((stat - statMin) * width) / (statMax - statMin))));
 }
@@ -83,6 +83,28 @@ export const ENTRY = {
   cursorDy: 5,
 } as const;
 
+/** Where an entry's stat numbers, bars and tick go: the Card's, or the betting program's. */
+export interface EntryColumns {
+  stats: readonly { key: 'speed' | 'stamina' | 'kick'; numberX: number; barX: number }[];
+  barW: number;
+  tick: { x: number; dy: number };
+}
+
+/**
+ * The betting program's entry (betting-screens.md section 3, DESIGN "Stat bars (betting
+ * program)"): 40 px bars at x50, x108 and x166 so the odds fit at the end of line 2, and
+ * the pencil tick in the margin cell x8-15, rows +5 to +12, where the cursor sits.
+ */
+export const BET_ENTRY: EntryColumns = {
+  stats: [
+    { key: 'speed', numberX: 40, barX: 50 },
+    { key: 'stamina', numberX: 98, barX: 108 },
+    { key: 'kick', numberX: 156, barX: 166 },
+  ],
+  barW: 40,
+  tick: { x: 8, dy: 5 },
+};
+
 /** The 2 digits a stat prints in (the loader holds stats to 99). */
 export const statDigits = (v: number): string => String(v).padStart(2, '0');
 
@@ -103,9 +125,12 @@ export interface Saddlecloth { fill: string; number: string }
 /**
  * One horse's program entry (CD1, CD4): drawn from that horse, its saddlecloth and the stat
  * range only. Nothing about the other horses reaches it, so no mark, color or order can
- * depend on how it compares. `tick` puts the pencil tick on it (last race's pick).
+ * depend on how it compares. `tick` puts the pencil tick on it (last race's pick, or on
+ * the betting program the bet just placed). `cols` places the stats and the tick.
  */
-export function programEntry(h: Horse, top: number, rd: RaceDay, cloth: Saddlecloth, statRange: { min: number; max: number }, tick: boolean): Entry {
+export function programEntry(
+  h: Horse, top: number, rd: RaceDay, cloth: Saddlecloth, statRange: { min: number; max: number }, tick: boolean, cols: EntryColumns = ENTRY,
+): Entry {
   const E = ENTRY;
   const C = E.cloth;
   const rects: PageRect[] = [
@@ -121,17 +146,17 @@ export function programEntry(h: Horse, top: number, rd: RaceDay, cloth: Saddlecl
   ];
   const style = rd.copy.card.styles[h.style];
   texts.push({ text: style, x: rightAlignedX(style, E.styleLastX), y: top, color: SECOND_INK });
-  for (const s of E.stats) {
+  for (const s of cols.stats) {
     const v = h.stats[s.key];
     texts.push({ text: statDigits(v), x: s.numberX, y: top + E.numberDy, color: INK, small: true });
     // The track: a 1 px Ash line on the middle row and a 1x3 Ash stop at its last column;
     // then the solid Ink fill from the first column, over the track where it runs.
-    rects.push({ x: s.barX, y: top + E.trackDy, w: E.barW, h: 1, color: TRACK_COLOR });
-    rects.push({ x: s.barX + E.barW - 1, y: top + E.barDy, w: 1, h: E.barH, color: TRACK_COLOR });
-    const len = statBarLength(v, statRange.min, statRange.max);
+    rects.push({ x: s.barX, y: top + E.trackDy, w: cols.barW, h: 1, color: TRACK_COLOR });
+    rects.push({ x: s.barX + cols.barW - 1, y: top + E.barDy, w: 1, h: E.barH, color: TRACK_COLOR });
+    const len = statBarLength(v, statRange.min, statRange.max, cols.barW);
     if (len > 0) rects.push({ x: s.barX, y: top + E.barDy, w: len, h: E.barH, color: INK });
   }
-  const images: PageImage[] = tick ? [{ slot: SLOT_IDS.markPick, x: E.tick.x, y: top + E.tick.dy }] : [];
+  const images: PageImage[] = tick ? [{ slot: SLOT_IDS.markPick, x: cols.tick.x, y: top + cols.tick.dy }] : [];
   return { post: h.post, id: h.id, top, cloth: { x: C.x, y: top, w: C.w, h: C.h }, rects, texts, images };
 }
 

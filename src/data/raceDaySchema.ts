@@ -255,6 +255,9 @@ export const raceDaySchema = z.strictObject({
     swipeHalfX1: marked(whole.min(0).max(255)),
     swipeFrame1Seconds: marked(positive),
     swipeFrame2Seconds: marked(positive),
+    // The betting program (docs/specs/betting-screens.md section 3): the bet's punch beat,
+    // the tick and the printed tote ticket held before the cut to the race.
+    punchSeconds: marked(positive),
   }),
   // Spec 5: a held arrow on the card or Orders repeats after repeatDelayMs, every repeatEveryMs.
   menus: z.strictObject({
@@ -396,7 +399,34 @@ export const raceDaySchema = z.strictObject({
       splits: text,
       seed: text,
       next: text,
+      // The betting result (betting-screens.md sections 5 and 8).
+      paid: text,
+      lost: text,
+      passed: text,
+      winPrice: text,
+      end: text,
     }),
+    // The betting program page, its ticket, the race HUD's bet lines and the wire message
+    // (betting-screens.md sections 3, 4 and 8). The stamina head is "Stam." (section 10).
+    program: z.strictObject({
+      race: text,
+      bank: text,
+      pass: text,
+      passLine: text,
+      pending: text,
+      heads: z.strictObject({ speed: text, stamina: text, kick: text, odds: text }),
+      // The short bias phrases on header line 4 (section 3).
+      bias: z.strictObject({ fair: text, inside: text, outside: text, speed: text, closers: text }),
+    }),
+    ticket: z.strictObject({
+      amount: text,
+      confirm: text,
+      pays: text,
+      // The printed tote ticket's two lines.
+      printed: z.tuple([text, text]),
+    }),
+    hud: z.strictObject({ bet: text, watching: text, leads: text }),
+    msg: z.strictObject({ won: text, lost: text }),
     orders: z.strictObject({
       allDefault: text,
       joiner: z.string().min(1),

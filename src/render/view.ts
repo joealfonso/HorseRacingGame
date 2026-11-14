@@ -142,8 +142,11 @@ export function makeRaceModel(result: RaceResult, cfg: ViewConfig): RaceModel {
  * than finalCatchUpPxPerSecond over the race camera. From the winner's finish: the wire
  * at wireScreenX. Before the gate opens the leader and yours are both at x 0, so this is
  * the gate camera too.
+ *
+ * `playerId` null is a race with no horse of yours (a pass on the betting program): the rule
+ * takes P = L, so the camera holds the leader at leaderScreenX (betting-screens.md section 4).
  */
-export function cameraX(model: RaceModel, playerId: string, t: number): number {
+export function cameraX(model: RaceModel, playerId: string | null, t: number): number {
   const { cfg, wireX } = model;
   // Before the doors open: the start line at gateScreenX (validated equal to leaderScreenX,
   // so the first race frame continues from here without a jump).
@@ -151,7 +154,7 @@ export function cameraX(model: RaceModel, playerId: string, t: number): number {
   if (t >= model.winnerAt) return wireX - cfg.wireScreenX;
   const horses = horsesAt(model.result, cfg, t);
   const L = leaderOf(horses).x;
-  const P = (horses.find((h) => h.id === playerId) ?? horses[0]).x;
+  const P = playerId === null ? L : (horses.find((h) => h.id === playerId) ?? horses[0]).x;
   const race = Math.min(L - cfg.leaderScreenX, P - cfg.playerScreenX);
   if (!(t > model.finalAt)) return race;
   const since = (t - model.finalAt) / 100;
