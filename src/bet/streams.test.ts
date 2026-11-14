@@ -42,8 +42,10 @@ describe('DT1: day seeds', () => {
 });
 
 describe('DT2: streams', () => {
-  it('DT2: the betting stream names are the spec\'s four, in one list, unique', () => {
-    expect([...BET_STREAM_NAMES].sort()).toEqual(['crowd', 'estimateSeeds', 'fieldDraw', 'raceSeed']);
+  // The list is "only added to": `news` joined on 2026-11-14 (docs/specs/book-and-window.md, section 15 item 3).
+  it('DT2: the betting stream names are the spec\'s four plus news, in one list, unique', () => {
+    expect([...BET_STREAM_NAMES].sort()).toEqual(['crowd', 'estimateSeeds', 'fieldDraw', 'news', 'raceSeed']);
+    expect(BET_STREAM_NAMES.slice(0, 4)).toEqual(['fieldDraw', 'raceSeed', 'estimateSeeds', 'crowd']);
     expect(new Set(BET_STREAM_NAMES).size).toBe(BET_STREAM_NAMES.length);
   });
 

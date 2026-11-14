@@ -1,0 +1,327 @@
+{
+  "cover": {
+    "title": {
+      "value": "Race Day Program",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 13, book.cover.title."
+    },
+    "dayLabel": {
+      "value": "Day",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 3: the dateline's main-font word."
+    },
+    "dayNumber": {
+      "value": "#{seed}",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 3, question 7: the day seed, the same pair as the End of day page."
+    },
+    "races": {
+      "value": "{n} races today",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 13, book.cover.races."
+    },
+    "layout": {
+      "value": {
+        "masthead": {
+          "x0": 8,
+          "y0": 8,
+          "x1": 247,
+          "y1": 43
+        },
+        "keyline": {
+          "x0": 10,
+          "y0": 10,
+          "x1": 245,
+          "y1": 41
+        },
+        "nameTop": 14,
+        "titleTop": 31,
+        "datelineTop": 48,
+        "dayLabelX": 8,
+        "dayNumberX": 36,
+        "racesRight": 247,
+        "rules": {
+          "tops": [
+            58,
+            210
+          ],
+          "x0": 8,
+          "x1": 247
+        },
+        "picture": {
+          "x0": 8,
+          "y0": 62,
+          "x1": 247,
+          "y1": 189
+        },
+        "lineTop": 196
+      },
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md sections 3 and 18.2: name and title tops are the art-director's (y14, y31)."
+    },
+    "display": {
+      "value": {
+        "cellW": 12,
+        "glyphs": "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 &'.-",
+        "trackMaxChars": 19
+      },
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md 18.1 item 3, 18.2, 18.5 D: 41 glyphs, 12 px advance, 19 characters in x14-241. The track name is upper-cased by code."
+    },
+    "limits": {
+      "value": {
+        "title": 28,
+        "races": 16,
+        "line": 30
+      },
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 13."
+    }
+  },
+  "news": {
+    "title": {
+      "value": "Rail Talk",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 13, book.news.title."
+    },
+    "subtitle": {
+      "value": "Gossip, facts and peanuts.",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 13, book.news.subtitle."
+    },
+    "layout": {
+      "value": {
+        "x": 8,
+        "titleTop": 4,
+        "subtitleTop": 14,
+        "ruleTops": [
+          24,
+          210
+        ],
+        "firstTop": 30,
+        "pitch": 36,
+        "bodyTops": [
+          10,
+          20
+        ],
+        "headlineChars": 30,
+        "lineChars": 30,
+        "bodyLines": 2,
+        "titleChars": 16,
+        "subtitleChars": 30
+      },
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 4 wireframe: headline at +0, body at +10 and +20, next item at +36."
+    },
+    "slots": {
+      "value": [
+        {
+          "source": "flavor",
+          "fallback": null
+        },
+        {
+          "source": "card",
+          "fallback": null
+        },
+        {
+          "source": "double",
+          "fallback": "flavor"
+        },
+        {
+          "source": "flavor",
+          "fallback": null
+        },
+        {
+          "source": "longest",
+          "fallback": "flavor"
+        }
+      ],
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 4, slots table."
+    },
+    "facts": {
+      "value": {
+        "card": {
+          "headline": "Today's card",
+          "body": "{n} races, all {distance} on {going} {surface}.",
+          "bodyMixed": "{n} races today. First up: the {race1Name}."
+        },
+        "double": {
+          "headline": "Running in two races today",
+          "line": "{name}, races {a}, {b}"
+        },
+        "longest": {
+          "headline": "Yesterday's longest price",
+          "body": "{name} won race {r} at {odds}."
+        }
+      },
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 4, facts 13 to 15."
+    },
+    "flavor": {
+      "value": [
+        {
+          "headline": "Bugler finds a 13th note",
+          "body": "He is saving it for a special occasion. Today is not it."
+        },
+        {
+          "headline": "Biggest hat in the stand",
+          "body": "The regular's hat now has its own seat. Nobody argued."
+        },
+        {
+          "headline": "Pigeons hold the good seats",
+          "body": "Ushers asked nicely. The pigeons have declined."
+        },
+        {
+          "headline": "Lost and found",
+          "body": "Lost: one lucky sock, left. Not as lucky as advertised."
+        },
+        {
+          "headline": "Tote board gets a polish",
+          "body": "All bulbs polished but two. Nobody can reach those."
+        },
+        {
+          "headline": "Peanut shells set a record",
+          "body": "Section C reports ankle deep. Knee deep by the last race."
+        },
+        {
+          "headline": "Parking update",
+          "body": "Lot B is full. Lot C is a cow pasture. The cows are fine."
+        },
+        {
+          "headline": "The bugler's car, explained",
+          "body": "His car horn plays the call to the post. On purpose."
+        },
+        {
+          "headline": "Snack cart adds napkins",
+          "body": "Fewer sticky programs reported. A proud day for all."
+        },
+        {
+          "headline": "Regular's cushion returns",
+          "body": "Same cushion, thirty seasons. Still plump. Still hers."
+        },
+        {
+          "headline": "Pretzel situation resolved",
+          "body": "The dropped pretzel was found. A pigeon got there first."
+        }
+      ],
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 4, flavor samples 1, 2 and 4 to 12. Sample 3 (Lemonade tested, lemony) is cut, 2026-11-14, art-director 18.4. Joseph reads the lines at NW6 and cuts or rewrites in data."
+    },
+    "bannedWords": {
+      "value": [
+        "injury",
+        "injured",
+        "hurt",
+        "lame",
+        "limping",
+        "fell",
+        "fall",
+        "vet",
+        "scratched",
+        "ambulance",
+        "favorite",
+        "tip",
+        "pick",
+        "lock",
+        "sure thing",
+        "official"
+      ],
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 4 (news list) and section 13 (no \"Official\"). Added to betting.json's and hub.json's lists."
+    },
+    "bannedChars": {
+      "value": [
+        "$"
+      ],
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 13: no \"$\" outside money figures, and the book prints none."
+    }
+  },
+  "racePage": {
+    "toWindow": {
+      "value": "Enter: to window",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 13, book.race.toWindow."
+    },
+    "winner": {
+      "value": "Winner: #{n}",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 13, book.race.winner."
+    },
+    "later": {
+      "value": "Prices later",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 13, book.race.later."
+    },
+    "rightChars": {
+      "value": 16,
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 13: header line 1's right slot, right-aligned to x247."
+    }
+  },
+  "foot": {
+    "prev": {
+      "value": "< {page}",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 6."
+    },
+    "next": {
+      "value": "{page} >",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 6."
+    },
+    "close": {
+      "value": "Esc: close",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 6."
+    },
+    "pages": {
+      "value": {
+        "cover": "Cover",
+        "news": "News",
+        "race": "Race {r}"
+      },
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 6."
+    },
+    "pageChars": {
+      "value": 8,
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 6: at most 8 characters each (\"< Race 8\")."
+    },
+    "layout": {
+      "value": {
+        "top": 226,
+        "prevX": 8,
+        "nextRight": 247,
+        "closeText": {
+          "x0": 88,
+          "y0": 226,
+          "x1": 167,
+          "y1": 233
+        },
+        "prevTarget": {
+          "x0": 8,
+          "y0": 222,
+          "x1": 79,
+          "y1": 235
+        },
+        "closeTarget": {
+          "x0": 80,
+          "y0": 222,
+          "x1": 175,
+          "y1": 235
+        },
+        "nextTarget": {
+          "x0": 176,
+          "y0": 222,
+          "x1": 247,
+          "y1": 235
+        }
+      },
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 6."
+    }
+  }
+}

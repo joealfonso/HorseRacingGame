@@ -461,3 +461,17 @@ Kick is the remainder, so a stalker can wobble up to 8 from a third: p08 and p11
 **The aria-live region is new.** No scene had one. `src/scenes/ariaLive.ts` keeps one visually hidden polite region; the track writes its `aria` text there on every change. The other screens do not use it yet.
 
 **Mouse presses are ignored for 0.5 s after a screen arrives (coordinator's ruling, spec section 6).** The result's "Next race" and the program's "Esc: back" sit over the track's "Just watch" row, and the track's Windows over program entries 3 to 7, so the second half of a double click acted on the next screen. `pointer.arrivalGuardSeconds` in raceDay.json (a starting guess), read by every screen that takes the mouse, is counted down in the helper on the scene's update delta. A press during it is no press, and its release does nothing. Hover still moves focus. It is the mouse's twin of IN2's held-key rule.
+
+## Book and window, step 1
+
+**`{race1Name}` has its own hole matcher.** The spec's mixed-card template names a hole with a digit and a capital, and `template.ts` matches lower-case letters only. `src/data/bookText.ts` has the book's own `fillHoles` and `holesOf`, so the copy stays word for word and `template.ts` is untouched.
+
+**The page-state function returns data, not copy it does not own.** A pending race's footer is "The crowd is still betting." (raceDay.json `program.pending`), so `racePageState` returns `footer: 'pending'` and the screen picks the text from there. An odds cell with no price is `null`, drawn as the tote's "-". Neither string is copied into book.json.
+
+**News ties and edges the spec does not say.** Two-starts: ties on the first start go to the earlier second start, then the lower post in the first race. With only one horse running twice, slot 3 falls back to flavor (the item says "the two horses"). The card item says "all ..." only when every race has the same distance, surface and going, so a day that differs only in going also takes the "First up" wording instead of a false "all". Longest price: the longest winner of the day, whether or not the player bet on it, compared as fractions; a tie keeps the earlier race.
+
+**Flavor is one shuffle, drawn the same way every day.** The whole pool is shuffled on `news` ("day" sub-key) whether or not any fallback is needed, so the stream's draw count never depends on the facts. Slots that want flavor take it in slot order first (1, 4), then the facts that had nothing true to say (3, 5), so a missing fact never changes another slot's line.
+
+**Extra checks the spec's section 13 implies.** "Official" is on the book's own banned list (news.bannedWords), and `news.bannedChars` holds "$", since the spec says no copy uses either. Banned words are matched as whole words, case-insensitive, on the copy as written: a horse's name is the stable's content and is not checked against the lists.
+
+**CV1 fails against day.json, not book.json.** The track name is race 1's `track`, so a name over 19 characters, or with a character the display font lacks, is a DataError for `src/data/day.json` at `races[0].track`. The display font's 19 and its glyph list live in book.json (`cover.display`).

@@ -3,7 +3,7 @@ import { STREAM_NAMES } from '../sim/streamNames';
 
 // The betting stream names (spec "Odds: how they work"), each keyed by the day seed. Never
 // rename one, only add, and none may equal a sim stream name (DT2).
-export const BET_STREAM_NAMES = ['fieldDraw', 'raceSeed', 'estimateSeeds', 'crowd'] as const;
+export const BET_STREAM_NAMES = ['fieldDraw', 'raceSeed', 'estimateSeeds', 'crowd', 'news'] as const;
 export type BetStreamName = (typeof BET_STREAM_NAMES)[number];
 
 for (const name of BET_STREAM_NAMES) {
