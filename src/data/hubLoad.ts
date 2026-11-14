@@ -3,6 +3,7 @@ import betting from './betting.json';
 import day from './day.json';
 import hub from './hub.json';
 import palette from './palette.json';
+import stable from './stable.json';
 import { BOOK_ROW, hubSchema, type Box, type Hub } from './hubSchema';
 import { templateHoles, fillTemplate } from './template';
 import { DataError, type DataIssue } from './validate';
@@ -41,10 +42,13 @@ export interface HubInput {
   oddsLabels?: readonly string[];
   /** Races in a day (day.json): {r} holes are checked at its widest number. Omitted means the shipped day.json's. */
   races?: number;
+  /** Every stable horse's name (stable.json), each held to the window's nameChars (23.5). Omitted means the shipped stable.json's. */
+  horseNames?: readonly string[];
 }
 
 const SHIPPED_ODDS: readonly string[] = betting.odds.steps.value.map((st) => st.label);
 const SHIPPED_RACES = day.races.length;
+const SHIPPED_NAMES: readonly string[] = stable.horses.map((h) => h.name);
 
 const formatPath = (path: PropertyKey[]): string =>
   path.length === 0 ? '(whole file)' : path.reduce<string>((out, p) => (typeof p === 'number' ? `${out}[${p}]` : out ? `${out}.${String(p)}` : String(p)), '');
@@ -69,6 +73,13 @@ export function validateHub(raw: HubInput): Hub {
   checkSky(h, new Set(raw.colors), add);
   checkCopy(h, [...raw.bannedWords, ...h.copy.bannedWords], String(raw.races ?? SHIPPED_RACES), add);
   if (issues.length > 0) throw new DataError(FILE, issues);
+  // 23.5: a name the window cannot set in nameChars would run into the odds column. The name lives in stable.json, so the error names it.
+  const max = h.window.value.nameChars;
+  const long: DataIssue[] = [];
+  (raw.horseNames ?? SHIPPED_NAMES).forEach((name, i) => {
+    if (name.length > max) long.push({ path: `horses[${i}].name`, message: `"${name}" is ${name.length} characters; the window sets ${max} (${FILE} window.value.nameChars)` });
+  });
+  if (long.length > 0) throw new DataError('src/data/stable.json', long);
   return h;
 }
 
@@ -248,6 +259,9 @@ function checkCopy(h: Hub, banned: readonly string[], widestRace: string, add: A
   c.window.punch.forEach((t, i) => line(`copy.window.punch[${i}]`, t, chars));
   const back = h.window.value.ticket.back;
   line('copy.window.back', c.window.back, Math.floor((back.x1 - back.x0 + 1) / MAIN_W));
+  // aria-live only: no width, but every hole must be known (23.6).
+  line('copy.window.aria.row', c.window.aria.row, Infinity, ['n', 'name', 'odds']);
+  line('copy.window.aria.ticket', c.window.aria.ticket, Infinity, ['amount', 'n']);
   const wplate = h.window.value.sign.plate;
   line('copy.sign.windows', c.sign.windows, Math.floor((wplate.x1 - wplate.x0 + 1) / MAIN_W));
 
@@ -274,6 +288,7 @@ function checkCopy(h: Hub, banned: readonly string[], widestRace: string, add: A
 
 // The only place hub.json is read.
 export const loadHub = (): Hub => validateHub({
+  horseNames: SHIPPED_NAMES,
   hub,
   bannedWords: betting.copy.bannedWords,
   colors: palette.colors.map((c) => c.name),

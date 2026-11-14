@@ -4,7 +4,7 @@ import type { DayState } from '../bet/day';
 import type { NewsItem } from '../bet/news';
 import { offeredAmounts } from '../bet/money';
 import {
-  BOOK_SLOT_IDS, bookAtCover, bookAtRace, bookClick, bookKey, bookPointerTargets, coverScreen, newsScreen, pageAt, racePageScreen,
+  BOOK_SLOT_IDS, bookAtCover, bookAtRace, bookClick, bookCloseFocus, bookHover, bookKey, bookPointerTargets, coverScreen, newsScreen, pageAt, racePageScreen,
   type BookKeyContext, type BookOutcome, type BookScreen, type BookState,
 } from '../render/bookScreen';
 import { rgbOf } from '../render/colors';
@@ -34,7 +34,8 @@ export interface BookData {
   /** Keys still down from the screen before, ignored until released (IN2). */
   held?: string[];
   /**
-   * `dayStart`: boot or New day, on the cover; Esc lands the track on Read (FL1).
+   * `dayStart`: boot or New day, on the cover; Esc from the cover or the news lands the track
+   * on Read (FL1), from a race page on Bet (23.3).
    * `track`: from the Read row, at race r's page; Esc lands the track on Bet (FL2).
    */
   from: 'dayStart' | 'track';
@@ -97,8 +98,9 @@ export class BookScene extends Phaser.Scene {
     this.keys = new MenuKeys(this, data.held ?? [], { delaySeconds: m.repeatDelayMs.value / 1000, everySeconds: m.repeatEveryMs.value / 1000 }, (code) => {
       if (!this.leaving) this.apply(bookKey(this.state, code, this.keyContext()));
     });
-    // Clicks only, as the program and result pages (the spec gives the book no hover rule of its own).
+    // Hover moves the entry cursor on a race page (23.1); a click does what its key does.
     new PointerInput(this, () => bookPointerTargets(data.bet.book, this.state, this.keyContext()), {
+      hover: (id) => { if (!this.leaving) this.apply({ state: bookHover(this.state, id, this.keyContext()), outcome: null }); },
       click: (id) => { if (!this.leaving) this.apply(bookClick(this.state, id, this.keyContext())); },
     }, data.bet.rd.raceDay.pointer.arrivalGuardSeconds.value);
   }
@@ -186,12 +188,12 @@ export class BookScene extends Phaser.Scene {
     this.redraw();
   }
 
-  /** Esc or "Esc: close": back to the track. Read at day start (FL1), Bet when opened from the track (FL2). No money moves. */
+  /** Esc or "Esc: close": back to the track. Read from the day-start cover or news (FL1), Bet otherwise (FL2, 23.3). No money moves. */
   private close(): void {
     if (this.leaving) return;
     this.leaving = true;
     const d = this.data0;
-    this.scene.start('hub', { bet: d.bet, day: this.day, art: d.art, held: this.keys.down(), focus: d.from === 'dayStart' ? 'arrival' : 'back' } satisfies HubData);
+    this.scene.start('hub', { bet: d.bet, day: this.day, art: d.art, held: this.keys.down(), focus: bookCloseFocus(d.from, d.bet.ctx.races.length, this.state.page) } satisfies HubData);
   }
 
   /** BB4: the window with the ticket open on that post at the remembered amount. */

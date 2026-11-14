@@ -5,7 +5,7 @@ import { newsFor } from '../bet/news';
 import { loadBook } from '../data/bookLoad';
 import { ctx, dayWith, drawnOf, inputFor, lookFor, programOf, settled } from './betKit';
 import {
-  bookAtCover, bookAtRace, bookClick, bookKey, bookPointerTargets, coverScreen, newsScreen, racePageScreen,
+  bookAtCover, bookAtRace, bookClick, bookCloseFocus, bookHover, bookKey, bookPointerTargets, coverScreen, newsScreen, racePageScreen,
   type BookKeyContext, type BookState,
 } from './bookScreen';
 import { hitTest } from './pointer';
@@ -204,5 +204,29 @@ describe('BB2 and BB3: a race page is the approved program page, less the bank, 
     racePageScreen({ book, ctx, rd, look: lookFor(drawn), drawn, page, focus: 0 });
     expect(rand).not.toHaveBeenCalled();
     rand.mockRestore();
+  });
+});
+
+describe('23.1 and 23.3: hover, and where Esc lands', () => {
+  it('hovering entry k on a race page focuses it; any other target, or any other page, changes nothing', () => {
+    expect(bookHover({ page: 4, focus: 0 }, 'entry:5', race('window'))).toEqual({ page: 4, focus: 4 });
+    expect(bookHover({ page: 4, focus: 0 }, 'entry:5', race('none'))).toEqual({ page: 4, focus: 4 });
+    const s = { page: 4, focus: 2 };
+    for (const id of ['prev', 'close', 'next', 'entry:3', 'entry:9'] as const) expect(bookHover(s, id, race())).toBe(s);
+    expect(bookHover(bookAtCover(), 'cover', cover)).toEqual(bookAtCover());
+    expect(bookHover({ page: 1, focus: 0 }, 'entry:4', cover)).toEqual({ page: 1, focus: 0 });
+  });
+
+  it('a hover never opens the window: only the click does', () => {
+    const s = bookHover({ page: 4, focus: 0 }, 'entry:6', race('window'));
+    expect(s).toEqual({ page: 4, focus: 5 });
+    expect(bookClick(s, 'entry:6', race('window')).outcome).toEqual({ kind: 'window', post: 6 });
+  });
+
+  it('Esc from the day-start book lands on Read from the cover or the news, on Bet from a race page; from the track, always Bet', () => {
+    expect(bookCloseFocus('dayStart', RACES, 0)).toBe('arrival');
+    expect(bookCloseFocus('dayStart', RACES, 1)).toBe('arrival');
+    for (let page = 2; page < RACES + 2; page++) expect(bookCloseFocus('dayStart', RACES, page)).toBe('back');
+    for (let page = 0; page < RACES + 2; page++) expect(bookCloseFocus('track', RACES, page)).toBe('back');
   });
 });

@@ -3,7 +3,7 @@ import type { RaceDay } from '../data/raceDaySchema';
 import { fillTemplate } from '../data/template';
 import { quote, type DayContext, type DayState, type DrawnRace, type RaceProgram } from '../bet/day';
 import { offeredAmounts } from '../bet/money';
-import { bankLine, printedTicketLines, raceOfLine, ticketAmountLine, ticketPaysLine } from './betCopy';
+import { bankLine, printedTicketLines, raceOfLine, stake, ticketAmountLine, ticketPaysLine } from './betCopy';
 import { HUB_BAR, HUB_BAR_LINE, HUB_TEXT } from './hubScreen';
 import { clothFor, rightAlignedX, type PageRect, type PageText } from './page';
 import type { PointerTarget } from './pointer';
@@ -225,6 +225,8 @@ export function windowScreen(input: WindowInput): WindowScreen {
   const focus = Math.min(Math.max(0, state.focus), horses.length - 1);
   const focusTop = windowRowTop(hub, focus);
   let ticket: PageText[];
+  /** What aria-live reads for the ticket rows: the open ticket without its arrow glyphs (23.6). */
+  let ticketAria: string[] = [];
   let slip: PageRect[] = [];
   let cursor: WindowScreen['cursor'] = null;
   let marker: WindowScreen['marker'] = null;
@@ -247,6 +249,7 @@ export function windowScreen(input: WindowInput): WindowScreen {
     ];
     cursor = { x: T.cursorX, y: T.tops[0] };
     marker = { x: R.cursorX, y: focusTop };
+    ticketAria = [fillTemplate(hub.copy.window.aria.ticket, { amount: stake(state.mode.dollars), n: post }), confirm, ticket[2].text];
   } else {
     const back = hub.copy.window.back;
     ticket = [text(back, rightAlignedX(back, T.lastX), T.tops[1])];
@@ -255,7 +258,9 @@ export function windowScreen(input: WindowInput): WindowScreen {
 
   const h = horses[focus];
   const focusOdds = prices === null ? PENDING_ODDS : prices[h.post - 1];
-  const aria = [raceOf, bank, said, `#${h.post} ${h.name}, ${focusOdds}`, ...ticket.map((t) => t.text)].map(sentence).join(' ');
+  if (state.mode.kind !== 'ticket' || program === null) ticketAria = ticket.map((t) => t.text);
+  const row = fillTemplate(hub.copy.window.aria.row, { n: h.post, name: h.name, odds: focusOdds });
+  const aria = [raceOf, bank, said, row, ...ticketAria].map(sentence).join(' ');
   return { bar, status, sign, clerkLine: clerk, rows, line, ticket, slip, cursor, marker, aria };
 }
 
@@ -297,6 +302,20 @@ export function windowPointerTargets(hub: Hub, rd: RaceDay, s: WindowState, k: P
   }
   out.push({ id: 'bet', box: W.ticket.bet });
   return out;
+}
+
+/**
+ * The pointer moved into a target (section 10, 23.2): while choosing, a row takes the cursor.
+ * With the ticket open, or on the bet beat, nothing moves, so a hover can never change the
+ * horse of a bet under the player's hand.
+ */
+export function windowHover(s: WindowState, id: WindowTargetId, k: ProgramKeyContext): WindowState {
+  if (s.mode.kind !== 'choosing') return s;
+  const row = /^row:(\d+)$/.exec(id);
+  if (row === null) return s;
+  const post = Number(row[1]);
+  if (post < 1 || post > k.horses || post - 1 === s.focus) return s;
+  return { focus: post - 1, mode: s.mode };
 }
 
 /**

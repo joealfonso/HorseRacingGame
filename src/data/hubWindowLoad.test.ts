@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import bettingJson from './betting.json';
 import hubJson from './hub.json';
 import paletteJson from './palette.json';
+import stableJson from './stable.json';
 import { validateHub, type HubInput } from './hubLoad';
 import { DataError } from './validate';
 
@@ -80,5 +81,43 @@ describe('the window section (section 7, WI6)', () => {
 
   it('a box off the screen fails', () => {
     expect(failure((h) => { h.window.value.frame.tilesH = 20; }).message).toContain('window.value.frame');
+  });
+});
+
+describe('23.5: a horse name longer than the window\'s nameChars fails at load', () => {
+  const nameFailure = (names: string[], edit: (h: Raw) => void = () => {}): DataError => {
+    try { validateHub({ ...input(edit), horseNames: names }); } catch (e) { if (e instanceof DataError) return e; throw e; }
+    throw new Error('expected validateHub to throw');
+  };
+
+  it('the shipped stable fits: its longest name is exactly 18, the shipped nameChars', () => {
+    expect(hubJson.window.value.nameChars).toBe(18);
+    expect(Math.max(...stableJson.horses.map((h) => h.name.length))).toBe(18);
+    expect(() => validateHub({ ...input(), horseNames: stableJson.horses.map((h) => h.name) })).not.toThrow();
+  });
+
+  it('a 19-character name fails, naming stable.json, the horse and its name', () => {
+    const err = nameFailure(['Hold My Oats', 'Nineteen Characters']);
+    expect(err.file).toBe('src/data/stable.json');
+    expect(err.message).toContain('horses[1].name');
+    expect(err.message).toContain('"Nineteen Characters"');
+    expect(err.message).toContain('window.value.nameChars');
+  });
+
+  it('a lower nameChars makes the shipped stable fail', () => {
+    const err = nameFailure(stableJson.horses.map((h) => h.name), (h) => { h.window.value.nameChars = 12; });
+    expect(err.file).toBe('src/data/stable.json');
+    expect(err.message).toContain('Mint Julep Lawsuit');
+  });
+
+  it('with no names handed in, the shipped stable.json is checked', () => {
+    expect(() => validateHub(input((h) => { h.window.value.nameChars = 12; }))).toThrow('src/data/stable.json');
+  });
+});
+
+describe('23.6: the window\'s aria templates', () => {
+  it('an unknown hole in either fails, naming the field', () => {
+    expect(failure((h) => { h.copy.window.aria.row = '#{n} {name}, {odds} {style}'; }).message).toContain('copy.window.aria.row');
+    expect(failure((h) => { h.copy.window.aria.ticket = '{amount} on #{n} {pays}'; }).message).toContain('copy.window.aria.ticket');
   });
 });

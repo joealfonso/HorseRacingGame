@@ -41,6 +41,8 @@ export const bookSchema = z.strictObject({
     })),
     /** The masthead's display font (art-director 18.1 item 3, 18.5 D): the name is upper-cased by code. */
     display: marked(z.strictObject({ cellW: whole.min(1), glyphs: text, trackMaxChars: whole.min(1) })),
+    /** The aria-live day pair, "{label} {number}" (23.6). */
+    aria: marked(text),
     /** Characters, main font, 8 px each. */
     limits: marked(z.strictObject({ title: whole.min(1), races: whole.min(1), line: whole.min(1) })),
   }),
@@ -84,6 +86,8 @@ export const bookSchema = z.strictObject({
     /** "Winner: #{n}". */
     winner: marked(text),
     later: marked(text),
+    /** The focused entry as aria-live reads it (sections 10 and 23.6). */
+    ariaEntry: marked(text),
     /** Characters, the right slot of header line 1. */
     rightChars: marked(whole.min(1)),
   }),

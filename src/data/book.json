@@ -68,6 +68,11 @@
       "status": "starting guess",
       "note": "docs/specs/book-and-window.md 18.1 item 3, 18.2, 18.5 D: 41 glyphs, 12 px advance, 19 characters in x14-241. The track name is upper-cased by code."
     },
+    "aria": {
+      "value": "{label} {number}",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md 23.6: the aria-live day pair, \"Day #12345\". Order and spacing only; the words are cover.dayLabel and cover.dayNumber."
+    },
     "limits": {
       "value": {
         "title": 28,
@@ -253,6 +258,11 @@
       "value": "Prices later",
       "status": "starting guess",
       "note": "docs/specs/book-and-window.md section 13, book.race.later."
+    },
+    "ariaEntry": {
+      "value": "#{n} {name}, {style}, {speedHead} {speed}, {staminaHead} {stamina}, {kickHead} {kick}, {oddsHead} {odds}",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md sections 10 and 23.6: the focused entry as aria-live reads it. Punctuation and order only; the words are the program's (copy.card.styles, copy.program.heads)."
     },
     "rightChars": {
       "value": 16,

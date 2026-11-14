@@ -118,6 +118,7 @@ function checkCover(b: Book, raw: BookInput, line: Line, add: Add): void {
   line('cover.dayLabel.value', c.dayLabel.value, 3);
   line('cover.dayNumber.value', c.dayNumber.value, 11, { seed: ['4294967295'] });
   line('cover.races.value', c.races.value, lim.races, { n: [raw.races.length] });
+  line('cover.aria.value', c.aria.value, Infinity, { label: [c.dayLabel.value], number: ['#4294967295'] });
   const l = c.layout.value;
   if (!inside(l.keyline, l.masthead)) add('cover.layout.value.keyline', `${showBox(l.keyline)} is not inside the masthead (${showBox(l.masthead)})`);
   if (!inside(l.picture, { x0: 0, y0: 0, x1: SCREEN.w - 1, y1: SCREEN.h - 1 })) add('cover.layout.value.picture', `${showBox(l.picture)} is not inside the 256x240 screen`);
@@ -228,6 +229,11 @@ function checkRacePage(b: Book, raw: BookInput, line: Line): void {
   line('racePage.toWindow.value', r.toWindow.value, max);
   line('racePage.winner.value', r.winner.value, max, { n: range(raw.fieldSize) });
   line('racePage.later.value', r.later.value, max);
+  // Read aloud only, so no width; every hole must be known.
+  const one = ['x'];
+  line('racePage.ariaEntry.value', r.ariaEntry.value, Infinity, {
+    n: one, name: one, style: one, speedHead: one, speed: one, staminaHead: one, stamina: one, kickHead: one, kick: one, oddsHead: one, odds: one,
+  });
 }
 
 function checkFoot(b: Book, raceNumbers: readonly string[], line: Line, add: Add): void {

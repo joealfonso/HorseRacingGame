@@ -9,6 +9,7 @@ import { loadBook, validateBook, type BookInput } from './bookLoad';
 import { bannedWordIn, fillHoles, holesOf } from './bookText';
 import { wrapWords } from './template';
 import { DataError } from './validate';
+import { DISPLAY_CHARS } from '../render/fontLayout';
 
 // The book's data loader: NW3, the data half of CV1 (as amended in spec 18: 19 characters in the
 // display font) and the copy limits of spec section 13. Each fails at load with the file and the field.
@@ -287,5 +288,21 @@ describe('text helpers', () => {
   it('fills the spec\'s holes, including {race1Name}', () => {
     expect(fillHoles('{n} races today. First up: the {race1Name}.', { n: 8, race1Name: 'Redbud Purse' })).toBe('8 races today. First up: the Redbud Purse.');
     expect(fillHoles('{x} {y}', { x: 1 })).toBe('1 {y}');
+  });
+});
+
+describe('book-and-window.md 23.7: the display font\'s glyph list', () => {
+  it('book.json\'s glyphs are exactly fontLayout\'s DISPLAY_CHARS, each once (the order may differ: book.json\'s schema forbids a leading space)', () => {
+    const g = loadBook().cover.display.value.glyphs;
+    expect(g.length).toBe(DISPLAY_CHARS.length);
+    expect(new Set(g).size).toBe(g.length);
+    expect([...g].sort()).toEqual([...DISPLAY_CHARS].sort());
+  });
+});
+
+describe('book-and-window.md 23.6: the aria templates', () => {
+  it('an unknown hole in the cover\'s day pair or the entry line fails, naming the field', () => {
+    expect(paths(failure((b) => { b.cover.aria.value = '{label} {seed}'; }))).toContain('cover.aria.value');
+    expect(paths(failure((b) => { b.racePage.ariaEntry.value = '#{n} {name}, {blurb}'; }))).toContain('racePage.ariaEntry.value');
   });
 });

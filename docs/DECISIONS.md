@@ -478,13 +478,13 @@ Kick is the remainder, so a stalker can wobble up to 8 from a third: p08 and p11
 
 ## Book and window, step 3 (the screens and the flow)
 
-**The day opens on the cover, and Esc from it lands the track on Read; from the track's book, on Bet.** FL1 says Esc on the day's cover goes to the track on Read, FL2 says return from the book is Bet. I read the day-start book as part of arriving, so the whole book opened at boot or New day closes to Read, and the book opened from the Read row closes to Bet. `BookData.from` carries which. The window always returns to Bet.
+**The day opens on the cover, and Esc from it lands the track on Read; from the track's book, on Bet.** FL1 says Esc on the day's cover goes to the track on Read, FL2 says return from the book is Bet. `BookData.from` carries which book it is. The window always returns to Bet. (Amended in the fix round by spec 23.3: from a day-start race page it is Bet.)
 
 **The door action is `window`, not `program`, and the track has two new outcomes.** Amendment 11 makes Windows open the window screen, so hub.json's door action and `HubOutcome` say `window`, and the Read row's outcome is `book`. The Read row is a box row with id `read` (`BOOK_ROW`) and no picture target; the focus on arrival, on return and from a lookable is data (`hub.json` `focus`).
 
 **Left and Right from Read step from the windows' place (guess, the spec is silent).** Read has no picture target. Stepping as from Bet keeps the arrival habit of the approved track (Left reaches the regular, Right the tote board).
 
-**A page turn puts the book's cursor on post 1 (guess).** The spec says only that Read opens with the cursor on post 1. The book and the window take clicks only, no hover, as the program page did: a hover at the window would move the ticket's horse.
+**A page turn puts the book's cursor on post 1 (guess).** The spec says only that Read opens with the cursor on post 1. (Amended in the fix round by spec 23.1 and 23.2: hover moves the book's entry cursor, and the window's cursor while choosing.)
 
 **The clerk's cycles count uses in the day session (`BetDay.clerk`).** The ticket line advances each time a ticket opens (choosing to ticket, or the book's hand-off), the bet line each bet. Moving an open ticket to another row by click is not a new use. New day resets both. The stamp on the bet beat is frame 1 for one idle step (hub.json `idle.stepSeconds`), then rest; with reduced motion he does not move. The beat is `program.punchSeconds`, the approved 0.6 s.
 
@@ -495,3 +495,13 @@ Kick is the remainder, so a stalker can wobble up to 8 from a third: p08 and p11
 **The screens are checked against the approved mock pixel for pixel.** `src/render/bookWindowComposite.test.ts` draws the cover, the news, three race pages and four window states from the pure modules and the shipped PNGs and compares them with `docs/mocks/book-and-window/`. The track's composite test moved to sheets 6a and 6b, since its box rows moved. The PNG reader and compositor are shared in `src/render/compositeKit.ts` (test support only).
 
 **The close-up clerk is drawn whole at x112, y34.** The counter's cut at y80 needs no crop: his frame's rows from y80 down are transparent, and the counter is in the booth art below him.
+
+## Book and window, fix round (spec section 23)
+
+**At the window a hover moves the cursor while prices are pending too.** 23.2 excepts only the open ticket. While pending, choosing a row by hover does nothing more than Up and Down do, and Enter there still does nothing.
+
+**The display font's glyph check compares the two lists as sets.** book.json's `glyphs` cannot start with a space (its text schema forbids leading and trailing spaces), so its order differs from `DISPLAY_CHARS`. The test holds the same characters, each once.
+
+**The aria templates hold order and punctuation; code still ends each sentence.** `hub.json` `copy.window.aria` (row, ticket) and `book.json` `cover.aria` and `racePage.ariaEntry` are the joins. The `sentence` helper still adds a full stop where a part has none, as the track's aria-live always has.
+
+**The name check is in the hub loader, and its error names stable.json.** `nameChars` lives in hub.json and the names in stable.json, so `validateHub` takes the stable's names (the shipped ones by default) and throws a DataError for `src/data/stable.json` at `horses[i].name`, as the book loader does for day.json's track name.

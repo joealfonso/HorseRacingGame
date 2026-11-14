@@ -142,7 +142,8 @@
       "choose": "Race {r}. Who do you like?",
       "ticket": ["Pencil's sharp. Ready.", "Take your time. No rush.", "Ready when you are."],
       "punch": ["There you go. Enjoy it.", "Fresh off the machine.", "Mind the peanut shells."],
-      "back": "Esc: back"
+      "back": "Esc: back",
+      "aria": { "row": "#{n} {name}, {odds}", "ticket": "{amount} on #{n}" }
     },
     "bannedWords": ["cash", "buy"]
   },

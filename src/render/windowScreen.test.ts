@@ -8,7 +8,7 @@ import { ctx, dayWith, drawnOf, posted, programOf, rd } from './betKit';
 import { hitTest } from './pointer';
 import { TORN_EDGE, type ProgramKeyContext } from './programScreen';
 import {
-  WINDOW_POINTER_KEYS, clerkFrame, clerkLine, cycleLine, initialWindowState, windowClick, windowFromBook, windowKey, windowPointerTargets, windowScreen,
+  WINDOW_POINTER_KEYS, clerkFrame, clerkLine, cycleLine, initialWindowState, windowClick, windowFromBook, windowHover, windowKey, windowPointerTargets, windowScreen,
   type WindowInput, type WindowState,
 } from './windowScreen';
 
@@ -225,5 +225,41 @@ describe('aria-live (section 10)', () => {
     const sc = windowScreen(input({ state: choosing(2) }));
     const h = drawnOf()[2].input.card.horses[1];
     expect(sc.aria).toBe(`Race 3 of 8. Bank $100.00. Race 3. Who do you like? #2 ${h.name}, ${quote(ctx, programOf(3), null).odds[1]}. Esc: back.`);
+  });
+});
+
+describe('23.2: hover at the window', () => {
+  it('choosing: a row takes the cursor; the back item and an off-field row do not', () => {
+    expect(windowHover(choosing(1), 'row:5', k())).toEqual(choosing(5));
+    expect(windowHover(choosing(2), 'back', k())).toEqual(choosing(2));
+    expect(windowHover(choosing(2), 'row:7', k({ horses: 6 }))).toEqual(choosing(2));
+  });
+
+  it('pending: a row still takes the cursor (Enter is what does nothing)', () => {
+    expect(windowHover(choosing(1), 'row:4', k({ ready: false }))).toEqual(choosing(4));
+  });
+
+  it('ticket open and the bet beat: nothing moves', () => {
+    const open = ticket(3, offered[1]);
+    for (const id of ['row:1', 'row:6', 'less', 'more', 'bet'] as const) expect(windowHover(open, id, k())).toBe(open);
+    const placed: WindowState = { focus: 2, mode: { kind: 'placed' } };
+    expect(windowHover(placed, 'row:5', k())).toBe(placed);
+  });
+});
+
+describe('23.6: aria-live joins from data', () => {
+  it('the open ticket reads "$10 on #3. Enter: bet." and the pays line, without the arrow glyphs', () => {
+    const sc = windowScreen(input({ state: ticket(3, 10) }));
+    const pays = quote(ctx, programOf(3), { post: 3, dollars: 10 }).paysCents!;
+    expect(sc.aria.endsWith(`$10 on #3. Enter: bet. $10 to win pays $${(pays / 100).toFixed(2)}.`)).toBe(true);
+    expect(sc.aria).not.toMatch(/[<>]/);
+  });
+
+  it('the row and ticket templates come from hub.json copy.window.aria', () => {
+    const changed = { ...hub, copy: { ...hub.copy, window: { ...hub.copy.window, aria: { row: '{name} #{n} {odds}', ticket: '#{n} {amount}' } } } };
+    const sc = windowScreen(input({ hub: changed, state: ticket(3, 10) }));
+    const h = drawnOf()[2].input.card.horses[2];
+    expect(sc.aria).toContain(`${h.name} #3`);
+    expect(sc.aria).toContain('#3 $10. Enter: bet.');
   });
 });

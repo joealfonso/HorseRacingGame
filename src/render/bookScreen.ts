@@ -1,4 +1,5 @@
 import type { Book } from '../data/bookSchema';
+import { fillHoles } from '../data/bookText';
 import { programConditionsLine, programPlaceLine } from '../data/cardWords';
 import type { CardLook, RaceDay } from '../data/raceDaySchema';
 import { bookPages, runningFoot, type BookPage, type CoverFields, type RacePageState } from '../bet/bookPage';
@@ -145,7 +146,7 @@ export function coverScreen(book: Book, c: CoverFields, races: number): BookScre
     ...footTexts(book, 0, races),
   ];
   const images: PageImage[] = [{ slot: BOOK_SLOTS.cover, x: L.picture.x0, y: L.picture.y0 }];
-  const aria = [c.track, c.title, `${c.dayLabel} ${c.dayNumber}`, c.line].map(sentence).join(' ');
+  const aria = [c.track, c.title, fillHoles(book.cover.aria.value, { label: c.dayLabel, number: c.dayNumber }), c.line].map(sentence).join(' ');
   return { paper: PAPER, rects, texts, images, entries: [], cursor: null, aria };
 }
 
@@ -229,11 +230,15 @@ export function racePageScreen(input: RacePageInput): BookScreen {
   const cursor = focused.post === page.tick ? null : { x: P.cursorX, y: programEntryTop(focus) + ENTRY.cursorDy };
   const rects = P.rules.map((y) => rule(y));
   const style = copy.card.styles[focused.style];
-  const stats = BET_ENTRY.stats.map((s) => `${h[s.key]} ${focused.stats[s.key]}`).join(', ');
   const focusedOdds = page.odds[focused.post - 1] ?? PENDING_ODDS;
+  const entryLine = fillHoles(book.racePage.ariaEntry.value, {
+    n: focused.post, name: focused.name, style,
+    speedHead: h.speed, speed: focused.stats.speed, staminaHead: h.stamina, stamina: focused.stats.stamina,
+    kickHead: h.kick, kick: focused.stats.kick, oddsHead: h.odds, odds: focusedOdds,
+  });
   const aria = [
     raceOfLine(copy, drawn.race, races), race.name, ...(page.right === '' ? [] : [page.right]),
-    `#${focused.post} ${focused.name}, ${style}, ${stats}, ${h.odds} ${focusedOdds}`, ...(footer === '' ? [] : [footer]),
+    entryLine, ...(footer === '' ? [] : [footer]),
   ].map(sentence).join(' ');
   return { paper: PAPER, rects, texts, images: [], entries, cursor, aria };
 }
@@ -267,6 +272,29 @@ export function bookPointerTargets(book: Book, s: BookState, k: BookKeyContext):
   out.push({ id: 'close', box: L.closeTarget });
   if (f.next !== null) out.push({ id: 'next', box: L.nextTarget });
   return out;
+}
+
+/**
+ * The pointer moved into a target (23.1): on a race page an entry takes the cursor, so its
+ * blurb comes to the footer before any click. Every other target, and every other page, leaves
+ * the state as it is.
+ */
+export function bookHover(s: BookState, id: BookTargetId, k: BookKeyContext): BookState {
+  const entry = /^entry:(\d+)$/.exec(id);
+  if (entry === null || pageAt(k.races, s.page).kind !== 'race') return s;
+  const post = Number(entry[1]);
+  if (post < 1 || post > k.horses || post - 1 === s.focus) return s;
+  return { ...s, focus: post - 1 };
+}
+
+/**
+ * Where the track's focus lands when the book closes (FL1, FL2, 23.3). Opened from the track:
+ * Bet. Opened at day start: Read from the cover or the news, Bet from a race page (you have
+ * just read a race).
+ */
+export function bookCloseFocus(from: 'dayStart' | 'track', races: number, page: number): 'arrival' | 'back' {
+  if (from === 'track') return 'back';
+  return pageAt(races, page).kind === 'race' ? 'back' : 'arrival';
 }
 
 /** A finished click (BB4, BB6), as its keys: entry k focuses post k and presses Enter (which does nothing off race r's priced page). */

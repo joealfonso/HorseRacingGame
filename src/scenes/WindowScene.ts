@@ -7,7 +7,7 @@ import { cursorFrame } from '../render/pause';
 import { lastBetDollars, programHorses, type ProgramKeyContext } from '../render/programScreen';
 import { PLACEHOLDER_TAG_AT, SLOT_IDS, showPlaceholderTag, standIns } from '../render/slotStatus';
 import {
-  WINDOW_SLOTS, WINDOW_SLOT_IDS, clerkFrame, initialWindowState, windowClick, windowFromBook, windowKey, windowPointerTargets, windowScreen,
+  WINDOW_SLOTS, WINDOW_SLOT_IDS, clerkFrame, initialWindowState, windowClick, windowFromBook, windowHover, windowKey, windowPointerTargets, windowScreen,
   type WindowOutcome, type WindowState,
 } from '../render/windowScreen';
 import { Art, type ArtInfo } from './art';
@@ -104,8 +104,9 @@ export class WindowScene extends Phaser.Scene {
     this.keys = new MenuKeys(this, data.held ?? [], { delaySeconds: m.repeatDelayMs.value / 1000, everySeconds: m.repeatEveryMs.value / 1000 }, (code) => {
       if (!this.leaving) this.apply(windowKey(this.state, code, this.keyContext()));
     });
-    // Clicks only, as the program page took them: a hover never moves the ticket's horse.
+    // Hover moves the cursor while choosing only: it never moves an open ticket's horse (23.2).
     new PointerInput(this, () => windowPointerTargets(data.bet.hub, data.bet.rd.raceDay, this.state, this.keyContext()), {
+      hover: (id) => { if (!this.leaving) this.apply({ state: windowHover(this.state, id, this.keyContext()), outcome: null }); },
       click: (id) => { if (!this.leaving) this.apply(windowClick(this.state, id, this.keyContext())); },
     }, data.bet.rd.raceDay.pointer.arrivalGuardSeconds.value);
   }

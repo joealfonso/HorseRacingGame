@@ -905,3 +905,112 @@ describe('NW5 through the scenes: the news page does not change with the estimat
     expect(page).not.toContain('$');
   });
 });
+
+// ------------------------------------------------------------------ section 23, the fix round
+const hoverAt = (r: Rig, x: number, y: number): Rig => {
+  H.listeners.canvas.emit('pointermove', { clientX: x, clientY: y });
+  return r;
+};
+const blurbOf = (d: DayState, post: number): string => {
+  const id = bet.drawn[d.nextRace - 1].horseIds[post - 1];
+  return betting.stable.find((h) => h.id === id)!.blurb;
+};
+// Entry k on a race page: y57 + 19(k-1) to y75 + 19(k-1). Window row k: y111 + 11(k-1) to y121 + 11(k-1).
+const ENTRY = (k: number): [number, number] => [100, 66 + 19 * (k - 1)];
+const WIN_ROW = (k: number): [number, number] => [100, 116 + 11 * (k - 1)];
+
+describe('23.1: hover in the book moves the entry cursor', () => {
+  it('on race r\'s page, moving into entry k focuses it and brings its blurb to the footer; no window, no bet', () => {
+    const r = afterRace1().press('Enter').press('Enter');
+    expect(r.texts).toContain(blurbOf(mid(), 1));
+    hoverAt(r, ...ENTRY(5));
+    expect(r.at).toBe('book');
+    expect(r.texts).toContain(blurbOf(mid(), 5));
+    expect(r.aria).toContain('#5 ');
+    hoverAt(r, ...ENTRY(2));
+    expect(r.texts).toContain(blurbOf(mid(), 2));
+    expect(r.at).toBe('book');
+  });
+
+  it('a click after a hover still does what section 10 says: on race r\'s priced page, the window with the ticket on that horse', () => {
+    const r = afterRace1().press('Enter').press('Enter');
+    hoverAt(r, ...ENTRY(4)).click(...ENTRY(4));
+    expect(r.at).toBe('window');
+    expect(r.texts).toContain('Enter: bet');
+    expect(r.aria).toContain('on #4');
+  });
+
+  it('hovering the foot, the cover or the news moves nothing', () => {
+    const r = atCover();
+    hoverAt(r, ...FOOT_NEXT);
+    hoverAt(r, ...COVER_BODY);
+    expect(r.texts).not.toContain('Rail Talk');
+    r.press('Enter');
+    hoverAt(r, 100, 100);
+    expect(r.texts).toContain('Rail Talk');
+  });
+});
+
+describe('23.2: hover at the window moves the cursor while choosing only', () => {
+  it('choosing: moving into row k focuses it, and Enter then opens the ticket on k', () => {
+    const r = afterRace1().run(['Enter', 'ArrowDown', 'Enter']);
+    expect(r.at).toBe('window');
+    hoverAt(r, ...WIN_ROW(6));
+    expect(r.aria).toContain('#6 ');
+    expect(r.texts).toContain('Esc: back');
+    r.press('Enter');
+    expect(r.aria).toContain('on #6');
+  });
+
+  it('ticket open: a hover over another row moves nothing, not the ticket\'s horse', () => {
+    const r = afterRace1().run(['Enter', 'Digit3', 'Enter']);
+    const before = r.aria;
+    hoverAt(r, ...WIN_ROW(7));
+    hoverAt(r, ...WIN_ROW(1));
+    expect(r.aria).toBe(before);
+    r.press('Enter').tick(1);
+    betPlaced(r, 3, 2, mid().bankrollCents);
+  });
+
+  it('the bet beat: a hover moves nothing', () => {
+    const r = afterRace1().run(['Enter', 'Digit3', 'Enter', 'Enter']);
+    const before = r.aria;
+    hoverAt(r, ...WIN_ROW(8));
+    expect(r.aria).toBe(before);
+    r.tick(1);
+    betPlaced(r, 3, 2, mid().bankrollCents);
+  });
+});
+
+describe('23.3: Esc from the day-start book', () => {
+  const focus = (r: Rig) => (r.data as { focus?: string }).focus;
+
+  it('from the cover or the news, the track is on Read; from a race page, on Bet', () => {
+    expect(focus(atCover().press('Escape'))).toBe('arrival');
+    const news = atCover().press('Enter').press('Escape');
+    expect(focus(news)).toBe('arrival');
+    expect(news.aria.endsWith('Read Race 1.')).toBe(true);
+    const race1 = atCover().press('Enter').press('Enter').press('Escape');
+    expect(race1.at).toBe('hub');
+    expect(focus(race1)).toBe('back');
+    expect(race1.aria.endsWith('Bet Race 1.')).toBe(true);
+    const race5 = atCover().run(['Enter', 'Enter', 'ArrowRight', 'ArrowRight', 'ArrowRight', 'ArrowRight', 'Escape']);
+    expect(race5.aria.endsWith('Bet Race 1.')).toBe(true);
+    // Paged back to the news, it is Read again.
+    expect(atCover().run(['Enter', 'Enter', 'ArrowLeft', 'Escape']).aria.endsWith('Read Race 1.')).toBe(true);
+  });
+
+  it('"Esc: close" by click does the same', () => {
+    expect(atCover().click(...FOOT_CLOSE).aria.endsWith('Read Race 1.')).toBe(true);
+    expect(atCover().press('Enter').click(...FOOT_CLOSE).aria.endsWith('Read Race 1.')).toBe(true);
+    expect(atCover().press('Enter').press('Enter').click(...FOOT_CLOSE).aria.endsWith('Bet Race 1.')).toBe(true);
+  });
+});
+
+describe('23.6: the window reads the open ticket without its arrow glyphs', () => {
+  it('"$2 on #3. Enter: bet." then the pays line, and no "<" or ">"', () => {
+    const r = afterRace1().run(['Enter', 'Digit3', 'Enter']);
+    expect(r.aria).toContain(`$${AMOUNT} on #3. Enter: bet. $${AMOUNT} to win pays $`);
+    expect(r.aria).not.toMatch(/[<>]/);
+  });
+});

@@ -123,7 +123,11 @@ export const hubSchema = z.strictObject({
     sign: z.strictObject({ windows: text }),
     lookables: z.record(z.string(), lookCopy),
     /** The window's clerk (book-and-window.md section 7): choosing, the ticket's and the bet's line cycles, and "Esc: back". */
-    window: z.strictObject({ choose: text, ticket: z.array(text).min(1), punch: z.array(text).min(1), back: text }),
+    window: z.strictObject({
+      choose: text, ticket: z.array(text).min(1), punch: z.array(text).min(1), back: text,
+      /** aria-live only (23.6): the focused row, and the open ticket read without its arrow glyphs. Order and punctuation; the words are copy. */
+      aria: z.strictObject({ row: text, ticket: text }),
+    }),
     /** On top of betting.json's copy.bannedWords: the spec's "no cash, no buy, in any form". */
     bannedWords: z.array(text),
   }),
