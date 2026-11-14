@@ -40,6 +40,9 @@ export function crowdDollars(
   const dollars = raw.map((r) => Math.floor(r));
   const order = raw.map((r, i) => ({ i, rem: r - Math.floor(r) })).sort((a, b) => b.rem - a.rem || a.i - b.i);
   let left = poolDollars - dollars.reduce((a, b) => a + b, 0);
+  // The shares sum to 1 (up to float rounding), so the floors fall short of the pool by less
+  // than one dollar a horse. Anything more means the shares are wrong.
+  if (left >= size) throw new Error(`crowdDollars: the shares leave $${left} unplaced; they must sum to 1`);
   for (let k = 0; left > 0; k = (k + 1) % size, left--) dollars[order[k].i]++;
   for (; left < 0; left++) dollars[order[order.length - 1].i]--; // float sum just over the pool; not seen, but safe
 

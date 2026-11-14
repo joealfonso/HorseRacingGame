@@ -1,0 +1,92 @@
+{
+  "races": [
+    {
+      "name": "Redbud Purse",
+      "track": "Churchill Downs",
+      "distanceFurlongs": 10,
+      "surface": "dirt",
+      "going": "fast",
+      "trackBias": {
+        "lane": "neutral",
+        "style": "neutral"
+      }
+    },
+    {
+      "name": "Limestone Spring Stakes",
+      "track": "Churchill Downs",
+      "distanceFurlongs": 10,
+      "surface": "dirt",
+      "going": "fast",
+      "trackBias": {
+        "lane": "neutral",
+        "style": "neutral"
+      }
+    },
+    {
+      "name": "Tobacco Barn Purse",
+      "track": "Churchill Downs",
+      "distanceFurlongs": 10,
+      "surface": "dirt",
+      "going": "fast",
+      "trackBias": {
+        "lane": "neutral",
+        "style": "neutral"
+      }
+    },
+    {
+      "name": "Sorghum Mill Purse",
+      "track": "Churchill Downs",
+      "distanceFurlongs": 10,
+      "surface": "dirt",
+      "going": "fast",
+      "trackBias": {
+        "lane": "neutral",
+        "style": "neutral"
+      }
+    },
+    {
+      "name": "Hickory Hollow Stakes",
+      "track": "Churchill Downs",
+      "distanceFurlongs": 10,
+      "surface": "dirt",
+      "going": "fast",
+      "trackBias": {
+        "lane": "neutral",
+        "style": "neutral"
+      }
+    },
+    {
+      "name": "Creek Bottom Purse",
+      "track": "Churchill Downs",
+      "distanceFurlongs": 10,
+      "surface": "dirt",
+      "going": "fast",
+      "trackBias": {
+        "lane": "neutral",
+        "style": "neutral"
+      }
+    },
+    {
+      "name": "Dry Stone Wall Purse",
+      "track": "Churchill Downs",
+      "distanceFurlongs": 10,
+      "surface": "dirt",
+      "going": "fast",
+      "trackBias": {
+        "lane": "neutral",
+        "style": "neutral"
+      }
+    },
+    {
+      "name": "Last Light Stakes",
+      "track": "Churchill Downs",
+      "distanceFurlongs": 10,
+      "surface": "dirt",
+      "going": "fast",
+      "trackBias": {
+        "lane": "neutral",
+        "style": "neutral"
+      }
+    }
+  ]
+}

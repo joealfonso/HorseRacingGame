@@ -1,0 +1,960 @@
+{
+  "bankroll": {
+    "startDollars": {
+      "value": 100,
+      "status": "starting guess",
+      "note": "Every day starts here; nothing carries over (open question 3)."
+    }
+  },
+  "bets": {
+    "minDollars": {
+      "value": 2,
+      "status": "starting guess"
+    },
+    "amountsDollars": {
+      "value": [
+        2,
+        5,
+        10,
+        20,
+        50,
+        100
+      ],
+      "status": "starting guess"
+    },
+    "capBasisPoints": {
+      "value": 2500,
+      "status": "starting guess",
+      "note": "25 percent of the bankroll, never below the minimum bet."
+    }
+  },
+  "field": {
+    "size": {
+      "value": 8,
+      "status": "starting guess"
+    },
+    "maxStartsPerDay": {
+      "value": 2,
+      "status": "starting guess"
+    },
+    "racesBeforeRerun": {
+      "value": 3,
+      "status": "starting guess",
+      "note": "A horse that ran in race r runs again no earlier than race r + 3."
+    }
+  },
+  "estimate": {
+    "runsPerRace": {
+      "value": 1000,
+      "status": "starting guess",
+      "note": "B0: the smallest N that passed PB2 (N = 500 failed on the 95th percentile)."
+    }
+  },
+  "pool": {
+    "crowdDollars": {
+      "value": 25000,
+      "status": "starting guess"
+    },
+    "takeoutBasisPoints": {
+      "value": 1700,
+      "status": "starting guess"
+    },
+    "breakageCents": {
+      "value": 10,
+      "status": "starting guess"
+    },
+    "minPayoffPerDollarCents": {
+      "value": 105,
+      "status": "starting guess"
+    }
+  },
+  "crowd": {
+    "noise": {
+      "value": 0.6,
+      "status": "starting guess",
+      "note": "B0 crowd sweep. 0.25 left a crowd too accurate to beat after the take."
+    },
+    "styleLean": {
+      "value": {
+        "frontRunner": 0.1,
+        "stalker": 0,
+        "closer": -0.1
+      },
+      "status": "starting guess",
+      "note": "B0 crowd sweep. At 0.20 betting every closer returns above zero, a free win."
+    },
+    "flatten": {
+      "value": 0.025,
+      "status": "starting guess",
+      "note": "B0 crowd sweep. 0.08 put far too much money on hopeless horses."
+    }
+  },
+  "odds": {
+    "steps": {
+      "value": [
+        {
+          "label": "1-9",
+          "odds": [
+            1,
+            9
+          ]
+        },
+        {
+          "label": "1-5",
+          "odds": [
+            1,
+            5
+          ]
+        },
+        {
+          "label": "2-5",
+          "odds": [
+            2,
+            5
+          ]
+        },
+        {
+          "label": "1-2",
+          "odds": [
+            1,
+            2
+          ]
+        },
+        {
+          "label": "3-5",
+          "odds": [
+            3,
+            5
+          ]
+        },
+        {
+          "label": "4-5",
+          "odds": [
+            4,
+            5
+          ]
+        },
+        {
+          "label": "1-1",
+          "odds": [
+            1,
+            1
+          ]
+        },
+        {
+          "label": "6-5",
+          "odds": [
+            6,
+            5
+          ]
+        },
+        {
+          "label": "7-5",
+          "odds": [
+            7,
+            5
+          ]
+        },
+        {
+          "label": "3-2",
+          "odds": [
+            3,
+            2
+          ]
+        },
+        {
+          "label": "8-5",
+          "odds": [
+            8,
+            5
+          ]
+        },
+        {
+          "label": "9-5",
+          "odds": [
+            9,
+            5
+          ]
+        },
+        {
+          "label": "2-1",
+          "odds": [
+            2,
+            1
+          ]
+        },
+        {
+          "label": "5-2",
+          "odds": [
+            5,
+            2
+          ]
+        },
+        {
+          "label": "3-1",
+          "odds": [
+            3,
+            1
+          ]
+        },
+        {
+          "label": "7-2",
+          "odds": [
+            7,
+            2
+          ]
+        },
+        {
+          "label": "4-1",
+          "odds": [
+            4,
+            1
+          ]
+        },
+        {
+          "label": "9-2",
+          "odds": [
+            9,
+            2
+          ]
+        },
+        {
+          "label": "5-1",
+          "odds": [
+            5,
+            1
+          ]
+        },
+        {
+          "label": "6-1",
+          "odds": [
+            6,
+            1
+          ]
+        },
+        {
+          "label": "7-1",
+          "odds": [
+            7,
+            1
+          ]
+        },
+        {
+          "label": "8-1",
+          "odds": [
+            8,
+            1
+          ]
+        },
+        {
+          "label": "9-1",
+          "odds": [
+            9,
+            1
+          ]
+        },
+        {
+          "label": "10-1",
+          "odds": [
+            10,
+            1
+          ]
+        },
+        {
+          "label": "11-1",
+          "odds": [
+            11,
+            1
+          ]
+        },
+        {
+          "label": "12-1",
+          "odds": [
+            12,
+            1
+          ]
+        },
+        {
+          "label": "13-1",
+          "odds": [
+            13,
+            1
+          ]
+        },
+        {
+          "label": "14-1",
+          "odds": [
+            14,
+            1
+          ]
+        },
+        {
+          "label": "15-1",
+          "odds": [
+            15,
+            1
+          ]
+        },
+        {
+          "label": "16-1",
+          "odds": [
+            16,
+            1
+          ]
+        },
+        {
+          "label": "17-1",
+          "odds": [
+            17,
+            1
+          ]
+        },
+        {
+          "label": "18-1",
+          "odds": [
+            18,
+            1
+          ]
+        },
+        {
+          "label": "19-1",
+          "odds": [
+            19,
+            1
+          ]
+        },
+        {
+          "label": "20-1",
+          "odds": [
+            20,
+            1
+          ]
+        },
+        {
+          "label": "21-1",
+          "odds": [
+            21,
+            1
+          ]
+        },
+        {
+          "label": "22-1",
+          "odds": [
+            22,
+            1
+          ]
+        },
+        {
+          "label": "23-1",
+          "odds": [
+            23,
+            1
+          ]
+        },
+        {
+          "label": "24-1",
+          "odds": [
+            24,
+            1
+          ]
+        },
+        {
+          "label": "25-1",
+          "odds": [
+            25,
+            1
+          ]
+        },
+        {
+          "label": "26-1",
+          "odds": [
+            26,
+            1
+          ]
+        },
+        {
+          "label": "27-1",
+          "odds": [
+            27,
+            1
+          ]
+        },
+        {
+          "label": "28-1",
+          "odds": [
+            28,
+            1
+          ]
+        },
+        {
+          "label": "29-1",
+          "odds": [
+            29,
+            1
+          ]
+        },
+        {
+          "label": "30-1",
+          "odds": [
+            30,
+            1
+          ]
+        },
+        {
+          "label": "31-1",
+          "odds": [
+            31,
+            1
+          ]
+        },
+        {
+          "label": "32-1",
+          "odds": [
+            32,
+            1
+          ]
+        },
+        {
+          "label": "33-1",
+          "odds": [
+            33,
+            1
+          ]
+        },
+        {
+          "label": "34-1",
+          "odds": [
+            34,
+            1
+          ]
+        },
+        {
+          "label": "35-1",
+          "odds": [
+            35,
+            1
+          ]
+        },
+        {
+          "label": "36-1",
+          "odds": [
+            36,
+            1
+          ]
+        },
+        {
+          "label": "37-1",
+          "odds": [
+            37,
+            1
+          ]
+        },
+        {
+          "label": "38-1",
+          "odds": [
+            38,
+            1
+          ]
+        },
+        {
+          "label": "39-1",
+          "odds": [
+            39,
+            1
+          ]
+        },
+        {
+          "label": "40-1",
+          "odds": [
+            40,
+            1
+          ]
+        },
+        {
+          "label": "41-1",
+          "odds": [
+            41,
+            1
+          ]
+        },
+        {
+          "label": "42-1",
+          "odds": [
+            42,
+            1
+          ]
+        },
+        {
+          "label": "43-1",
+          "odds": [
+            43,
+            1
+          ]
+        },
+        {
+          "label": "44-1",
+          "odds": [
+            44,
+            1
+          ]
+        },
+        {
+          "label": "45-1",
+          "odds": [
+            45,
+            1
+          ]
+        },
+        {
+          "label": "46-1",
+          "odds": [
+            46,
+            1
+          ]
+        },
+        {
+          "label": "47-1",
+          "odds": [
+            47,
+            1
+          ]
+        },
+        {
+          "label": "48-1",
+          "odds": [
+            48,
+            1
+          ]
+        },
+        {
+          "label": "49-1",
+          "odds": [
+            49,
+            1
+          ]
+        },
+        {
+          "label": "50-1",
+          "odds": [
+            50,
+            1
+          ]
+        },
+        {
+          "label": "51-1",
+          "odds": [
+            51,
+            1
+          ]
+        },
+        {
+          "label": "52-1",
+          "odds": [
+            52,
+            1
+          ]
+        },
+        {
+          "label": "53-1",
+          "odds": [
+            53,
+            1
+          ]
+        },
+        {
+          "label": "54-1",
+          "odds": [
+            54,
+            1
+          ]
+        },
+        {
+          "label": "55-1",
+          "odds": [
+            55,
+            1
+          ]
+        },
+        {
+          "label": "56-1",
+          "odds": [
+            56,
+            1
+          ]
+        },
+        {
+          "label": "57-1",
+          "odds": [
+            57,
+            1
+          ]
+        },
+        {
+          "label": "58-1",
+          "odds": [
+            58,
+            1
+          ]
+        },
+        {
+          "label": "59-1",
+          "odds": [
+            59,
+            1
+          ]
+        },
+        {
+          "label": "60-1",
+          "odds": [
+            60,
+            1
+          ]
+        },
+        {
+          "label": "61-1",
+          "odds": [
+            61,
+            1
+          ]
+        },
+        {
+          "label": "62-1",
+          "odds": [
+            62,
+            1
+          ]
+        },
+        {
+          "label": "63-1",
+          "odds": [
+            63,
+            1
+          ]
+        },
+        {
+          "label": "64-1",
+          "odds": [
+            64,
+            1
+          ]
+        },
+        {
+          "label": "65-1",
+          "odds": [
+            65,
+            1
+          ]
+        },
+        {
+          "label": "66-1",
+          "odds": [
+            66,
+            1
+          ]
+        },
+        {
+          "label": "67-1",
+          "odds": [
+            67,
+            1
+          ]
+        },
+        {
+          "label": "68-1",
+          "odds": [
+            68,
+            1
+          ]
+        },
+        {
+          "label": "69-1",
+          "odds": [
+            69,
+            1
+          ]
+        },
+        {
+          "label": "70-1",
+          "odds": [
+            70,
+            1
+          ]
+        },
+        {
+          "label": "71-1",
+          "odds": [
+            71,
+            1
+          ]
+        },
+        {
+          "label": "72-1",
+          "odds": [
+            72,
+            1
+          ]
+        },
+        {
+          "label": "73-1",
+          "odds": [
+            73,
+            1
+          ]
+        },
+        {
+          "label": "74-1",
+          "odds": [
+            74,
+            1
+          ]
+        },
+        {
+          "label": "75-1",
+          "odds": [
+            75,
+            1
+          ]
+        },
+        {
+          "label": "76-1",
+          "odds": [
+            76,
+            1
+          ]
+        },
+        {
+          "label": "77-1",
+          "odds": [
+            77,
+            1
+          ]
+        },
+        {
+          "label": "78-1",
+          "odds": [
+            78,
+            1
+          ]
+        },
+        {
+          "label": "79-1",
+          "odds": [
+            79,
+            1
+          ]
+        },
+        {
+          "label": "80-1",
+          "odds": [
+            80,
+            1
+          ]
+        },
+        {
+          "label": "81-1",
+          "odds": [
+            81,
+            1
+          ]
+        },
+        {
+          "label": "82-1",
+          "odds": [
+            82,
+            1
+          ]
+        },
+        {
+          "label": "83-1",
+          "odds": [
+            83,
+            1
+          ]
+        },
+        {
+          "label": "84-1",
+          "odds": [
+            84,
+            1
+          ]
+        },
+        {
+          "label": "85-1",
+          "odds": [
+            85,
+            1
+          ]
+        },
+        {
+          "label": "86-1",
+          "odds": [
+            86,
+            1
+          ]
+        },
+        {
+          "label": "87-1",
+          "odds": [
+            87,
+            1
+          ]
+        },
+        {
+          "label": "88-1",
+          "odds": [
+            88,
+            1
+          ]
+        },
+        {
+          "label": "89-1",
+          "odds": [
+            89,
+            1
+          ]
+        },
+        {
+          "label": "90-1",
+          "odds": [
+            90,
+            1
+          ]
+        },
+        {
+          "label": "91-1",
+          "odds": [
+            91,
+            1
+          ]
+        },
+        {
+          "label": "92-1",
+          "odds": [
+            92,
+            1
+          ]
+        },
+        {
+          "label": "93-1",
+          "odds": [
+            93,
+            1
+          ]
+        },
+        {
+          "label": "94-1",
+          "odds": [
+            94,
+            1
+          ]
+        },
+        {
+          "label": "95-1",
+          "odds": [
+            95,
+            1
+          ]
+        },
+        {
+          "label": "96-1",
+          "odds": [
+            96,
+            1
+          ]
+        },
+        {
+          "label": "97-1",
+          "odds": [
+            97,
+            1
+          ]
+        },
+        {
+          "label": "98-1",
+          "odds": [
+            98,
+            1
+          ]
+        },
+        {
+          "label": "99-1",
+          "odds": [
+            99,
+            1
+          ]
+        }
+      ],
+      "status": "starting guess",
+      "note": "The tote's steps, shortest first."
+    }
+  },
+  "harness": {
+    "valueThreshold": {
+      "value": 1.15,
+      "status": "starting guess"
+    },
+    "bands": {
+      "value": {
+        "randomReturnPerDollar": {
+          "min": -0.3,
+          "max": -0.18
+        },
+        "favoriteReturnPerDollar": {
+          "min": -0.25,
+          "max": -0.15
+        },
+        "longestReturnPerDollar": {
+          "min": -0.5,
+          "max": -0.25
+        },
+        "valueReturnPerDollarMin": 0.03,
+        "valueBetPercentMin": 30,
+        "favoriteWinPercent": {
+          "min": 28,
+          "max": 40
+        },
+        "favoriteMedianOdds": {
+          "shortest": "6-5",
+          "longest": "3-1"
+        },
+        "shortFavorite": {
+          "oddsOrShorter": "8-5",
+          "fieldsPercentMin": 20
+        },
+        "longshot": {
+          "oddsOrLonger": "20-1",
+          "fieldsPercentMin": 50
+        },
+        "flatField": {
+          "from": "3-1",
+          "to": "10-1",
+          "fieldsPercentMax": 10
+        },
+        "calibration": {
+          "groupEdgesPercent": [
+            5,
+            10,
+            20,
+            35
+          ],
+          "withinPoints": 3
+        },
+        "blindRuleReturnPerDollarMax": 0
+      },
+      "status": "starting guess",
+      "note": "HN3, judged on expected returns priced with a holdout estimate. Favorite band amended after the B0 sweep."
+    }
+  },
+  "copy": {
+    "bannedWords": [
+      "deposit",
+      "withdraw",
+      "cash out",
+      "real money",
+      "buy",
+      "purchase",
+      "credit card",
+      "payment"
+    ]
+  }
+}

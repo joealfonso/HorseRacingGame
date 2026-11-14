@@ -6,12 +6,12 @@ import { cpus, loadavg, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { crowdDollars, type CrowdValues } from '../src/bet/crowd';
 import { winnerPosts, winsByPost } from '../src/bet/estimate';
-import { oddsStepIndex, perDollarCents, toteSteps } from '../src/bet/payout';
+import { oddsStepIndex, perDollarCents } from '../src/bet/payout';
 import { betStream, estimateSeedsOf, raceSeedOf } from '../src/bet/streams';
 import { createStream } from '../src/sim/rng';
 import {
   DAY_RULES, FIRST_DAY_SEED, POOL_DOLLARS, POOL_RULES, START_CROWD, START_RECIPE,
-  dayFields, fieldInputs, measureCost, probeStable, type ProbeHorse, type Recipe,
+  dayFields, fieldInputs, measureCost, probeStable, toteSteps, type ProbeHorse, type Recipe,
 } from './betProbeSetup';
 
 const USAGE = `usage: node scripts/betProbe.mjs <command> [options]

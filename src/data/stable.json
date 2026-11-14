@@ -1,0 +1,404 @@
+{
+  "horses": [
+    {
+      "id": "s01",
+      "name": "Hold My Oats",
+      "jockey": "Marisol Dunne",
+      "style": "frontRunner",
+      "stats": { "speed": 94, "stamina": 76, "kick": 81 },
+      "coat": "chestnut",
+      "silks": { "body": "Royal", "cap": "Bone" },
+      "blurb": "Wants the lead and a snack."
+    },
+    {
+      "id": "s02",
+      "name": "Paddock Gossip",
+      "jockey": "Teodoro Valdivia",
+      "style": "stalker",
+      "stats": { "speed": 83, "stamina": 84, "kick": 85 },
+      "coat": "bay",
+      "silks": { "body": "Gold", "cap": "Navy" },
+      "blurb": "Knows everyone's business."
+    },
+    {
+      "id": "s03",
+      "name": "Sock In The Dryer",
+      "jockey": "Priya Ramaswamy",
+      "style": "closer",
+      "stats": { "speed": 73, "stamina": 90, "kick": 87 },
+      "coat": "dark bay or brown",
+      "silks": { "body": "Sky", "cap": "Navy" },
+      "blurb": "Turns up late, still warm."
+    },
+    {
+      "id": "s04",
+      "name": "Ten Items Or Less",
+      "jockey": "Beau Thibodeaux",
+      "style": "frontRunner",
+      "stats": { "speed": 92, "stamina": 70, "kick": 75 },
+      "coat": "dark bay or brown",
+      "silks": { "body": "Red", "cap": "Bone" },
+      "blurb": "Express lane, no exceptions."
+    },
+    {
+      "id": "s05",
+      "name": "Legally A Horse",
+      "jockey": "Dani Ferreira",
+      "style": "stalker",
+      "stats": { "speed": 78, "stamina": 82, "kick": 77 },
+      "coat": "black",
+      "silks": { "body": "Purple", "cap": "Gold" },
+      "blurb": "Papers say horse. We agree."
+    },
+    {
+      "id": "s06",
+      "name": "Burgoo Weather",
+      "jockey": "Maeve Callaghan",
+      "style": "closer",
+      "stats": { "speed": 67, "stamina": 88, "kick": 80 },
+      "coat": "bay",
+      "silks": { "body": "Emerald", "cap": "Gold" },
+      "blurb": "Low heat, long simmer."
+    },
+    {
+      "id": "s07",
+      "name": "Goat Is In Charge",
+      "jockey": "Kenji Arakawa",
+      "style": "frontRunner",
+      "stats": { "speed": 93, "stamina": 77, "kick": 71 },
+      "coat": "black",
+      "silks": { "body": "Hay", "cap": "Maroon" },
+      "blurb": "Goat said go. So, go."
+    },
+    {
+      "id": "s08",
+      "name": "Smoke Alarm Chirp",
+      "jockey": "Lucia Barrientos",
+      "style": "stalker",
+      "stats": { "speed": 78, "stamina": 76, "kick": 88 },
+      "coat": "black",
+      "silks": { "body": "Red", "cap": "Gold" },
+      "blurb": "Quiet, quiet, then BEEP."
+    },
+    {
+      "id": "s09",
+      "name": "Long Story Longer",
+      "jockey": "Odell Fairweather",
+      "style": "closer",
+      "stats": { "speed": 72, "stamina": 92, "kick": 84 },
+      "coat": "chestnut",
+      "silks": { "body": "Navy", "cap": "Lime" },
+      "blurb": "Has a lot more to say."
+    },
+    {
+      "id": "s10",
+      "name": "Biscuit Emergency",
+      "jockey": "Nadia Kowalczyk",
+      "style": "frontRunner",
+      "stats": { "speed": 93, "stamina": 77, "kick": 73 },
+      "coat": "dark bay or brown",
+      "silks": { "body": "Gold", "cap": "Maroon" },
+      "blurb": "Leaves early for the buffet."
+    },
+    {
+      "id": "s11",
+      "name": "Circling Back",
+      "jockey": "Ruben Echeverria",
+      "style": "stalker",
+      "stats": { "speed": 71, "stamina": 71, "kick": 85 },
+      "coat": "bay",
+      "silks": { "body": "Turquoise", "cap": "Navy" },
+      "blurb": "Will follow up shortly."
+    },
+    {
+      "id": "s12",
+      "name": "Lost The Remote",
+      "jockey": "Tallulah Grimes",
+      "style": "closer",
+      "stats": { "speed": 61, "stamina": 80, "kick": 78 },
+      "coat": "dark bay or brown",
+      "silks": { "body": "Ash", "cap": "Royal" },
+      "blurb": "Stop looking. There it is."
+    },
+    {
+      "id": "s13",
+      "name": "Derby Hat Budget",
+      "jockey": "Emeka Adeyemi",
+      "style": "frontRunner",
+      "stats": { "speed": 89, "stamina": 71, "kick": 66 },
+      "coat": "chestnut",
+      "silks": { "body": "Purple", "cap": "Lime" },
+      "blurb": "Dressed for the front row."
+    },
+    {
+      "id": "s14",
+      "name": "Ran Out Of Names",
+      "jockey": "Inez Marroquin",
+      "style": "stalker",
+      "stats": { "speed": 75, "stamina": 73, "kick": 68 },
+      "coat": "bay",
+      "silks": { "body": "Bone", "cap": "Navy" },
+      "blurb": "Was almost called Steve."
+    },
+    {
+      "id": "s15",
+      "name": "Scenic Route",
+      "jockey": "Wade Holloway",
+      "style": "closer",
+      "stats": { "speed": 58, "stamina": 80, "kick": 72 },
+      "coat": "bay",
+      "silks": { "body": "Sky", "cap": "Maroon" },
+      "blurb": "Saw the whole backstretch."
+    },
+    {
+      "id": "s16",
+      "name": "Running Joke",
+      "jockey": "Saoirse Duggan",
+      "style": "frontRunner",
+      "stats": { "speed": 85, "stamina": 69, "kick": 77 },
+      "coat": "black",
+      "silks": { "body": "Orange", "cap": "Navy" },
+      "blurb": "Starts before you're ready."
+    },
+    {
+      "id": "s17",
+      "name": "Take A Number",
+      "jockey": "Mateo Alcantar",
+      "style": "stalker",
+      "stats": { "speed": 70, "stamina": 71, "kick": 77 },
+      "coat": "dark bay or brown",
+      "silks": { "body": "Turquoise", "cap": "Maroon" },
+      "blurb": "Waits its turn. Mostly."
+    },
+    {
+      "id": "s18",
+      "name": "Hay Is For Horses",
+      "jockey": "June Pemberton",
+      "style": "closer",
+      "stats": { "speed": 58, "stamina": 79, "kick": 73 },
+      "coat": "bay",
+      "silks": { "body": "Hay", "cap": "Emerald" },
+      "blurb": "Eats well, goes long."
+    },
+    {
+      "id": "s19",
+      "name": "Post Time Panic",
+      "jockey": "Linh Truong",
+      "style": "frontRunner",
+      "stats": { "speed": 82, "stamina": 63, "kick": 66 },
+      "coat": "dark bay or brown",
+      "silks": { "body": "Red", "cap": "Navy" },
+      "blurb": "Out the door, keys inside."
+    },
+    {
+      "id": "s20",
+      "name": "Polite Applause",
+      "jockey": "Esperanza Villalobos",
+      "style": "stalker",
+      "stats": { "speed": 73, "stamina": 73, "kick": 69 },
+      "coat": "chestnut",
+      "silks": { "body": "Maroon", "cap": "Bone" },
+      "blurb": "Applauds the pace, quietly."
+    },
+    {
+      "id": "s21",
+      "name": "Late Checkout",
+      "jockey": "Ferris Lockhart",
+      "style": "closer",
+      "stats": { "speed": 60, "stamina": 78, "kick": 80 },
+      "coat": "chestnut",
+      "silks": { "body": "Navy", "cap": "Gold" },
+      "blurb": "Asks for one more hour."
+    },
+    {
+      "id": "s22",
+      "name": "Porch Light On",
+      "jockey": "Greta Lindqvist",
+      "style": "frontRunner",
+      "stats": { "speed": 87, "stamina": 71, "kick": 74 },
+      "coat": "bay",
+      "silks": { "body": "Gold", "cap": "Purple" },
+      "blurb": "Keeps the light on for you."
+    },
+    {
+      "id": "s23",
+      "name": "Bring A Sweater",
+      "jockey": "Amos Whitlock",
+      "style": "stalker",
+      "stats": { "speed": 69, "stamina": 69, "kick": 72 },
+      "coat": "chestnut",
+      "silks": { "body": "Maroon", "cap": "Hay" },
+      "blurb": "Has a scarf. Just in case."
+    },
+    {
+      "id": "s24",
+      "name": "Left On Read",
+      "jockey": "Hollis Tran",
+      "style": "closer",
+      "stats": { "speed": 63, "stamina": 71, "kick": 79 },
+      "coat": "bay",
+      "silks": { "body": "Sky", "cap": "Bone" },
+      "blurb": "Typing... still typing..."
+    },
+    {
+      "id": "s25",
+      "name": "Mayor Of Turn Two",
+      "jockey": "Yesenia Duarte",
+      "style": "frontRunner",
+      "stats": { "speed": 86, "stamina": 69, "kick": 67 },
+      "coat": "chestnut",
+      "silks": { "body": "Royal", "cap": "Gold" },
+      "blurb": "Waves at everyone, early."
+    },
+    {
+      "id": "s26",
+      "name": "Mint Julep Lawsuit",
+      "jockey": "Imogen Pruitt",
+      "style": "stalker",
+      "stats": { "speed": 75, "stamina": 74, "kick": 69 },
+      "coat": "dark bay or brown",
+      "silks": { "body": "Turquoise", "cap": "Gold" },
+      "blurb": "Sweet, cold, and litigious."
+    },
+    {
+      "id": "s27",
+      "name": "Unexpected Banjo",
+      "jockey": "Corbin Ashby",
+      "style": "closer",
+      "stats": { "speed": 62, "stamina": 82, "kick": 80 },
+      "coat": "dark bay or brown",
+      "silks": { "body": "Lime", "cap": "Navy" },
+      "blurb": "Joins in on the last verse."
+    },
+    {
+      "id": "s28",
+      "name": "Reply All",
+      "jockey": "Walt Pettibone",
+      "style": "frontRunner",
+      "stats": { "speed": 85, "stamina": 73, "kick": 65 },
+      "coat": "chestnut",
+      "silks": { "body": "Lime", "cap": "Royal" },
+      "blurb": "Cc's the entire grandstand."
+    },
+    {
+      "id": "s29",
+      "name": "Understudy",
+      "jockey": "Hana Takeda",
+      "style": "stalker",
+      "stats": { "speed": 77, "stamina": 75, "kick": 67 },
+      "coat": "black",
+      "silks": { "body": "Ash", "cap": "Purple" },
+      "blurb": "Knows the lead's lines."
+    },
+    {
+      "id": "s30",
+      "name": "Decaf By Mistake",
+      "jockey": "Rosa Kettering",
+      "style": "closer",
+      "stats": { "speed": 69, "stamina": 77, "kick": 84 },
+      "coat": "bay",
+      "silks": { "body": "Orange", "cap": "Auburn" },
+      "blurb": "Wakes up at the far turn."
+    },
+    {
+      "id": "s31",
+      "name": "Parking Lot Pigeon",
+      "jockey": "Lionel Okafor",
+      "style": "frontRunner",
+      "stats": { "speed": 76, "stamina": 61, "kick": 63 },
+      "coat": "bay",
+      "silks": { "body": "Ash", "cap": "Navy" },
+      "blurb": "First to every crumb."
+    },
+    {
+      "id": "s32",
+      "name": "Group Project",
+      "jockey": "Della Mayhew",
+      "style": "stalker",
+      "stats": { "speed": 68, "stamina": 69, "kick": 61 },
+      "coat": "dark bay or brown",
+      "silks": { "body": "Hay", "cap": "Purple" },
+      "blurb": "Made the title slide."
+    },
+    {
+      "id": "s33",
+      "name": "Extra Long Receipt",
+      "jockey": "Rafael Montalvo",
+      "style": "closer",
+      "stats": { "speed": 59, "stamina": 73, "kick": 68 },
+      "coat": "bay",
+      "silks": { "body": "Bone", "cap": "Emerald" },
+      "blurb": "Prints for a full furlong."
+    },
+    {
+      "id": "s34",
+      "name": "Unsolicited Advice",
+      "jockey": "Agnes Faulkner",
+      "style": "frontRunner",
+      "stats": { "speed": 73, "stamina": 52, "kick": 61 },
+      "coat": "bay",
+      "silks": { "body": "Emerald", "cap": "Bone" },
+      "blurb": "Chimes in right away."
+    },
+    {
+      "id": "s35",
+      "name": "Medium Everything",
+      "jockey": "Tobias Wren",
+      "style": "stalker",
+      "stats": { "speed": 65, "stamina": 65, "kick": 64 },
+      "coat": "chestnut",
+      "silks": { "body": "Royal", "cap": "Hay" },
+      "blurb": "Orders the usual. Again."
+    },
+    {
+      "id": "s36",
+      "name": "Saved It For Later",
+      "jockey": "Paloma Ibarra",
+      "style": "closer",
+      "stats": { "speed": 57, "stamina": 72, "kick": 73 },
+      "coat": "chestnut",
+      "silks": { "body": "Purple", "cap": "Hay" },
+      "blurb": "Unwraps it in the stretch."
+    },
+    {
+      "id": "s37",
+      "name": "Doorbell Ditch",
+      "jockey": "Silas Penhallow",
+      "style": "frontRunner",
+      "stats": { "speed": 76, "stamina": 51, "kick": 59 },
+      "coat": "dark bay or brown",
+      "silks": { "body": "Orange", "cap": "Bone" },
+      "blurb": "Rings once and runs."
+    },
+    {
+      "id": "s38",
+      "name": "Gravy Subpoena",
+      "jockey": "Cal Broussard",
+      "style": "stalker",
+      "stats": { "speed": 69, "stamina": 68, "kick": 72 },
+      "coat": "dark bay or brown",
+      "silks": { "body": "Bone", "cap": "Red" },
+      "blurb": "Served papers to the leader."
+    },
+    {
+      "id": "s39",
+      "name": "Mostly Legs",
+      "jockey": "Anselm Voss",
+      "style": "closer",
+      "stats": { "speed": 59, "stamina": 78, "kick": 72 },
+      "coat": "bay",
+      "silks": { "body": "Emerald", "cap": "Hay" },
+      "blurb": "The rest is mostly lungs."
+    },
+    {
+      "id": "s40",
+      "name": "Big Plans Monday",
+      "jockey": "Ingrid Solberg",
+      "style": "frontRunner",
+      "stats": { "speed": 71, "stamina": 59, "kick": 60 },
+      "coat": "black",
+      "silks": { "body": "Lime", "cap": "Maroon" },
+      "blurb": "Agenda item one: the lead."
+    }
+  ]
+}

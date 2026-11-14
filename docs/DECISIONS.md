@@ -355,3 +355,45 @@ p31 F 76 61 63, p32 S 68 69 61, p33 C 59 73 68, p34 F 73 52 61, p35 S 65 65 64, 
 Kick is the remainder, so a stalker can wobble up to 8 from a third: p08 and p11 lean to kick more than "balanced" suggests. Every front-runner is strongest in speed and every closer weakest in it.
 
 **Probe choices.** The estimate seeds are one stream with the race seed and repeats skipped, so N's seeds are a prefix of 2N's. The favorite is the horse with most crowd money, ties to the lower post. The field draw's silks rule is in the code but the probe stable has no silks, so it never ran.
+
+## Betting, B1 and B2 (stable, field draw, prices, money, the headless day)
+
+**The draw is built, not searched.** `src/bet/fieldDraw.ts` lists the stable by silks body color, colors and horses shuffled, and lays the list round a ring with a stride d: horse i goes to place i * d mod S. d is coprime with S and puts any 3 neighbors in the list (one color holds at most 3 horses) at least a field apart round the ring, so any 8 places in a row hold 8 colors. Races take the ring in order (with 40 horses, races 1 to 5), so every horse runs before any runs twice. The second starts are a shuffled greedy pick (gap of 3 races, no shared color), tried 20 times. If every try sticks, the second starts are the ring again from its start. That is always valid: its fields are runs of 8 round the ring, and a horse's two races are at least floor(S / 8) apart, 4 or more for any accepted size. So the draw cannot fail on any stable the loader accepts. At the current betting.json and ST1 values the loader accepts 36 to 54 horses: at least 12 of each style sets the floor (the draw itself needs 32), and at most 3 horses on each of the 18 silks colors sets the ceiling (the draw itself allows 64). A valid stride exists for every size from 25 to 64, so for all of them. The number of second-start tries is an argument to drawDay, default 20, so a test can force the fallback with 0. Over 10,000 day seeds, with the fixture's colors and with 13 colors of 3 plus 1, the fallback was never needed and every check held. Each style's share of each post was within 0.4 points of its share of starts.
+
+**The draw uses two kinds of sub-key.** The day's arrangement draws on `fieldDraw` with sub-key "day"; race r's posts on sub-key r. The spec says each race's field comes from the day seed and the race number. The fields still depend on nothing but the day seed and the stable.
+
+**The probe keeps its own draw.** B0's cached runs came from a greedy draw with no silks rule, so that draw moved into `scripts/betProbeSetup.ts` unchanged, with the tote steps, and the probe still reproduces its cache. The game's draw differs.
+
+**The loader adds a rule ST1 does not list.** A stable larger than races times field size (64) is rejected, since FD4 needs every horse to start. The loader also checks the starting bankroll covers the minimum bet, the bet amounts rise and include the minimum, the odds steps rise from 1-9 to 99-1, every harness band names a real step, and day.json's race names are unique and 30 characters or fewer. Each day race also passes the sim's own cross-file checks (track, surface, going, pace par).
+
+**The Triple Crown list is a constant in `src/data/bettingSchema.ts`.** It is a rule, not tuning, and it lives under `src/data/` with the other real names. Names are compared ignoring case and repeated spaces.
+
+**The race-day checks run per drawn field through the existing loader.** `checkFieldForRaceDay` builds the field as a card and a cardLook and calls `validateRaceDay` unchanged. Its messages name card.json or cardLook.json for the field. `card.json` and `cardLook.json` are untouched.
+
+**A race belongs to one day.** DrawnRace carries its day seed, programFor reads it from there, and goToPost refuses a program drawn for another day seed. An EstimateJob carries its day seed and race, and programFor refuses a finished job made for another day or race. A bare Estimate (from runEstimate or estimateOf) stays { runs, wins } because tests pin that shape, so programFor checks only its size; the screens should pass the job.
+
+**Stable checks come before the day's.** Every per-horse rule runs before day.json is checked, and day.json's races are checked with a synthetic two-horse card at the bottom of tuning.statRange, so a horse's problem is only ever reported once, against stable.json, with its name. Each horse's stats are also checked against tuning.statRange at load.
+
+**The crowd guards its own shares.** The shares sum to 1 exactly in real numbers (sum of s is 1, so (1 - flatten) + flatten = 1), so float rounding leaves the floors short of the pool by less than one dollar a horse. crowdDollars now throws if the shortfall is a dollar a horse or more, so a wrong share formula cannot be hidden by the remainder loop.
+
+**The estimate is plain data stepped in slices.** `startEstimate`, `stepEstimate(job, field, maxRuns)` and `estimateOf` keep only the seed list, a count and wins by post, so slicing cannot change the answer and the job can cross a worker boundary as JSON. For B5 I recommend a Web Worker. The Chrome p99 for one run was up to 15.5 ms, so even one run a frame can break the 16.7 ms budget (UI6). The betting code cannot read a clock, so it cannot slice by time itself.
+
+**The odds a ticket shows are the odds at post with its own money in.** `settle` prices the winner with the player's bet in the pool, so the winner's $2 price on the result is the official one. `bestPriceHit` compares winning tickets by return per dollar, cross-multiplied to stay in whole numbers.
+
+**betting.json's odds steps are `{ label, odds: [to, against] }`.** The loader checks each label matches its pair. The harness bands are in it now, at HN3's values, for B3 to use. `copy.bannedWords` holds SAFE4's eight words; the screens spec's proposed additions wait for approval.
+
+## Betting, B3 (the day harness)
+
+**One command, through the game's own code.** `npm run bet:harness -- --days 500 --from 1` (`scripts/betHarness.mjs`, `scripts/betHarnessCli.ts`) draws each day with `drawnDay`, prices with `crowdFor` and `pricesWith`, and plays the $10-a-race bankroll days through `newDay`, `goToPost` and `settle`. Nothing under `src/` changed for it. The probe scripts are untouched.
+
+**The holdout is on a harness-only stream.** `harnessHoldout` (day seed, sub-key the race) gives N distinct seeds, skipping the race seed and every one of the crowd's N estimate seeds. The random $10 bettor picks on `harnessRandomBettor`. Neither name is a game or sim stream, checked at load.
+
+**Child processes, one day per job.** Like the probe, each worker is a forked process with its own Vite loader; results are keyed by day seed and summed in day order, so the summary does not depend on the worker count. The selftest checks 1 against 3 workers, a cached rerun against a fresh one, and an in-process day against a worker's.
+
+**The cache holds sims, not prices.** Per day: each race's field, race seed, the crowd's wins, the holdout's wins and the real winner. The key covers SIM_VERSION, the stable, the day's races, the draw rules, N, the track and the tuning. Crowd values, pool, takeout, money rules and bands are left out, so changing them reruns no sim. The default folder is `$TMPDIR/betharness`, `--cache` moves it.
+
+**settle is fed a slim result.** The bankroll days call `settle` with only the seed and the winner from the cache, cast to RaceResult, because `settle` reads nothing else and storing full results (about 115 KB each) for 4,000 races is not worth it. If `settle` ever reads more of the result, this must change.
+
+**The $10 bettors bet the largest offered amount up to $10.** Under the 25 percent cap a bankroll under $40 cannot bet $10, so the bettor drops to $5 or $2 rather than passing. The day ends broke under $2 as in the game.
+
+**"Random" is the average over every horse**, as HN3 says, with every horse bet $2 and priced with its own $2 in the pool. The bands are judged on expected returns from the holdout; calibration compares the crowd's estimate with the real races, as PB5 did.

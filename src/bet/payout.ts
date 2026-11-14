@@ -33,13 +33,3 @@ export function oddsStepIndex(perDollar: number, steps: readonly OddsStep[]): nu
   }
   return found;
 }
-
-/** The spec's tote steps: 1-9 up to 10-1, then every whole number to 99-1. */
-export function toteSteps(): OddsStep[] {
-  const listed: Array<[number, number]> = [
-    [1, 9], [1, 5], [2, 5], [1, 2], [3, 5], [4, 5], [1, 1], [6, 5], [7, 5], [3, 2], [8, 5], [9, 5],
-    [2, 1], [5, 2], [3, 1], [7, 2], [4, 1], [9, 2], [5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1],
-  ];
-  for (let n = 11; n <= 99; n++) listed.push([n, 1]);
-  return listed.map(([num, den]) => ({ label: `${num}-${den}`, num, den }));
-}

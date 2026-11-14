@@ -9,9 +9,9 @@ import type { GameData } from '../src/data/schema';
 import { createStream } from '../src/sim/rng';
 import { runRace } from '../src/sim/runRace';
 import type { CrowdValues, Style } from '../src/bet/crowd';
-import { drawDay, type DrawRules } from '../src/bet/fieldDraw';
-import type { PoolRules } from '../src/bet/payout';
-import { estimateSeedsOf } from '../src/bet/streams';
+import type { DrawRules } from '../src/bet/fieldDraw';
+import type { OddsStep, PoolRules } from '../src/bet/payout';
+import { betStream, estimateSeedsOf } from '../src/bet/streams';
 
 export interface Tier { name: string; count: number; min: number; max: number }
 
@@ -120,7 +120,7 @@ export function fieldInputs(stable: readonly ProbeHorse[], byPost: readonly numb
 
 /** Day d's fields as stable indexes by post. */
 export function dayFields(stable: readonly ProbeHorse[], daySeed: number): number[][] {
-  return drawDay(stable, daySeed, DAY_RULES);
+  return probeDrawDay(stable, daySeed, DAY_RULES);
 }
 
 /**
@@ -141,4 +141,49 @@ export function measureCost(now: () => number, runs = 500, warmUp = 50): { media
   times.sort((a, b) => a - b);
   const median = (times[(runs - 1) >> 1] + times[runs >> 1]) / 2;
   return { median, p99: times[Math.ceil(runs * 0.99) - 1], worst: times[runs - 1], runs };
+}
+
+/**
+ * The draw B0 ran on (greedy, fewer starts first, uniform posts, no silks rule), kept here so
+ * the probe's cached fields stay reproducible. The game's draw is src/bet/fieldDraw.ts.
+ */
+function probeDrawDay(stable: readonly ProbeHorse[], daySeed: number, rules: DrawRules): number[][] {
+  const starts = new Array<number>(stable.length).fill(0);
+  const lastRace = new Array<number | undefined>(stable.length).fill(undefined);
+  const fields: number[][] = [];
+  for (let race = 1; race <= rules.races; race++) {
+    const rng = betStream(daySeed, 'fieldDraw', race);
+    const shuffle = (list: number[]) => {
+      for (let i = list.length - 1; i > 0; i--) {
+        const j = rng.int(0, i);
+        [list[i], list[j]] = [list[j], list[i]];
+      }
+    };
+    const eligible: number[] = [];
+    stable.forEach((_, i) => {
+      const last = lastRace[i];
+      if (starts[i] < rules.maxStartsPerDay && (last === undefined || race - last >= rules.racesBeforeRerun)) eligible.push(i);
+    });
+    shuffle(eligible);
+    eligible.sort((a, b) => starts[a] - starts[b]);
+    const picked = eligible.slice(0, rules.fieldSize);
+    if (picked.length < rules.fieldSize) throw new Error(`field draw failed: day seed ${daySeed}, race ${race}`);
+    shuffle(picked);
+    for (const i of picked) {
+      starts[i]++;
+      lastRace[i] = race;
+    }
+    fields.push(picked);
+  }
+  return fields;
+}
+
+/** The spec's tote steps as B0 used them: 1-9 up to 10-1, then every whole number to 99-1. */
+export function toteSteps(): OddsStep[] {
+  const listed: Array<[number, number]> = [
+    [1, 9], [1, 5], [2, 5], [1, 2], [3, 5], [4, 5], [1, 1], [6, 5], [7, 5], [3, 2], [8, 5], [9, 5],
+    [2, 1], [5, 2], [3, 1], [7, 2], [4, 1], [9, 2], [5, 1], [6, 1], [7, 1], [8, 1], [9, 1], [10, 1],
+  ];
+  for (let n = 11; n <= 99; n++) listed.push([n, 1]);
+  return listed.map(([num, den]) => ({ label: `${num}-${den}`, num, den }));
 }

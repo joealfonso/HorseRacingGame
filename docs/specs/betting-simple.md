@@ -178,6 +178,24 @@ The probe ran and passed its gate on the first round, with no change to the stab
 - **How bands are judged.** On expected returns, pricing each bet with a holdout estimate the crowd never saw (a second 1,000 runs per field), because realized returns over 1,000 single races have standard errors as wide as the bands. B3 uses the same method.
 - **The value bettor has no ceiling in HN3.** At +0.32 it is ten times the floor. It knows the estimate, which no player sees, so this is the ceiling of skill and not what a player will earn. B3 reports what simple stat-reading rules return, and those are the figures to watch.
 
+
+## B3 result (2026-11-14)
+
+The harness (`npm run bet:harness -- --days 500 --from 1`) ran 500 days, 4,000 races, on the written stable at the adopted crowd values. 27 of 27 checks passed, no flags.
+
+- **The four bettors, expected return per dollar (realized beside it):** every horse -0.196 (-0.185), the favorite -0.218 (-0.236), the longest price -0.428 (-0.565), the value bettor +0.310 (+0.591) betting in 40.3 percent of races.
+- **The favorite** wins 36.3 percent expected, 35.3 percent realized, at a median of 6-5. That median sits on the edge of its band (6-5 to 3-1), and the favorite is 8-5 or shorter in 80 percent of fields. The fields are top-heavy, as the probe's were.
+- **Calibration:** every group within 1 point of the real races.
+- **No blind rule wins.** The closest to zero are highest stamina -0.070, the crowd's top closer -0.072 and every closer -0.085. Every front-runner returns -0.314, so the crowd's lean toward early speed is the thing a reader can learn, and it does not beat the take on its own.
+- **What a day feels like:** betting $10 a race on the favorite from $100 ends at a median of $80 (10th percentile $38, 90th $124) and ahead on 26 percent of days. A random horse at $10 a race ends at a median of $51 (10th $25, 90th $182).
+
+Findings that are not band failures:
+
+- **A day cannot end broke.** The 25 percent cap means eight straight losses at the largest allowed bet leave $15 (100, 80, 60, 50, 40, 30, 25, 20, 15), so the bankroll never falls under $2 in an eight-race day. It happened on 0 of 500 days for both $10 bettors, and it cannot happen by arithmetic. The "Tapped out" End of day page in the screens spec is unreachable unless the cap, the day length or the minimum changes. Joseph's call: keep the cap and drop "Tapped out", or loosen the cap so a reckless day can end early.
+- **Three horses almost never win.** Unsolicited Advice won 0 of 792 starts, Doorbell Ditch 1 of 783 and Big Plans Monday 7 of 803, at 87-1 to 96-1, and a bet on them returns -0.55 to -0.71. They are the plain front-runners with stamina of 51 to 59. Raising their stamina a few points is a stat-line change that needs the probe and the harness rerun, so it is noted here and not done.
+- **Every horse runs every day** (about 1.6 starts a day each), and Paddock Gossip wins 48 percent of its starts at 4-5. A player will learn the pecking order within a few days. The stats never change in this milestone, so that is expected, and it is the first thing form, fitness or a larger stable would address later.
+- **HN1's time bound is missed.** The fresh 500-day run took 83 minutes on 10 workers, not 30, while other work loaded the machine. At 3.7 ms a run, 8 million runs cannot finish in 30 minutes on this Mac even alone (about 50). The cache makes a rerun after a crowd or price change take 2 seconds, which is the case playtester repeats. HN1 is amended below.
+
 ## Milestones
 
 Each leaves the repo green and can merge alone. B0 decides whether the rest is built.
@@ -210,7 +228,7 @@ A script with a fixture stable of 40 stat lines built from the recipe above (nam
 
 ### B1. Stable data and the field draw
 
-- **ST1.** Loading rejects, with the file and field named: duplicate id, name (ignoring case) or jockey; a name over 18 characters or a Triple Crown winner's name; a stat outside 1 to 99; an unknown style, coat or silks color; a blurb over 28 characters or not printable ASCII; a jockey over 22; more than 3 horses on one silks body color; fewer than 12 of a style; a stable too small for the draw (fewer than 8 times 3 horses, or 2 starts each cannot cover 8 races of 8). Each case has a test.
+- **ST1.** Loading rejects, with the file and field named: duplicate id, name or jockey (names and jockeys compared ignoring case and repeated spaces); a name or jockey that is not printable ASCII (so no tab, accent or invisible character can make two names look alike); a name over 18 characters or a Triple Crown winner's name; a stat outside 1 to 99; an unknown style, coat or silks color; a blurb over 28 characters or not printable ASCII; a jockey over 22; more than 3 horses on one silks body color; fewer than 12 of a style; a stable too small for the draw (fewer than 8 times 3 horses, or 2 starts each cannot cover 8 races of 8). Each case has a test. A problem with a horse is always reported against `stable.json` with the horse's name, whichever horse it is, and never against another file.
 - **ST2.** The shipped stable (from B4) passes. Until B4, the fixture does.
 - **DT1. Seeds.** A day seed is a whole number from 0 to 4294967295 (the sim's R1). `?seed=` sets the day seed with the existing rule and error. Without it the app draws one outside `src/sim/` as today. New day uses day seed + 1, wrapping.
 - **DT2. Streams.** The betting stream names (`fieldDraw`, `raceSeed`, `estimateSeeds`, `crowd`) are in one list, unique, and none equals a sim stream name. Known answers: for a fixed day seed, a test pins race 1's field (ids by post), its race seed and its first 5 estimate seeds.
@@ -220,8 +238,8 @@ A script with a fixture stable of 40 stat lines built from the recipe above (nam
 - **FD3.** No field has two horses on one silks body color.
 - **FD4.** Every stable horse starts at least once a day.
 - **FD5.** Over 10,000 day seeds the draw never fails.
-- **FD6.** Over 10,000 day seeds, each style's share of each post is within 2 points of its share of all starts.
-- **FD7.** A day's fields and race seeds depend only on the day seed and the stable: the same with different bets, and with races abandoned.
+- **FD6.** Over 10,000 day seeds, each style's share of each post is within 2 points of its share of all starts. And the post is independent of the order the field was picked in: over those seeds, the horse picked k-th for its race lands in each post within 2 points of one in eight, for every k.
+- **FD7.** A day's fields and race seeds depend only on the day seed and the stable: the same with different bets, and with races abandoned. A race, its estimate and its prices belong to one day: going to the post with a race or prices made for another day seed is refused loudly, so a leftover from the last day can never be bet on.
 
 ### B2. Prices and money
 
@@ -230,7 +248,7 @@ A script with a fixture stable of 40 stat lines built from the recipe above (nam
 - **OD3.** Crowd fixture: for a pinned day seed and a given estimate vector, the crowd dollars per horse match a committed answer. They sum exactly to the pool, each is at least $1, and remainder ties go to the lower post.
 - **OD4.** A horse with 0 wins in the estimate still gets crowd money and a price.
 - **PM1.** Examples A to E above give exactly the values in the table.
-- **PM2.** For random pools: every amount is a whole number of cents; `perDollar` is a multiple of `breakageCents` and at least the minimum; above the minimum it is at most the unrounded price and within one breakage step of it; the total paid to winning tickets never exceeds `net` unless the minimum applied.
+- **PM2.** For random pools: every amount is a whole number of cents; `perDollar` is at least the minimum, and a multiple of `breakageCents` unless the minimum applied, when it is exactly the minimum (example C); above the minimum it is at most the unrounded price and within one breakage step of it; the total paid to winning tickets never exceeds `net` unless the minimum applied.
 - **PM3.** Odds display: per-dollar 105 is "1-9", 190 "4-5", 200 "1-1", 330 "2-1", 350 "5-2", 2,760 "26-1", 10,100 and up "99-1". A value exactly on a step shows that step.
 - **BK1.** Offered amounts: bankroll $100 offers $2, $5, $10, $20. $7.40 offers $2. $2.00 offers $2. $1.90 offers nothing and the day ends.
 - **BK2.** The "pays" shown for an amount and horse equals what is credited if that horse wins, the bet's own effect on the pool included.
@@ -242,7 +260,7 @@ A script with a fixture stable of 40 stat lines built from the recipe above (nam
 
 ### B3. Day harness
 
-- **HN1.** One command runs D days from a seed range headless and prints a plain-text summary. It is not part of `npm test`. playtester runs it after any change to betting rules or data. 500 days finish within 30 minutes on Joseph's Mac (workers are the engineer's call).
+- **HN1.** One command runs D days from a seed range headless and prints a plain-text summary. It is not part of `npm test`. playtester runs it after any change to betting rules or data. A fresh 500-day run finishes within 90 minutes on Joseph's Mac, and a rerun that changes only crowd values, pool values or bands finishes within 1 minute from the per-day cache (amended 2026-11-14: the first bound, 30 minutes fresh, was measured at 83; see "B3 result").
 - **HN2.** Bettors, each $2 flat, each judged against the crowd pool plus its own bet: random (horse from a harness-only seeded stream); favorite (most crowd money, ties to the lower post); longest (least crowd money, ties to the lower post); value (best estimate times per-dollar, only when that is at least 1.15).
 - **HN3.** Bands, all in `betting.json`: return per dollar random -0.30 to -0.18, favorite -0.25 to -0.15, longest -0.50 to -0.25, value at least +0.03 with bets in at least 30 percent of races; favorite wins 28 to 40 percent; the PB4 spread and PB5 calibration checks. Returns are expected returns priced with a holdout estimate the crowd did not see (see "B0 result"), with realized returns reported beside them. "Random" is the average over every horse. The harness also reports, without a band, what simple stat-reading rules return (every closer, every front-runner, the crowd's top horse of each style, the highest stat total), and fails if any of them returns above zero: no blind rule may win.
 - **HN4.** A band outside its range prints the check and the measured value. It is a tuning flag for playtester, not a build failure.
@@ -308,7 +326,7 @@ The designer writes the screen spec from "What the screens need to show". These 
 | `pool.takeoutBasisPoints` | share | 0 to 5,000 | 1,700 |
 | `pool.breakageCents` | cents | 1, 5, 10 or 20 | 10 |
 | `pool.minPayoffPerDollarCents` | cents | 100 to 200 | 105 |
-| `crowd.noise` | share | 0 to 0.9 | 0.25 |
+| `crowd.noise` | share | 0 to 0.9 | 0.6 |
 | `crowd.styleLean` | share per style | -0.5 to 0.5 | +0.10, 0, -0.10 |
 | `crowd.flatten` | share | 0 to 0.5 | 0.025 |
 | `odds.steps` | `{ label, odds }`, rising | 1-9 first, 99-1 last | the list above |
