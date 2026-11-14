@@ -5,6 +5,7 @@ import { quote, type DayContext, type DayState, type DrawnRace, type RaceProgram
 import { offeredAmounts } from '../bet/money';
 import { bankLine, printedTicketLines, raceOfLine, ticketAmountLine, ticketPaysLine } from './betCopy';
 import { BET_ENTRY, ENTRY, INK, PAPER, SECOND_INK, bandRects, clothFor, programEntry, rightAlignedX, rule, type Entry, type PageRect, type PageText } from './page';
+import type { PointerTarget } from './pointer';
 import { SLOT_IDS } from './slotStatus';
 
 // The betting program page (docs/specs/betting-screens.md section 3, DESIGN "Program pages,
@@ -49,10 +50,11 @@ export const PROGRAM_CONFIRM_KEYS: readonly string[] = ['Enter', 'NumpadEnter', 
 export type ProgramMode = { kind: 'choosing' } | { kind: 'ticket'; dollars: number } | { kind: 'placed' };
 export interface ProgramState { focus: number; mode: ProgramMode }
 
-export type ProgramOutcome = { kind: 'pass' } | { kind: 'bet'; post: number; dollars: number } | null;
+/** `back`: Esc while choosing, back to the track with focus on Windows; no money moves (track-hub.md section 3). */
+export type ProgramOutcome = { kind: 'pass' } | { kind: 'bet'; post: number; dollars: number } | { kind: 'back' } | null;
 
-/** Focus starts on post 1 (betting-screens.md question 3). */
-export const initialProgramState = (): ProgramState => ({ focus: 0, mode: { kind: 'choosing' } });
+/** Focus starts on post 1 from Windows, or on post k when the track opened it with digit k (track-hub.md BP5 amendment). */
+export const initialProgramState = (post = 1): ProgramState => ({ focus: post - 1, mode: { kind: 'choosing' } });
 
 /** The horses as the program lists them: by post. */
 export const programHorses = (drawn: DrawnRace): Horse[] => [...drawn.input.card.horses].sort((a, b) => a.post - b.post);
@@ -94,7 +96,7 @@ export interface ProgramKeyContext {
 /**
  * One key press, already past the held-key guard (betting-screens.md section 2). Choosing:
  * Up and Down wrap through the horses and Pass, 1 to 8 jump to a post, confirm opens the
- * ticket on a horse (not while the odds are pending) or passes on Pass, Esc does nothing.
+ * ticket on a horse (not while the odds are pending) or passes on Pass, Esc goes back to the track.
  * Ticket open: Left and Right step through the offered amounts, confirm places the bet, Esc
  * closes it on the same horse. Placed: nothing.
  */
@@ -119,6 +121,7 @@ export function programKey(s: ProgramState, code: string, k: ProgramKeyContext):
     const post = Number(digit[2]);
     return post <= k.horses ? none({ focus: post - 1, mode: s.mode }) : none();
   }
+  if (code === 'Escape') return { state: s, outcome: { kind: 'back' } };
   if (!confirm) return none();
   if (s.focus === k.horses) return { state: s, outcome: { kind: 'pass' } };
   if (!k.ready || k.offered.length === 0) return none();
@@ -249,6 +252,7 @@ export function programScreen(input: ProgramInput): ProgramScreen {
     footer = [
       { text: line1, x: P.footer.x, y: y1, color: INK },
       { text: copy.program.pass, x: P.footer.labelX, y: y2, color: INK },
+      { text: copy.program.back, x: rightAlignedX(copy.program.back, P.lastX), y: y2, color: INK },
     ];
     cursor = { x: P.cursorX, y: focus === horses.length ? y2 : programEntryTop(focus) + ENTRY.cursorDy };
   }
@@ -266,4 +270,79 @@ export function programScreen(input: ProgramInput): ProgramScreen {
     slip,
     cursor,
   };
+}
+
+// ------------------------------------------------------------- the mouse (track-hub.md section 6)
+
+/** Pointer target ids: `entry:k` for post k, and the footer's actions. */
+export type ProgramTargetId = `entry:${number}` | 'pass' | 'back' | 'less' | 'more' | 'bet';
+
+/** The key each kind of target stands for (TH15): a click does what these keys do. Entry k: digit k, then Enter. */
+export const PROGRAM_POINTER_KEYS: Readonly<Record<'entry' | 'pass' | 'back' | 'less' | 'more' | 'bet', readonly string[]>> = {
+  entry: ['Digit{k}', 'Enter'], pass: ['Enter'], back: ['Escape'], less: ['ArrowLeft'], more: ['ArrowRight'], bet: ['Enter'],
+};
+
+/** Spec section 6's boxes: entry k spans x8-247, y57 + 19(k-1) to y75 + 19(k-1). */
+export const PROGRAM_TARGET_BOXES = {
+  entryTop: 57, entryBottom: 75, pass: { x0: 8, y0: 222, x1: 159, y1: 235 }, back: { x0: 160, y0: 222, x1: 247, y1: 235 },
+  /** The ticket row: "<" and ">" are each glyph's 8x8 cell plus 4 px each side; "Enter: bet" x164-247. */
+  ticket: { y0: 210, y1: 223, pad: 4 }, bet: { x0: 164, y0: 210, x1: 247, y1: 223 },
+} as const;
+
+/**
+ * What the program can be clicked on in this state. Choosing: every entry, "Pass this race"
+ * and "Esc: back". Ticket open: every other entry (the one being bet is not a target, so a
+ * double click never places a bet), "<" and ">" only with more than one amount, and
+ * "Enter: bet". The bet beat: nothing.
+ */
+export function programPointerTargets(rd: RaceDay, s: ProgramState, k: ProgramKeyContext): PointerTarget<ProgramTargetId>[] {
+  const B = PROGRAM_TARGET_BOXES;
+  if (s.mode.kind === 'placed') return [];
+  const entry = (post: number): PointerTarget<ProgramTargetId> =>
+    ({ id: `entry:${post}`, box: { x0: 8, y0: B.entryTop + PROGRAM_PAGE.entryPitch * (post - 1), x1: 247, y1: B.entryBottom + PROGRAM_PAGE.entryPitch * (post - 1) } });
+  const posts = Array.from({ length: k.horses }, (_, i) => i + 1);
+  if (s.mode.kind === 'choosing') return [...posts.map(entry), { id: 'pass', box: B.pass }, { id: 'back', box: B.back }];
+  const out = posts.filter((p) => p !== s.focus + 1).map(entry);
+  if (k.offered.length > 1) {
+    const line = ticketAmountLine(rd.copy, s.mode.dollars, s.focus + 1, false);
+    const glyph = (ch: '<' | '>'): { x0: number; y0: number; x1: number; y1: number } => {
+      const x = PROGRAM_PAGE.footer.labelX + 8 * line.indexOf(ch);
+      return { x0: x - B.ticket.pad, y0: B.ticket.y0, x1: x + 7 + B.ticket.pad, y1: B.ticket.y1 };
+    };
+    if (line.includes('<')) out.push({ id: 'less', box: glyph('<') });
+    if (line.includes('>')) out.push({ id: 'more', box: glyph('>') });
+  }
+  out.push({ id: 'bet', box: B.bet });
+  return out;
+}
+
+/**
+ * A click on target `id` (pointer.ts pointerUp's `act`), as the keys it stands for (TH12).
+ * Choosing: an entry focuses that post and presses Enter (pending: focus only, as Enter does
+ * nothing), Pass passes, "Esc: back" is Esc. Ticket open: "<" and ">" are Left and Right,
+ * "Enter: bet" is Enter, another entry is Esc then the ticket on that horse at the same
+ * amount, and the entry being bet does nothing. The bet beat: nothing.
+ */
+export function programClick(s: ProgramState, id: ProgramTargetId, k: ProgramKeyContext): { state: ProgramState; outcome: ProgramOutcome } {
+  const none = { state: s, outcome: null };
+  const entry = /^entry:(\d+)$/.exec(id);
+  const post = entry ? Number(entry[1]) : null;
+  if (s.mode.kind === 'placed') return none;
+  if (s.mode.kind === 'ticket') {
+    if (post !== null) {
+      if (post === s.focus + 1 || post < 1 || post > k.horses) return none;
+      return { state: { focus: post - 1, mode: { kind: 'ticket', dollars: s.mode.dollars } }, outcome: null };
+    }
+    if (id === 'less') return programKey(s, 'ArrowLeft', k);
+    if (id === 'more') return programKey(s, 'ArrowRight', k);
+    if (id === 'bet') return programKey(s, 'Enter', k);
+    return none;
+  }
+  if (post !== null) {
+    if (post < 1 || post > k.horses) return none;
+    return programKey({ focus: post - 1, mode: s.mode }, 'Enter', k);
+  }
+  if (id === 'pass') return programKey({ focus: k.horses, mode: s.mode }, 'Enter', k);
+  if (id === 'back') return programKey(s, 'Escape', k);
+  return none;
 }

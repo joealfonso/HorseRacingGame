@@ -437,3 +437,27 @@ Kick is the remainder, so a stalker can wobble up to 8 from a third: p08 and p11
 **One estimate worker per day, errors per race.** A request for a new day seed ends the old worker and starts a fresh one, so the new day's race 1 never waits behind the old day's work and no old error carries over. Replies are kept by day and race, and replies for anything not asked for that day are ignored. A scene fails only on its own race's error. An uncaught worker error fails every race still waiting and ends that worker.
 
 **The wire message has its own priority, above your horse's.** It lands at the same moment as "home in 1st", and a luck event just before the wire could keep it waiting long enough to be dropped. With `PRIORITY.ticket` it shows as soon as the current message ends. `messageSchedule` also never drops a ticket message for waiting, so BR3 holds however `hud.messageSeconds` and `hud.messageMaxWaitSeconds` are tuned.
+
+## The track between races (docs/specs/track-hub.md)
+
+**The hub data is its own file, `src/data/hub.json`, not a `hub` section of raceDay.json.** The spec put it in raceDay.json, but that file was being edited by another session when the track was built, and the track's targets, board layout, idles, sky table and copy are one screen's, as betting.json is the betting rules'. `src/data/hubLoad.ts` checks it at load (TH1's boxes, every voice line at 28, three lines a lookable, the banned words from betting.json plus "cash" and "buy", every odds label against the board's price width, `{r}` at the day's race count). The status bar and the pending line reuse `program.race`, `program.bank` and `program.pending` from raceDay.json.
+
+**The mouse is bound in one scene helper, `src/scenes/pointerInput.ts` (TH15).** It listens to the canvas's own DOM pointer events, not Phaser's input queue, so each event is handled once, and it reads the canvas box and the zoom at every event, so a resize is always current. The rules (grid mapping, hit test, the click state machine) are pure in `src/render/pointer.ts`. The track takes hover; the program and result pages take clicks only, since the spec gives no hover rule for them. IN1's "no pointer API in any scene" check is replaced by "only in the helper", on Joseph's ask for clicking around.
+
+**During the rail's wait, a click on another target cancels it (coordinator's ruling, now in TH7).** A mouse-only player who misclicked the rail had no way back: Esc cancels for keys, a click anywhere but the rail cancels for the mouse, moves focus there and does nothing else. Hover and other keys still do nothing during the wait.
+
+**`cursorFrames` goes into the track's draw function.** The other scenes show frame 0 when the horseshoe art has one frame. The track's focus corners bob on the cursor's frame, so `hubScreen` takes the loaded frame count and returns the frame for both, keeping them in step.
+
+**Looks travel in `BetDay`, replaced, never changed in place.** The counts live with the day (reset by `nextDay`) and pass Track, Program, Race, Result, Track in scene data. The track hands on a copy with its counts; nothing is global or stored.
+
+**The rail and Pass share `passDay` and `betRaceData` (`src/scenes/betDay.ts`).** Pass on the program and the rail at the track are the same act, so both go through one path to the race. The rail waits for the prices instead of going through pending, because the spec wants the race to start the frame they post.
+
+**Pass on a pending program does not wait (coordinator's ruling, spec states table amended).** The spec said Pass waits like the rail. It keeps the committed B5 behavior instead: Pass cuts to the race at once, and the race settles once the prices post. The rail waits because it is chosen on a screen that shows the board; Pass is chosen on the page, where the cut is the approved feedback.
+
+**The race view's sky follows `skyByRace` in the betting loop.** One table, in hub.json, so race r's sky matches the track before it. The Card loop keeps the day sky. The hills still cover y40 down in the race view, so races 7 and 8 show the change in y16-39.
+
+**The track's placements are code, the mock's, checked pixel for pixel.** The parts, tiles and people's positions are in `src/render/hubPicture.ts` as layout, like `PROGRAM_PAGE`. `src/render/hubComposite.test.ts` draws the track headless from the pure modules and the shipped PNGs and compares it with `docs/mocks/track-hub/a-windows.png`, pixel for pixel. The clerks' skins and the fans' skin and jackets use the exact palette swap (`Art.swap`), so no slot is marked recolor.
+
+**The aria-live region is new.** No scene had one. `src/scenes/ariaLive.ts` keeps one visually hidden polite region; the track writes its `aria` text there on every change. The other screens do not use it yet.
+
+**Mouse presses are ignored for 0.5 s after a screen arrives (coordinator's ruling, spec section 6).** The result's "Next race" and the program's "Esc: back" sit over the track's "Just watch" row, and the track's Windows over program entries 3 to 7, so the second half of a double click acted on the next screen. `pointer.arrivalGuardSeconds` in raceDay.json (a starting guess), read by every screen that takes the mouse, is counted down in the helper on the scene's update delta. A press during it is no press, and its release does nothing. Hover still moves focus. It is the mouse's twin of IN2's held-key rule.

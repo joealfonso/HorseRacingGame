@@ -9,6 +9,10 @@ import slotsJson from '../data/slots.json';
 import cardLookJson from '../data/cardLook.json';
 import paletteJson from '../data/palette.json';
 import raceDayJson from '../data/raceDay.json';
+import { loadHub } from '../data/hubLoad';
+import { HUB_CONFIRM_KEYS, HUB_POINTER_KEYS, hubPointerTargets } from './hubScreen';
+import { PROGRAM_CONFIRM_KEYS, PROGRAM_POINTER_KEYS } from './programScreen';
+import { RESULT_CONFIRM_KEYS, RESULT_POINTER_KEYS } from './resultScreen';
 import {
   PLACEHOLDER_TAG_AT, SLOT_IDS, neededSlotIds, sheetSize, shipProblems, showPlaceholderTag, slotState, standIns, type SheetSize, type SlotState,
 } from './slotStatus';
@@ -355,14 +359,75 @@ describe('P0-3: the release build is gated by the ship check', () => {
   });
 });
 
-describe('IN1: every action has a keyboard binding; no handler needs a pointer', () => {
-  const files = readdirSync(join(ROOT, 'src/scenes')).filter((f) => f.endsWith('.ts')).map((f) => join(ROOT, 'src/scenes', f)).concat(join(ROOT, 'src/main.ts'));
+describe('IN1 and TH15: every action has a keyboard binding; the mouse is bound in one helper', () => {
+  // The game's scene files and the entry point; tests under src/scenes/ drive the helper with fake pointer events.
+  const files = readdirSync(join(ROOT, 'src/scenes')).filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts')).map((f) => join(ROOT, 'src/scenes', f)).concat(join(ROOT, 'src/main.ts'));
+  const POINTER_API = /pointer(down|up|move|over|out|cancel)|setInteractive|input\.(mouse|touch|gamepad)|\.on\(\s*['"]click|\.on\(\s*['"]touch|mousedown|mouseup/i;
+  const HELPER = join(ROOT, 'src/scenes/pointerInput.ts');
 
-  it('IN1: no scene or the entry point uses a pointer, mouse, touch or gamepad API', () => {
+  // Replaced on purpose with the track (docs/specs/track-hub.md section 3 and TH15). This said
+  // "no scene or the entry point uses a pointer, mouse, touch or gamepad API": M1 was keyboard
+  // only. Joseph asked for the mouse, 2026-11-13: "have an 8 bit layout where you can navigate
+  // by using a menu or clicking around", and the brief says "keyboard and mouse". So pointer
+  // APIs are now allowed in one scene helper and nowhere else; every other scene and the entry
+  // point still has none. IN1's other half, every action has a key, is kept below.
+  it('TH15: pointer APIs appear only in the one helper, src/scenes/pointerInput.ts', () => {
+    expect(readFileSync(HELPER, 'utf8')).toMatch(POINTER_API);
     for (const f of files) {
-      const src = readFileSync(f, 'utf8');
-      expect(src, f).not.toMatch(/pointer(down|up|move|over|out)|setInteractive|input\.(mouse|touch|gamepad)|\.on\(\s*['"]click|\.on\(\s*['"]touch|mousedown|mouseup/i);
+      if (f === HELPER) continue;
+      expect(readFileSync(f, 'utf8'), f).not.toMatch(POINTER_API);
     }
+  });
+
+  it('TH15: the screens that take the mouse do it through the helper; the race and the Card loop take none', () => {
+    const scene = (f: string) => readFileSync(join(ROOT, 'src/scenes', f), 'utf8');
+    for (const f of ['HubScene.ts', 'ProgramScene.ts', 'ResultScene.ts']) {
+      expect(scene(f), f).toContain('new PointerInput');
+      // The arrival guard (section 6): every screen hands the helper the guard from data.
+      expect(scene(f), f).toMatch(/new PointerInput\([\s\S]*?pointer\.arrivalGuardSeconds\.value\);/);
+    }
+    for (const f of ['RaceScene.ts', 'CardScene.ts', 'OrdersScene.ts']) expect(scene(f), f).not.toContain('PointerInput');
+  });
+
+  // Every pointer target on every screen and the keys it stands for. A click on it does what
+  // these keys do (checked behavior by behavior in hubScreen, programPointer and resultScreen's
+  // tests); here, the list is the screens' own tables, and every key is one that screen binds.
+  const TARGETS: [screen: string, target: string, kind: string, keys: string[]][] = [
+    ['track', 'windows', 'door', ['Enter']],
+    ['track', 'rail', 'door', ['Enter']],
+    ['track', '"Bet Race r" row', 'doorRow', ['Enter']],
+    ['track', '"Just watch Race r" row', 'doorRow', ['Enter']],
+    ['track', 'regular', 'lookable', ['Enter']],
+    ['track', 'board', 'lookable', ['Enter']],
+    ['track', 'fans', 'lookable', ['Enter']],
+    ['track', 'bugler', 'lookable', ['Enter']],
+    ['track', 'snackCart', 'lookable', ['Enter']],
+    ['program', 'entry k', 'entry', ['Digit{k}', 'Enter']],
+    ['program', '"Pass this race"', 'pass', ['Enter']],
+    ['program', '"Esc: back"', 'back', ['Escape']],
+    ['program', '"<"', 'less', ['ArrowLeft']],
+    ['program', '">"', 'more', ['ArrowRight']],
+    ['program', '"Enter: bet"', 'bet', ['Enter']],
+    ['result', 'the action line', 'next', ['Enter']],
+  ];
+  const tables: Record<string, Readonly<Record<string, readonly string[]>>> = { track: HUB_POINTER_KEYS, program: PROGRAM_POINTER_KEYS, result: RESULT_POINTER_KEYS };
+  const bound: Record<string, readonly string[]> = {
+    track: [...HUB_CONFIRM_KEYS],
+    program: [...PROGRAM_CONFIRM_KEYS, 'Escape', 'ArrowLeft', 'ArrowRight', ...Array.from({ length: 8 }, (_, i) => `Digit${i + 1}`)],
+    result: [...RESULT_CONFIRM_KEYS],
+  };
+
+  it.each(TARGETS)('TH15: %s, %s maps to keys the screen binds', (screen, _target, kind, keys) => {
+    expect(tables[screen][kind]).toEqual(keys);
+    for (const k of keys) expect(bound[screen], k).toContain(k.replace('{k}', '1'));
+  });
+
+  it('TH15: the list covers every kind each screen\'s table names, and every track target in hub.json', () => {
+    for (const [screen, table] of Object.entries(tables)) {
+      for (const kind of Object.keys(table)) expect(TARGETS.some((t) => t[0] === screen && t[2] === kind), `${screen} ${kind}`).toBe(true);
+    }
+    const listed = new Set(TARGETS.filter((t) => t[0] === 'track').map((t) => t[1]));
+    for (const t of hubPointerTargets(loadHub())) expect(listed.has(t.id), t.id).toBe(true);
   });
 
   // Updated on purpose with step 5: this said keys 1 to 8 pick a horse at the gate, in the race
@@ -370,8 +435,12 @@ describe('IN1: every action has a keyboard binding; no handler needs a pointer',
   // post. IN1 still holds: every action on every screen has a keyboard binding and no handler
   // needs a pointer. The race scene keeps Enter (skip) and the pause keys, the Card and Orders
   // scenes bind keys through MenuKeys, and no scene binds a pointer event.
+  // Extended with the track: the track and the program bind their keys through MenuKeys too, and
+  // no scene binds a pointer event of its own (the helper is the only place, checked above).
   it('IN1: every action on every screen is bound to keys, and no handler needs a pointer', () => {
     const scene = (f: string) => readFileSync(join(ROOT, 'src/scenes', f), 'utf8');
+    expect(scene('HubScene.ts')).toContain('new MenuKeys');
+    expect(scene('ProgramScene.ts')).toContain('new MenuKeys');
     expect(scene('RaceScene.ts')).toMatch(/keydown/);
     expect(scene('RaceScene.ts')).toMatch(/'Enter'/);
     expect(scene('RaceScene.ts')).not.toMatch(/Digit/); // the pick is no longer made at the gate
@@ -379,7 +448,7 @@ describe('IN1: every action has a keyboard binding; no handler needs a pointer',
     expect(scene('CardScene.ts')).toContain('new MenuKeys');
     expect(scene('OrdersScene.ts')).toContain('new MenuKeys');
     expect(scene('ResultScene.ts')).toMatch(/keydown/);
-    for (const f of ['RaceScene.ts', 'CardScene.ts', 'OrdersScene.ts', 'ResultScene.ts', 'menuKeys.ts']) {
+    for (const f of ['RaceScene.ts', 'CardScene.ts', 'OrdersScene.ts', 'ResultScene.ts', 'menuKeys.ts', 'HubScene.ts', 'ProgramScene.ts']) {
       expect(scene(f), f).not.toMatch(/pointerdown|pointerup|pointermove|setInteractive|\.on\('pointer|gameobjectdown/);
     }
   });

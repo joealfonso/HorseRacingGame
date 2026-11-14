@@ -264,6 +264,10 @@ export const raceDaySchema = z.strictObject({
     repeatDelayMs: marked(positive),
     repeatEveryMs: marked(positive),
   }),
+  // Track spec section 6: presses are ignored this long after a screen arrives (the mouse's IN2).
+  pointer: z.strictObject({
+    arrivalGuardSeconds: marked(z.number().min(0)),
+  }),
   // The Orders screen's paddock strip (spec 4.2): the 16x16 tile slot on each of its three
   // 16 px rows, top first, and whether odd tiles flip (the rail's posts pair every 32 px);
   // where the trainer and your horse stand; and the trainer's coffee idle (DESIGN Charm).
@@ -414,6 +418,8 @@ export const raceDaySchema = z.strictObject({
       pass: text,
       passLine: text,
       pending: text,
+      // "Esc: back" at the foot while choosing, right-aligned to x247 (docs/specs/track-hub.md section 3).
+      back: text,
       heads: z.strictObject({ speed: text, stamina: text, kick: text, odds: text }),
       // The short bias phrases on header line 4 (section 3).
       bias: z.strictObject({ fair: text, inside: text, outside: text, speed: text, closers: text }),

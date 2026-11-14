@@ -269,3 +269,12 @@ export function betResultScreen(result: RaceResult, rd: RaceDay, bet: BetResultI
 
 /** The keys that choose Next race (spec 4.6). */
 export const RESULT_CONFIRM_KEYS: readonly string[] = ['Enter', 'NumpadEnter', 'Space', 'KeyZ'];
+
+/**
+ * The mouse (track-hub.md section 6): the action line, x8-247 on the row band of "Next race"
+ * or "End of day", is the one target, and a click on it is Enter. Guess: the band is y216-231,
+ * the action's 8 px row with 4 px each side, the same size as End of day's "New day" box.
+ */
+export const RESULT_ACTION_BOX = { x0: 8, y0: RESULT_NEXT.y - 4, x1: 247, y1: RESULT_NEXT.y + 11 } as const;
+export const RESULT_POINTER_KEYS: Readonly<Record<'next', readonly string[]>> = { next: ['Enter'] };
+export const resultPointerTargets = (): { id: 'next'; box: typeof RESULT_ACTION_BOX }[] => [{ id: 'next', box: RESULT_ACTION_BOX }];

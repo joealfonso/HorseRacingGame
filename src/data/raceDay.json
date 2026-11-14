@@ -47,6 +47,9 @@
     "repeatDelayMs": { "value": 400, "status": "starting guess", "note": "Spec 5: a held arrow on the card or Orders repeats after this long." },
     "repeatEveryMs": { "value": 120, "status": "starting guess", "note": "Spec 5: and then this often." }
   },
+  "pointer": {
+    "arrivalGuardSeconds": { "value": 0.5, "status": "starting guess", "note": "Track spec section 6: for this long after a screen arrives, mouse presses are ignored, so the second half of a double click cannot act on the next screen. Hover still moves focus." }
+  },
   "program": {
     "entryBand": {
       "value": { "x0": 16, "x1": 250, "rows": 19, "leftSteps": [3, 2, 1, 0], "rightSteps": [0, 1, 2, 3] },
@@ -217,6 +220,7 @@
       "pass": "Pass this race",
       "passLine": "Sit this one out and watch.",
       "pending": "The crowd is still betting.",
+      "back": "Esc: back",
       "heads": { "speed": "Speed", "stamina": "Stam.", "kick": "Kick", "odds": "Odds" },
       "bias": { "fair": "playing fair", "inside": "rail is good", "outside": "outside good", "speed": "speed holding", "closers": "closers' day" }
     },

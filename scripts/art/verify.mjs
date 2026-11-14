@@ -63,6 +63,24 @@ const EXPECTED = [
   ['art.paddock.trainer', 16, 24, 2, 'sprite', false],
   ['art.paddock.ground', 16, 16, 1, 'tile', false],
   ['art.paddock.rail', 16, 16, 1, 'tile', false],
+  // The track (between races). 'person': up to 4 opaque colors a frame (DESIGN.md, People).
+  // 'still': parts of the still picture; the 8-colors-per-screen-cell rule is checked on the
+  // composed screen by scripts/art/hub_mock.mjs, since it depends on placement.
+  ['art.hub.stand.upper', 112, 72, 1, 'still', false],
+  ['art.hub.stand.facade', 112, 80, 1, 'still', false],
+  ['art.hub.sign.plate', 64, 12, 1, 'still', false],
+  ['art.hub.tote.board', 128, 56, 1, 'still', false],
+  ['art.hub.paddock.gate', 48, 36, 1, 'still', false],
+  ['art.hub.cart', 32, 24, 1, 'still', false],
+  ['art.hub.apron', 16, 16, 1, 'still', false],
+  ['art.hub.rail.program', 8, 7, 1, 'sprite', false],
+  ['art.ui.focus.corner', 8, 8, 2, 'sprite', false],
+  ['art.hub.regular', 16, 24, 2, 'person', false],
+  ['art.hub.clerk', 16, 24, 2, 'person', false],
+  ['art.hub.bettor.back', 16, 24, 1, 'person', false],
+  ['art.hub.fan.back', 16, 24, 2, 'person', false],
+  ['art.hub.bugler', 16, 24, 3, 'person', false],
+  ['art.hub.vendor', 16, 24, 2, 'person', false],
 ];
 // The 3x3 frame box sheet is 24x24, not a strip; its tiles are checked as one tile each.
 const SHEET_OVERRIDE = { 'art.ui.frame.box': [24, 24] };
@@ -129,6 +147,8 @@ for (const [slot, fw, fh, n, budget, recolor] of EXPECTED) {
     }
     const total = set.size + (transparent ? 1 : 0);
     if (budget === 'sprite' && set.size > 3) fail(`${slot} frame at x${cx}: ${set.size} opaque colors (${[...set]})`);
+    if (budget === 'person' && (set.size > 4 || !set.has('Ink'))) fail(`${slot} frame at x${cx}: ${set.size} opaque colors (${[...set]})`);
+    if (budget === 'still' && set.size > 8 && cw <= 16 && ch <= 16) fail(`${slot}: ${set.size} colors in a 16x16 part`);
     if (budget === 'tile' && total > 4) fail(`${slot} cell at ${cx},${cy}: ${total} colors with transparent`);
     if (budget === 'font' && (set.size !== 1 || !set.has('Bone'))) fail(`${slot}: font colors ${[...set]}`);
     if (recolor) for (const c of set) if (!KEYS.includes(c)) fail(`${slot}: ${c} is not a key color`);

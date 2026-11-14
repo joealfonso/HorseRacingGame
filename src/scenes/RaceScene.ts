@@ -5,6 +5,7 @@ import { rgbOf } from '../render/colors';
 import { simErrorLines } from '../render/format';
 import { goToPost, settle, type DayState, type DrawnRace } from '../bet/day';
 import { hudBetLine } from '../render/betCopy';
+import { skyFor } from '../render/hubScreen';
 import { bettorView, makeRaceSetup, playerView, raceFrame, watchingView, type PlayerView, type RaceFrame, type RaceSetup } from '../render/raceFrame';
 import { raceInput } from '../render/raceInput';
 import type { RaceTicket, Session } from '../render/session';
@@ -284,8 +285,10 @@ export class RaceScene extends Phaser.Scene {
     const band = (name: string, y0: number, y1: number) => { g.fillStyle(this.color(name)); g.fillRect(0, y0, 256, y1 - y0 + 1); };
     band('Navy', 0, 14);
     band('Ash', 15, 15);
-    band('Sky', 16, 39);
-    band('Sky Pale', 40, 63);
+    // Betting: the sky by race, the track's table (DESIGN), so the day never jumps between screens.
+    const bet = this.data0.bet;
+    if (bet) for (const s of skyFor(bet.day.hub, bet.drawn.race)) band(s.color, s.y, s.y + s.h - 1);
+    else { band('Sky', 16, 39); band('Sky Pale', 40, 63); }
     band('Grass', 64, 91);
     band('Grass', 152, 159);
 

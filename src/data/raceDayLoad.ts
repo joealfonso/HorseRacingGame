@@ -315,6 +315,8 @@ export const PROGRAM_HEAD_CHARS = { speed: 7, stamina: 7, kick: 7, odds: 4 } as 
 export const PROGRAM_CURSOR_LINE_CHARS = 28;
 // The printed tote ticket's lines, from x16 inside the Ink border at x247.
 export const PRINTED_TICKET_CHARS = 28;
+// "Esc: back" on footer line 2 while choosing, right-aligned to x247 in x176-247 (track-hub.md section 3).
+export const PROGRAM_BACK_CHARS = 9;
 // The result's action after the cursor, x20-99, beside the bank right-aligned to x247.
 export const RESULT_ACTION_CHARS = 10;
 
@@ -331,6 +333,7 @@ function checkBettingCopyWidths(copy: RaceDay['copy'], check: Check, add: (file:
   check('copy.program.pass', p.pass, [], PROGRAM_CURSOR_LINE_CHARS);
   check('copy.program.passLine', p.passLine, [], PROGRAM_LINE_CHARS);
   check('copy.program.pending', p.pending, [], PROGRAM_LINE_CHARS);
+  check('copy.program.back', p.back, [], PROGRAM_BACK_CHARS);
   for (const k of ['speed', 'stamina', 'kick', 'odds'] as const) check(`copy.program.heads.${k}`, p.heads[k], [], PROGRAM_HEAD_CHARS[k]);
   for (const k of ['fair', 'inside', 'outside', 'speed', 'closers'] as const) check(`copy.program.bias.${k}`, p.bias[k], [], PROGRAM_LINE_CHARS);
 

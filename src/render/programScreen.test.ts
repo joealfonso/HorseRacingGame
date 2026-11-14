@@ -288,10 +288,13 @@ describe('BP5 focus order, wrap, digit jumps, initial focus', () => {
     expect(onPass.footer.find((t) => t.y === 214)!.text).toBe('Sit this one out and watch.');
   });
 
-  it('Esc does nothing while choosing', () => {
+  // Changed on purpose with the track (docs/specs/track-hub.md section 3, amendment 3): this
+  // said "Esc does nothing while choosing". Esc now returns to the track; the state is
+  // unchanged and no money moves, which the outcome carries to the scene.
+  it('Esc while choosing goes back to the track and changes nothing on the page', () => {
     const r = programKey({ focus: 3, mode: { kind: 'choosing' } }, 'Escape', keyCtx());
     expect(r.state).toEqual({ focus: 3, mode: { kind: 'choosing' } });
-    expect(r.outcome).toBeNull();
+    expect(r.outcome).toEqual({ kind: 'back' });
   });
 });
 

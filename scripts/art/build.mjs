@@ -11,7 +11,8 @@ import * as horse from './horse.mjs';
 import * as mid from './mid.mjs';
 import * as photo from './photo.mjs';
 import * as paddock from './paddock.mjs';
+import * as hub from './hub.mjs';
 
-const written = [fontMain, fontSmall, ui, track, mid, photo, horse, paddock].flatMap((m) => m.build());
+const written = [fontMain, fontSmall, ui, track, mid, photo, horse, paddock, hub].flatMap((m) => m.build());
 for (const p of written) console.log(relative(REPO, p));
 console.log(`${written.length} files`);

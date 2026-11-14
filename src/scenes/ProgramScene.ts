@@ -7,14 +7,16 @@ import { rgbOf } from '../render/colors';
 import { PAPER_CURSOR_SWAPS } from '../render/page';
 import { cursorFrame } from '../render/pause';
 import {
-  PROGRAM_SLOT_IDS, initialProgramState, lastBetDollars, programHorses, programKey, programScreen, type ProgramState,
+  PROGRAM_SLOT_IDS, initialProgramState, lastBetDollars, programClick, programHorses, programKey, programPointerTargets, programScreen,
+  type ProgramKeyContext, type ProgramOutcome, type ProgramState,
 } from '../render/programScreen';
 import { PLACEHOLDER_TAG_AT, SLOT_IDS, showPlaceholderTag, standIns } from '../render/slotStatus';
 import { Art, type ArtInfo } from './art';
-import { betErrorLines, nextDay, programIfReady, raceDayFor, type BetDay } from './betDay';
+import { betErrorLines, betRaceData, nextDay, passDay, programIfReady, raceDayFor, type BetDay } from './betDay';
+import type { HubData } from './HubScene';
 import { MenuKeys } from './menuKeys';
 import { PagePainter } from './paper';
-import type { RaceData } from './RaceScene';
+import { PointerInput } from './pointerInput';
 
 // The betting program page (docs/specs/betting-screens.md section 3): read the field and
 // its prices, open the ticket at the foot of the page, change the amount, place the bet or
@@ -29,6 +31,8 @@ export interface ProgramData {
   art: ArtInfo;
   /** Keys still down from the screen before, ignored until released (IN2). */
   held?: string[];
+  /** The post focus starts on: 1 from Windows, k from digit k at the track. */
+  post?: number;
 }
 
 export class ProgramScene extends Phaser.Scene {
@@ -59,13 +63,13 @@ export class ProgramScene extends Phaser.Scene {
     this.swipeSeconds = 0;
     this.punchSeconds = 0;
     this.leaving = false;
-    this.state = initialProgramState();
+    this.state = initialProgramState(data.post);
     this.art = new Art(this, data.art);
-    // Interim until the End of day page: a day that has ended starts the next one (section 6).
+    // Interim until the End of day page: a day that has ended starts the next one at the track (section 6).
     if (data.day.ended !== null) {
       this.leaving = true;
       const next = nextDay(data.bet, data.day);
-      this.scene.start('program', { ...next, art: data.art, held: data.held } satisfies ProgramData);
+      this.scene.start('hub', { ...next, art: data.art, held: data.held } satisfies HubData);
       return;
     }
     this.day = data.day;
@@ -88,6 +92,10 @@ export class ProgramScene extends Phaser.Scene {
 
     const m = this.rd.raceDay.menus;
     this.keys = new MenuKeys(this, data.held ?? [], { delaySeconds: m.repeatDelayMs.value / 1000, everySeconds: m.repeatEveryMs.value / 1000 }, (code) => this.act(code));
+    // The mouse (track-hub.md section 6): clicks only, no hover focus on the page.
+    new PointerInput(this, () => programPointerTargets(this.rd.raceDay, this.state, this.keyContext()), {
+      click: (id) => { if (!this.leaving) this.apply(programClick(this.state, id, this.keyContext())); },
+    }, this.rd.raceDay.pointer.arrivalGuardSeconds.value);
   }
 
   update(_time: number, delta: number): void {
@@ -142,15 +150,24 @@ export class ProgramScene extends Phaser.Scene {
     if (s.cursor) this.cursor.setPosition(s.cursor.x, s.cursor.y);
   }
 
-  private act(code: string): void {
-    if (this.leaving) return;
-    const r = programKey(this.state, code, {
+  private keyContext(): ProgramKeyContext {
+    return {
       horses: programHorses(this.drawn).length,
       ready: this.program !== null,
       offered: offeredAmounts(this.day.bankrollCents, this.data0.bet.ctx.rules),
       lastDollars: lastBetDollars(this.day),
-    });
+    };
+  }
+
+  private act(code: string): void {
+    if (this.leaving) return;
+    this.apply(programKey(this.state, code, this.keyContext()));
+  }
+
+  /** A key's or a click's result: the same handling for both (TH12). */
+  private apply(r: { state: ProgramState; outcome: ProgramOutcome }): void {
     const before = this.state;
+    if (r.outcome?.kind === 'back') return this.back();
     if (r.outcome?.kind === 'pass') return this.pass();
     if (r.outcome?.kind === 'bet') return this.placeBet({ post: r.outcome.post, dollars: r.outcome.dollars });
     if (r.state.focus === before.focus && JSON.stringify(r.state.mode) === JSON.stringify(before.mode)) return;
@@ -179,30 +196,26 @@ export class ProgramScene extends Phaser.Scene {
    * result's $2 price needs the crowd's money (a pass stakes nothing, so nothing changes).
    */
   private pass(): void {
-    let day = this.day;
-    if (this.program !== null) {
-      try {
-        day = goToPost(this.data0.bet.ctx, day, this.program, null);
-      } catch (err) {
-        return this.fail(err);
-      }
+    let day: DayState;
+    try {
+      day = passDay(this.data0.bet, this.day, this.drawn);
+    } catch (err) {
+      return this.fail(err);
     }
     this.toRace(day);
+  }
+
+  /** Esc while choosing: back to the track, focus on Windows. Nothing was staked, so no money moves. */
+  private back(): void {
+    if (this.leaving) return;
+    this.leaving = true;
+    this.scene.start('hub', { bet: this.data0.bet, day: this.day, art: this.data0.art, held: this.keys.down() } satisfies HubData);
   }
 
   private toRace(day: DayState): void {
     if (this.leaving) return;
     this.leaving = true;
-    const ticket = day.open?.ticket ?? null;
-    const data: RaceData = {
-      game: this.drawn.input,
-      rd: this.rd,
-      art: this.data0.art,
-      ticket: { raceNumber: this.drawn.race - 1, seed: this.drawn.raceSeed, post: ticket?.post ?? 0, orders: { early: 'default', move: 'default', path: 'default' } },
-      held: this.keys.down(),
-      bet: { day: this.data0.bet, state: day, drawn: this.drawn },
-    };
-    this.scene.start('race', data);
+    this.scene.start('race', betRaceData(this.data0.bet, day, this.drawn, this.data0.art, this.keys.down()));
   }
 
   private fail(err: unknown): void {

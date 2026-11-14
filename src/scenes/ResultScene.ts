@@ -5,7 +5,7 @@ import { rgbOf } from '../render/colors';
 import { heldKeys, keyDown, keyState, keyUp, type KeyState } from '../render/keys';
 import { PAPER_CURSOR_SWAPS, PAPER_MARKER_SWAPS } from '../render/page';
 import { cursorFrame } from '../render/pause';
-import { RESULT_CONFIRM_KEYS, betResultScreen, resultScreen, type ResultScreen } from '../render/resultScreen';
+import { RESULT_CONFIRM_KEYS, betResultScreen, resultPointerTargets, resultScreen, type ResultScreen } from '../render/resultScreen';
 import type { DayState } from '../bet/day';
 import type { Session } from '../render/session';
 import { SLOT_IDS } from '../render/slotStatus';
@@ -14,8 +14,9 @@ import { Art, type ArtInfo } from './art';
 import { firstSight } from './keyEvents';
 import { nextDay, type BetDay } from './betDay';
 import type { CardData } from './CardScene';
-import type { ProgramData } from './ProgramScene';
+import type { HubData } from './HubScene';
 import { PagePainter } from './paper';
+import { PointerInput } from './pointerInput';
 
 // The result screen (spec 4.6): the order of finish, your trip, the time, splits and seed,
 // and one action, Next race. Its own scene, opened by the race scene when the winner beat
@@ -73,6 +74,8 @@ export class ResultScene extends Phaser.Scene {
     for (const t of screen.texts) art.text(t.x, t.y, t.text, t.color, t.small ? SLOT_IDS.fontSmall : SLOT_IDS.fontMain).setDepth(2);
     this.cursor = this.add.image(screen.cursor.x, screen.cursor.y, art.swap(SLOT_IDS.cursor, PAPER_CURSOR_SWAPS), '0').setOrigin(0, 0).setDepth(2);
     this.bindKeys();
+    // The mouse (track-hub.md section 6): a click on the action line is Enter.
+    new PointerInput(this, resultPointerTargets, { click: () => this.next() }, rd.pointer.arrivalGuardSeconds.value);
   }
 
   /** The chart for a settled betting race, from its record (src/bet/day.ts). */
@@ -119,9 +122,10 @@ export class ResultScene extends Phaser.Scene {
 
   /**
    * Next race: back to the card with your horse focused. The session is already on the next race.
-   * Betting: the next race's program; after the day's last race, or with the bank under the
-   * minimum bet, End of day. Interim until the End of day page (betting-screens.md section 6):
-   * End of day starts the next day seed with the starting bankroll on the race 1 program.
+   * Betting: the track before the next race (track-hub.md section 2); after the day's last
+   * race, or with the bank under the minimum bet, End of day. Interim until the End of day page
+   * (betting-screens.md section 6): End of day starts the next day seed with the starting
+   * bankroll at the track, race 1.
    */
   private next(): void {
     if (this.leaving) return;
@@ -129,8 +133,8 @@ export class ResultScene extends Phaser.Scene {
     const bet = this.data0.bet;
     if (bet) {
       const next = bet.state.ended !== null ? nextDay(bet.day, bet.state) : { bet: bet.day, day: bet.state };
-      const data: ProgramData = { ...next, art: this.data0.art, held: heldKeys(this.keys) };
-      this.scene.start('program', data);
+      const data: HubData = { ...next, art: this.data0.art, held: heldKeys(this.keys) };
+      this.scene.start('hub', data);
       return;
     }
     const { game, rd, art, session } = this.data0;
