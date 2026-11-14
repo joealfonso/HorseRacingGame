@@ -59,9 +59,9 @@ For each horse, in post order, with values from `betting.json`:
 
 1. `p` = the estimate, floored at `0.5 / N` so a horse that never won in the runs still gets money.
 2. `u` = a bell-shaped draw from -1 to 1: the mean of three draws from the `crowd` stream (day seed, sub-key the race number), scaled to -1 to 1. This is the crowd misreading this horse today.
-3. Belief `b = p * (1 + noise * u) * (1 + styleLean[style])`. Starting guess: noise 0.25, styleLean front-runner +0.10, stalker 0, closer -0.10 (the public loves early speed, open question 2).
+3. Belief `b = p * (1 + noise * u) * (1 + styleLean[style])`. Values after the B0 crowd sweep: noise 0.6, styleLean front-runner +0.10, stalker 0, closer -0.10 (the public loves early speed, open question 2). The first guess for noise, 0.25, left a crowd too accurate to beat after the take.
 4. Share `s = b / sum(b)`.
-5. Crowd share `c = (1 - flatten) * s + flatten / 8`, flatten 0.08. This is the longshot bias of real pools: the crowd reads the order of the field mostly right, but its money is flatter than the truth, so longshots are overbet and favorites a little underbet. It also puts at least 1 percent of the pool on every horse.
+5. Crowd share `c = (1 - flatten) * s + flatten / 8`, flatten 0.025 (0.08 at first, which put far too much money on hopeless horses). This is the longshot bias of real pools: the crowd reads the order of the field mostly right, but its money is flatter than the truth, so longshots are overbet and favorites a little underbet. It also puts at least 1 percent of the pool on every horse.
 6. Dollars: the pool split by `c` in whole dollars by largest remainder, ties to the lower post, every horse at least $1, summing exactly to the pool.
 
 Only `+ - * /` are used, so the result is the same on every JavaScript engine.
@@ -100,10 +100,10 @@ The house keeps the take and the breakage. In play money that is only a number, 
 The crowd is wrong in two ways a reader can find. Its noise misprices some horses each race, and its style lean (if Joseph keeps it) misprices front-runners and closers on average. Reading the stats against the price should find value. The harness measures four bettors, each betting $2 flat (B3, bands in HN3):
 
 - A random bettor loses 18 to 30 cents per dollar.
-- Always the favorite: loses 3 to 15 cents per dollar.
+- Always the favorite: loses 15 to 25 cents per dollar. (First guess 3 to 15, amended after the B0 sweep: see "B0 result" below.)
 - Always the longest price: loses 25 to 50 cents per dollar.
 - A value bettor who knows the estimate, and bets only when estimate times per-dollar price is at least 1.15: wins at least 3 cents per dollar and bets in at least 30 percent of races. It is the ceiling: if a bettor who knows the estimate cannot beat the take, no player can, and betting is a coin flip with a tax.
-- The favorite wins 28 to 40 percent of races (the brief: "a bit over a third"), and at least as often as its crowd share says, since favorites are underbet.
+- The favorite wins 28 to 40 percent of races (the brief: "a bit over a third"), with no check against its crowd share. (The first draft required it to win at least as often as its share. In this crowd model the favorite is slightly overbet, and the sweep showed that cannot be tuned away.)
 
 ## Money and bets
 
@@ -165,6 +165,18 @@ States: first race of the day; no bet; won; lost; broke (below $2 at the start o
 ## Play money only
 
 The brief: "No real money anywhere. All wagering uses in-game cash, with no payment or real-gambling hookups of any kind." Money in this game is a number in memory. It cannot be bought, sold, saved, sent or exchanged for anything. No purchases, accounts, ads or links out. Checks are SAFE1 to SAFE4.
+
+## B0 result (2026-11-13)
+
+The probe ran and passed its gate on the first round, with no change to the stable recipe. Numbers are in `docs/DECISIONS.md` under "Betting, B0 probe" and in `docs/PERF.md`.
+
+- **N = 1,000.** Two estimates on disjoint seeds differ by 0.99 points on average (95th percentile 3.00) and name the same favorite in 97.2 percent of fields. N = 500 failed on the 95th percentile.
+- **Cost.** About 3.0 to 3.2 ms per run in the desktop app's built-in Chromium at load average about 5.5, so about 3 seconds per race against the 4 second limit. Node measured 3.71 ms quiet that day, slower than PERF.md's earlier 1.5 ms for a reason not yet found.
+- **Spread and honesty.** Over 1,000 fields the favorite's median odds are 6-5 (the short edge of the band), 96.9 percent of fields have a horse at 20-1 or longer, the favorite won 38.4 percent, and every calibration group is within 3 points.
+- **The crowd sweep.** At the first crowd values a bettor who knows the estimate found a bet in 1 race in 1,000, so there was no game. A sweep of 140 crowd settings on the cached runs (no new sim runs) found a wide region, noise 0.4 to 0.75, flatten 0.015 to 0.03, lean 0 to 0.2, where every band passes except the two about the favorite. The setting adopted is noise 0.6, flatten 0.025, lean 0.10. There, in expected return per dollar: every horse -0.201, the favorite -0.214, the longest price -0.472, and the value bettor +0.318 betting in 39.8 percent of races. Betting every closer returns -0.086, so the crowd's lean is findable but does not beat the take. At lean 0.20 every closer returns above zero, a free win, so the lean stays at 0.10.
+- **Two targets amended, by the main session for Joseph.** The favorite band was a guess that real pools' favorite-longshot bias would carry over. In this model the horse the crowd makes favorite is often the one whose noise ran high, so it is a little overbet (expected to win 36.3 percent holding 37.7 percent of the pool), and no crowd setting changes that. What the game needs is that no blind rule wins and a careful reader can: both hold. So the favorite band is now -0.25 to -0.15 and the crowd-share check is dropped. The alternative, reshaping the crowd formula so favorites are underbet as in real pools, is a spec change left for later.
+- **How bands are judged.** On expected returns, pricing each bet with a holdout estimate the crowd never saw (a second 1,000 runs per field), because realized returns over 1,000 single races have standard errors as wide as the bands. B3 uses the same method.
+- **The value bettor has no ceiling in HN3.** At +0.32 it is ten times the floor. It knows the estimate, which no player sees, so this is the ceiling of skill and not what a player will earn. B3 reports what simple stat-reading rules return, and those are the figures to watch.
 
 ## Milestones
 
@@ -232,7 +244,7 @@ A script with a fixture stable of 40 stat lines built from the recipe above (nam
 
 - **HN1.** One command runs D days from a seed range headless and prints a plain-text summary. It is not part of `npm test`. playtester runs it after any change to betting rules or data. 500 days finish within 30 minutes on Joseph's Mac (workers are the engineer's call).
 - **HN2.** Bettors, each $2 flat, each judged against the crowd pool plus its own bet: random (horse from a harness-only seeded stream); favorite (most crowd money, ties to the lower post); longest (least crowd money, ties to the lower post); value (best estimate times per-dollar, only when that is at least 1.15).
-- **HN3.** Bands, all in `betting.json`: return per dollar random -0.30 to -0.18, favorite -0.15 to -0.03, longest -0.50 to -0.25, value at least +0.03 with bets in at least 30 percent of races; favorite wins 28 to 40 percent and at least its average crowd share; the PB4 spread and PB5 calibration checks.
+- **HN3.** Bands, all in `betting.json`: return per dollar random -0.30 to -0.18, favorite -0.25 to -0.15, longest -0.50 to -0.25, value at least +0.03 with bets in at least 30 percent of races; favorite wins 28 to 40 percent; the PB4 spread and PB5 calibration checks. Returns are expected returns priced with a holdout estimate the crowd did not see (see "B0 result"), with realized returns reported beside them. "Random" is the average over every horse. The harness also reports, without a band, what simple stat-reading rules return (every closer, every front-runner, the crowd's top horse of each style, the highest stat total), and fails if any of them returns above zero: no blind rule may win.
 - **HN4.** A band outside its range prints the check and the measured value. It is a tuning flag for playtester, not a build failure.
 
 ### B4. The stable written
@@ -298,7 +310,7 @@ The designer writes the screen spec from "What the screens need to show". These 
 | `pool.minPayoffPerDollarCents` | cents | 100 to 200 | 105 |
 | `crowd.noise` | share | 0 to 0.9 | 0.25 |
 | `crowd.styleLean` | share per style | -0.5 to 0.5 | +0.10, 0, -0.10 |
-| `crowd.flatten` | share | 0 to 0.5 | 0.08 |
+| `crowd.flatten` | share | 0 to 0.5 | 0.025 |
 | `odds.steps` | `{ label, odds }`, rising | 1-9 first, 99-1 last | the list above |
 | `harness.valueThreshold` | ratio | above 1 | 1.15 |
 | `harness.bands` | per check | percent or return per dollar | HN3 |
@@ -345,5 +357,5 @@ The three new data files (`stable.json`, `day.json`, `betting.json`) are new sch
 
 - **The estimate may cost too much in the browser.** Browser speed is not measured. B0 PB3 finds out before anything else is built.
 - **Flat fields.** If the sim does not separate classes enough, prices bunch at 4-1 to 8-1 and there is nothing to read. B0 PB4 finds out, and the recipe gets three tries.
-- **A learnable edge can become a solved game.** If the value bettor wins far more than its band, the lean or noise is too big. HN3 caps it from both sides.
+- **A learnable edge can become a solved game.** HN3 guards this from the side that matters: no blind rule may return above zero. The value bettor, who sees the estimate, has a floor and no ceiling.
 - **Browser and Node may differ.** The sim spec never proved browser determinism (its question 10). The harness numbers come from Node. A `?seed=` day in the browser should match Node, and nothing proves it yet.
