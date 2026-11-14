@@ -1,6 +1,6 @@
 # Spec: the book and the window
 
-Status: draft for Joseph's review. Written 2026-11-14 by the designer. It splits the approved program page into two things: **the book** (a program you hold and read: cover, news, race pages) and **the window** (where you bet, at the track). It amends `docs/specs/betting-screens.md`, `docs/specs/track-hub.md` and DESIGN.md. Section 11 lists every amendment. Those files are not edited here. Every pixel box is at 1x on the 256x240 grid, inclusive. Every timing is a starting guess in data.
+Status: approved by Joseph from the mock on 2026-11-14 ("Yes, build it") and built the same day. Sections 18 to 23 hold the rulings made after the draft and win over the earlier sections. Written 2026-11-14 by the designer. It splits the approved program page into two things: **the book** (a program you hold and read: cover, news, race pages) and **the window** (where you bet, at the track). It amends `docs/specs/betting-screens.md`, `docs/specs/track-hub.md` and DESIGN.md. Section 11 lists every amendment. Those files are not edited here. Every pixel box is at 1x on the 256x240 grid, inclusive. Every timing is a starting guess in data.
 
 Marks: **[T]** tested headless, **[E]** needs eyes on the build.
 
@@ -958,3 +958,16 @@ Judged from the 3x preview sheets in docs/mocks/book-and-window/assets/ (cover-a
 All five are accepted. The only open item is the one-line edit to the cover's ASSETS.md row above, which the artist makes. These are now the reference assets for their kinds (DESIGN Do: "The first accepted asset of each kind becomes the reference"): the cover for any later printed illustration, the display font for mastheads, and the 32x48 clerk for close-up people.
 
 The DESIGN.md text held in 18.5, 19.4 and 20.3 goes in with the build, as listed there. This review adds nothing to it.
+
+## 23. Rulings after the code review (2026-11-14)
+
+Made by the main session on the code reviewer's flags. They amend sections 2 and 10.
+
+1. **Hover in the book moves the entry cursor.** On a race page, moving the pointer into an entry focuses it, so a mouse player can bring any horse's blurb to the footer before clicking. A click still does what section 10 says. Why: a click on race r's page goes straight to the window, so without hover a mouse player could only ever read post 1's blurb.
+2. **Hover at the window moves the cursor while choosing, and does nothing while the ticket is open.** With the ticket open the cursor is on the amount, and a hover that moved the ticket's horse could change a bet under the player's hand. Section 10's opening line ("hover moves focus") holds with that one exception.
+3. **Esc from the day-start book:** from the cover or the news the track's focus is Read (FL1). From a race page it is Bet, as from the book opened at the track (FL2): you have just read a race.
+4. **Left and Right from Read** step from the windows' place, so Right lands on the target after the windows. Read has no place in the picture, and Up and Down are how you reach the rows.
+5. **A horse name longer than the window's `nameChars` fails at load,** naming `stable.json` and the horse, so a long name can never run into the odds column.
+6. **`aria-live` text:** the joining words live in data like other copy, and the ticket is read without its arrow glyphs ("$10 on #3. Enter: bet.").
+7. **The display font's glyph list** in `book.json` must equal the font layout's list, checked by a test, so the two cannot drift.
+8. **FL6, "no stream but `news` was drawn", read exactly:** reading may draw `news` (sub-key the day) and may re-derive the crowd's prices for races r and r + 1 on their own keyed `crowd` streams, which the track's board does too and which changes nothing. Any `fieldDraw`, `raceSeed` or `estimateSeeds` draw while reading is a failure. The spec tests check it this way.
