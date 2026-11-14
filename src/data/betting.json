@@ -84,9 +84,9 @@
       "note": "B0 crowd sweep. At 0.20 betting every closer returns above zero, a free win."
     },
     "flatten": {
-      "value": 0.025,
+      "value": 0.035,
       "status": "starting guess",
-      "note": "B0 crowd sweep. 0.08 put far too much money on hopeless horses."
+      "note": "B0 crowd sweep chose 0.025 (0.08 put far too much money on hopeless horses). Raised to 0.035 on 2026-11-14 after three stamina lines were raised: at 0.025 the random and longest-price returns left their bands."
     }
   },
   "odds": {

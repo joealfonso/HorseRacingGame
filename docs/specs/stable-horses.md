@@ -59,15 +59,17 @@ Counts in brackets are characters, including spaces and punctuation.
 | s31 | Parking Lot Pigeon [18] | front-runner | 76 | 61 | 63 | Lionel Okafor [13] | bay | Ash / Navy | First to every crumb. [21] |
 | s32 | Group Project [13] | stalker | 68 | 69 | 61 | Della Mayhew [12] | dark bay or brown | Hay / Purple | Made the title slide. [21] |
 | s33 | Extra Long Receipt [18] | closer | 59 | 73 | 68 | Rafael Montalvo [15] | bay | Bone / Emerald | Prints for a full furlong. [26] |
-| s34 | Unsolicited Advice [18] | front-runner | 73 | 52 | 61 | Agnes Faulkner [14] | bay | Emerald / Bone | Chimes in right away. [21] |
+| s34 | Unsolicited Advice [18] | front-runner | 73 | 67 | 61 | Agnes Faulkner [14] | bay | Emerald / Bone | Chimes in right away. [21] |
 | s35 | Medium Everything [17] | stalker | 65 | 65 | 64 | Tobias Wren [11] | chestnut | Royal / Hay | Orders the usual. Again. [24] |
 | s36 | Saved It For Later [18] | closer | 57 | 72 | 73 | Paloma Ibarra [13] | chestnut | Purple / Hay | Unwraps it in the stretch. [26] |
-| s37 | Doorbell Ditch [14] | front-runner | 76 | 51 | 59 | Silas Penhallow [15] | dark bay or brown | Orange / Bone | Rings once and runs. [20] |
+| s37 | Doorbell Ditch [14] | front-runner | 76 | 64 | 59 | Silas Penhallow [15] | dark bay or brown | Orange / Bone | Rings once and runs. [20] |
 | s38 | Gravy Subpoena [14] | stalker | 69 | 68 | 72 | Cal Broussard [12] | dark bay or brown | Bone / Red | Served papers to the leader. [28] |
 | s39 | Mostly Legs [11] | closer | 59 | 78 | 72 | Anselm Voss [11] | bay | Emerald / Hay | The rest is mostly lungs. [25] |
-| s40 | Big Plans Monday [16] | front-runner | 71 | 59 | 60 | Ingrid Solberg [14] | black | Lime / Maroon | Agenda item one: the lead. [26] |
+| s40 | Big Plans Monday [16] | front-runner | 71 | 70 | 60 | Ingrid Solberg [14] | black | Lime / Maroon | Agenda item one: the lead. [26] |
 
-Checks done by reading: 40 records, ids s01 to s40 in probe order, every stat line used once and copied unchanged, 14 front-runners, 13 stalkers, 13 closers. No duplicate name or jockey. Longest name 18, longest jockey 20, longest blurb 28. All straight quotes and printable ASCII.
+**Changed 2026-11-14:** the stamina of s34, s37 and s40 was raised (52 to 67, 51 to 64, 59 to 70) because the three almost never won. See "B3 result" in betting-simple.md. The table shows the new values.
+
+Checks done by reading: 40 records, ids s01 to s40 in probe order, every stat line used once and copied unchanged (before that change), 14 front-runners, 13 stalkers, 13 closers. No duplicate name or jockey. Longest name 18, longest jockey 20, longest blurb 28. All straight quotes and printable ASCII.
 
 ## The eight kept horses
 

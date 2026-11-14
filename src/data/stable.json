@@ -335,7 +335,7 @@
       "name": "Unsolicited Advice",
       "jockey": "Agnes Faulkner",
       "style": "frontRunner",
-      "stats": { "speed": 73, "stamina": 52, "kick": 61 },
+      "stats": { "speed": 73, "stamina": 67, "kick": 61 },
       "coat": "bay",
       "silks": { "body": "Emerald", "cap": "Bone" },
       "blurb": "Chimes in right away."
@@ -365,7 +365,7 @@
       "name": "Doorbell Ditch",
       "jockey": "Silas Penhallow",
       "style": "frontRunner",
-      "stats": { "speed": 76, "stamina": 51, "kick": 59 },
+      "stats": { "speed": 76, "stamina": 64, "kick": 59 },
       "coat": "dark bay or brown",
       "silks": { "body": "Orange", "cap": "Bone" },
       "blurb": "Rings once and runs."
@@ -395,7 +395,7 @@
       "name": "Big Plans Monday",
       "jockey": "Ingrid Solberg",
       "style": "frontRunner",
-      "stats": { "speed": 71, "stamina": 59, "kick": 60 },
+      "stats": { "speed": 71, "stamina": 70, "kick": 60 },
       "coat": "black",
       "silks": { "body": "Lime", "cap": "Maroon" },
       "blurb": "Agenda item one: the lead."

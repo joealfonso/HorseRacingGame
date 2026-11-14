@@ -61,7 +61,7 @@ For each horse, in post order, with values from `betting.json`:
 2. `u` = a bell-shaped draw from -1 to 1: the mean of three draws from the `crowd` stream (day seed, sub-key the race number), scaled to -1 to 1. This is the crowd misreading this horse today.
 3. Belief `b = p * (1 + noise * u) * (1 + styleLean[style])`. Values after the B0 crowd sweep: noise 0.6, styleLean front-runner +0.10, stalker 0, closer -0.10 (the public loves early speed, open question 2). The first guess for noise, 0.25, left a crowd too accurate to beat after the take.
 4. Share `s = b / sum(b)`.
-5. Crowd share `c = (1 - flatten) * s + flatten / 8`, flatten 0.025 (0.08 at first, which put far too much money on hopeless horses). This is the longshot bias of real pools: the crowd reads the order of the field mostly right, but its money is flatter than the truth, so longshots are overbet and favorites a little underbet. It also puts at least 1 percent of the pool on every horse.
+5. Crowd share `c = (1 - flatten) * s + flatten / 8`, flatten 0.035 (0.08 at first, which put far too much money on hopeless horses, then 0.025 until three stat lines changed on 2026-11-14, see "B3 result"). This is the longshot bias of real pools: the crowd reads the order of the field mostly right, but its money is flatter than the truth, so longshots are overbet and favorites a little underbet. It also puts at least 1 percent of the pool on every horse.
 6. Dollars: the pool split by `c` in whole dollars by largest remainder, ties to the lower post, every horse at least $1, summing exactly to the pool.
 
 Only `+ - * /` are used, so the result is the same on every JavaScript engine.
@@ -192,7 +192,9 @@ The harness (`npm run bet:harness -- --days 500 --from 1`) ran 500 days, 4,000 r
 Findings that are not band failures:
 
 - **A day cannot end broke.** The 25 percent cap means eight straight losses at the largest allowed bet leave $15 (100, 80, 60, 50, 40, 30, 25, 20, 15), so the bankroll never falls under $2 in an eight-race day. It happened on 0 of 500 days for both $10 bettors, and it cannot happen by arithmetic. The "Tapped out" End of day page in the screens spec was unreachable unless the cap, the day length or the minimum changes. **Decided by Joseph, 2026-11-14: keep the cap, drop "Tapped out".** The End of day page has one title. The rules still end a day early when the bankroll cannot cover the minimum bet (BK5, tested with test rules), so a later tuning change cannot strand a player, and that day shows the ordinary End of day page.
-- **Three horses almost never win.** Unsolicited Advice won 0 of 792 starts, Doorbell Ditch 1 of 783 and Big Plans Monday 7 of 803, at 87-1 to 96-1, and a bet on them returns -0.55 to -0.71. They are the plain front-runners with stamina of 51 to 59. Raising their stamina a few points is a stat-line change that needs the probe and the harness rerun, so it is noted here and not done.
+- **Three horses almost never win.** Unsolicited Advice won 0 of 792 starts, Doorbell Ditch 1 of 783 and Big Plans Monday 7 of 803, at 87-1 to 96-1, and a bet on them returns -0.55 to -0.71. They are the plain front-runners with stamina of 51 to 59. **Fixed 2026-11-14 (Joseph: "fix the three horses that never win").** Stamina alone was raised: Unsolicited Advice 52 to 67, Doorbell Ditch 51 to 64, Big Plans Monday 59 to 70. Speed and kick are unchanged, each is still a plain front-runner with speed its highest stat, and the totals (201, 199, 201) stay in the plain class. Chosen from a sweep over 4,000 days of real races, where they now win 1.84, 1.53 and 1.81 percent of starts (0.22, 0.20 and 0.49 before) and no other horse moves by more than 1.0 point (Paddock Gossip, 49.2 to 48.2). The probe was not rerun: it is B0's record on its own fixture stable and does not read `stable.json`.
+  - **The fresh 500-day run on the new stable** (88 minutes on a loaded machine) passed 25 of 27 checks at flatten 0.025. Random returned -0.173 (band -0.30 to -0.18) and the longest price -0.236 (band -0.50 to -0.25). The cause: the three dead horses had been pulling both figures down, and without them the other 37 horses always averaged about -0.16.
+  - **`crowd.flatten` was raised from 0.025 to 0.035**, the lever the stop rule names, on the cached days (no new sim runs). All 27 checks pass: random -0.190, favorite -0.213, longest -0.302, value +0.298 betting in 37.7 percent of races; the favorite wins 36.0 percent expected and 35.4 realized, median 6-5; no blind rule above zero (highest stamina -0.070, crowd's top closer -0.074, every closer -0.101, every front-runner -0.261); $10 a race on the favorite ends at a median of $80 and ahead on 31.2 percent of days. In the harness the three win 1.8, 1.4 and 1.9 percent of starts at 46-1, 54-1 and 43-1. The figures in the lists above are the first run's, at the old stats and 0.025.
 - **Every horse runs every day** (about 1.6 starts a day each), and Paddock Gossip wins 48 percent of its starts at 4-5. A player will learn the pecking order within a few days. The stats never change in this milestone, so that is expected, and it is the first thing form, fitness or a larger stable would address later.
 - **HN1's time bound is missed.** The fresh 500-day run took 83 minutes on 10 workers, not 30, while other work loaded the machine. At 3.7 ms a run, 8 million runs cannot finish in 30 minutes on this Mac even alone (about 50). The cache makes a rerun after a crowd or price change take 2 seconds, which is the case playtester repeats. HN1 is amended below.
 
@@ -267,7 +269,7 @@ A script with a fixture stable of 40 stat lines built from the recipe above (nam
 
 ### B4. The stable written
 
-- **ST3.** 40 horses on B0's stat lines exactly, passing ST1. Joseph picks from candidate names and blurbs, as with the M1 blurbs.
+- **ST3.** 40 horses on B0's stat lines, passing ST1. Amended 2026-11-14: three lines differ from B0 by stamina alone (s34 52 to 67, s37 51 to 64, s40 59 to 70), see "B3 result". Joseph picks from candidate names and blurbs, as with the M1 blurbs.
 
 ### B5. The day on screen
 
@@ -328,7 +330,7 @@ The designer writes the screen spec from "What the screens need to show". These 
 | `pool.minPayoffPerDollarCents` | cents | 100 to 200 | 105 |
 | `crowd.noise` | share | 0 to 0.9 | 0.6 |
 | `crowd.styleLean` | share per style | -0.5 to 0.5 | +0.10, 0, -0.10 |
-| `crowd.flatten` | share | 0 to 0.5 | 0.025 |
+| `crowd.flatten` | share | 0 to 0.5 | 0.035 |
 | `odds.steps` | `{ label, odds }`, rising | 1-9 first, 99-1 last | the list above |
 | `harness.valueThreshold` | ratio | above 1 | 1.15 |
 | `harness.bands` | per check | percent or return per dollar | HN3 |

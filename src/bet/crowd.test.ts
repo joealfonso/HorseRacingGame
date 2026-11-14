@@ -150,4 +150,5 @@ describe('OD3 (amended): the split is the spec\'s shares, never repaired', () =>
 });
 
 // The committed answer for OD3, pinned from the first run and checked against the spec oracle above.
-const COMMITTED: number[] = [9074, 3857, 2995, 3511, 2137, 1940, 1060, 426];
+// Regenerated 2026-11-14 when crowd.flatten went from 0.025 to 0.035 (was 9074, 3857, 2995, 3511, 2137, 1940, 1060, 426).
+const COMMITTED: number[] = [9013, 3850, 2996, 3507, 2147, 1952, 1082, 453];

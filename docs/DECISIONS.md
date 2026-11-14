@@ -404,34 +404,4 @@ Kick is the remainder, so a stalker can wobble up to 8 from a third: p08 and p11
 
 **No "Tapped out" page (Joseph, 2026-11-14).** The 25 percent cap stays, so eight straight losses at the largest bet leave $15 and a day cannot end broke. The End of day page has one title, "That's the card". The rules keep the broke ending (BK5) as a guard, with no page or words of its own: if the cap, the minimum or the day length ever changes so a day can end early, the harness's "broke before race 8" figure is where it shows first, and the words come back then.
 
-## Betting, B5 step 1 (the program page and the loop on screen)
-
-**The estimate runs in a Web Worker.** `src/scenes/estimateWorker.ts` runs one race's whole estimate per message with `startEstimate` and `stepEstimate`, and `src/scenes/estimates.ts` posts the requests and keeps the finished jobs. One run can take 15.5 ms at Chrome's p99, so no slicing on the main thread keeps every frame under 16.7 ms (UI6). Vite bundles the worker from `new Worker(new URL(...), { type: 'module' })` with no new dependency. If the worker fails, the error screen shows the day seed, the race and the message. There is no main-thread fallback.
-
-**When each estimate runs.** Race 1's is asked for at boot, before the art loads. Each program asks for its own race and the next one. The worker answers in order, so race r + 1 runs while race r's page is read and while it races (UI5). The job comes back whole and goes to `programFor`, which refuses a job for another day or race.
-
-**Day state travels in scene data.** Program, Race and Result carry a `BetDay` (the context, the data, the drawn fields and the `Estimates` object, all fixed for the day) and the `DayState` from `src/bet/day.ts`. Nothing is global. `Estimates` holds only derived data: the same day seed always gives the same estimates.
-
-**A pass while the odds are pending goes to the post at the end of the race.** BP6 lets Pass work before the odds are in, but `goToPost` and `settle` need the program, because the result shows the winner's $2 price. A pass stakes nothing, so the race scene waits for the estimate after the wire, then calls `goToPost` with no bet and settles. In practice the estimate (about 3 s) is long done before a race (about a minute) ends.
-
-**Interim End of day.** The End of day page (screens spec section 6) is the next step. Until then, after the last race or with the bankroll under $2, the result's action reads "End of day" and Enter starts the next day seed with the starting bankroll on the race 1 program. Marked in `src/scenes/betDay.ts` (`nextDay`) and `ResultScene.ts`.
-
-**Abandoning a race from the pause box opens its result.** BK4 settles an abandoned race as if watched. The pause item still reads "Back to card", but in the betting loop it goes to the result page, so the player sees what happened to the ticket. Going straight to the next program would change the bank with no explanation. Either way the settled bank shows without the wire crossing in playback, which UI3 does not allow for; Joseph's call.
-
-**The Card and Orders loop still runs if started.** `RaceScene` and `ResultScene` take an optional `bet`; without it they behave as before, so `OrdersScene` and `CardScene` are unchanged and still compile. `main.ts` boots into `program`.
-
-**The betting entry shares `programEntry`.** It takes the stat columns as an argument: the Card's (50 px bars) by default, `BET_ENTRY` (40 px bars at x50, x108, x166, the tick in the margin cell x8-15) on the betting program. The odds are a separate list beside the entries, so an entry is still drawn from its horse alone (BP2).
-
-**Spec and DESIGN differences, DESIGN followed.** The column heads start at their stat numbers ("Speed" x40, "Stam." x98, "Kick" x156), not centered over the bars. The tote ticket is x8-247, y209-235 with the torn top edge, and the y210 rule is not drawn while it shows. The race HUD keeps its built rows (y184, y194, y204), not the spec's y181, y191, y201.
-
-**Copy keys the spec names without a key name.** The spec says the stamina head, the short bias phrases and the punch beat are data but names no key. They are `copy.program.heads` (with "Speed", "Kick" and "Odds" beside "Stam."), `copy.program.bias`, and `program.punchSeconds` (0.6). Header lines 3 and 4 are joined with ", " in `src/data/cardWords.ts`, the surface word capitalized, and `checkProgramLines` refuses any over 30 characters, naming `day.json` and the race.
-
-**With no bet, the HUD's first line is the leader's name in Bone.** Yellow means your horse, so the leader is not printed in it. Before the first call both leader lines are blank.
-
-**`copy.result.next` is held to 10 characters by a separate betting check.** The betting result prints it beside the bank, where 10 fit. `validateRaceDay` still allows 28 for the Card loop, and an existing test pins that. So `checkBettingCopy`, run at boot beside `checkProgramLines`, holds it to 10, as `copy.result.end` is.
-
-**Each native key event is handled once (`src/scenes/keyEvents.ts`).** Phaser walks the game's whole key queue again on every native key event, and its duplicate check only looks one event back. So with three key events in one frame, a keydown was emitted twice, and a released Enter could open the ticket and then place the bet. Every scene's 'keydown' and 'keyup' listener first drops an event object it has already seen, using one shared WeakSet. It is shared across scenes because the queue belongs to the game, and it holds no game state. The pure key rules in `src/render/keys.ts` are unchanged.
-
-**One estimate worker per day, errors per race.** A request for a new day seed ends the old worker and starts a fresh one, so the new day's race 1 never waits behind the old day's work and no old error carries over. Replies are kept by day and race, and replies for anything not asked for that day are ignored. A scene fails only on its own race's error. An uncaught worker error fails every race still waiting and ends that worker.
-
-**The wire message has its own priority, above your horse's.** It lands at the same moment as "home in 1st", and a luck event just before the wire could keep it waiting long enough to be dropped. With `PRIORITY.ticket` it shows as soon as the current message ends. `messageSchedule` also never drops a ticket message for waiting, so BR3 holds however `hud.messageSeconds` and `hud.messageMaxWaitSeconds` are tuned.
+**Three stamina lines raised, and flatten with them (2026-11-14).** Unsolicited Advice, Doorbell Ditch and Big Plans Monday won 0.2 to 0.5 percent of starts, so their stamina went from 52, 51 and 59 to 67, 64 and 70, picked from a 4,000-day sweep of real races to land at 1.5 to 1.9 percent, beside the other plain horses. With no dead horses left, the random and longest-price returns rose out of their bands at flatten 0.025, so `crowd.flatten` is now 0.035, tried on the cached days. The other choice was to loosen the two bands and leave long prices nearly fair; I kept the bands because they say what the spec meant, that a long price is a worse bet than a short one.

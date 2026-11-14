@@ -308,7 +308,7 @@ describe('B0 result: the shipped betting values are the spec\'s', () => {
     expect(b.pool.breakageCents.value).toBe(10);
     expect(b.pool.minPayoffPerDollarCents.value).toBe(105);
     expect(b.crowd.noise.value).toBe(0.6);
-    expect(b.crowd.flatten.value).toBe(0.025);
+    expect(b.crowd.flatten.value).toBe(0.035); // 0.025 until 2026-11-14, see "B3 result" in the spec
     expect(b.crowd.styleLean.value).toEqual({ frontRunner: 0.1, stalker: 0, closer: -0.1 });
   });
 
