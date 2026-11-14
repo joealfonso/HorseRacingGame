@@ -222,9 +222,10 @@ The day's line, by outcome (data, each at most 30):
 | ended even | That's the card | Square on the day. Not bad. |
 | ended down | That's the card | The horses had other ideas. |
 | bet nothing all day | That's the card | Watched all eight for free. |
-| broke (under $2 at the start of a race) | Tapped out | Happens to the best of us. |
 
-When broke, "Bets made" counts races actually run ("4 of 4"), so the page never implies races you were shut out of. The page itself carries the kindness: same paper, same New day, no Red title, no sound of loss. "New day" is the only action, and it starts the next day seed with $100.
+There is no "Tapped out" page (Joseph, 2026-11-14: keep the 25 percent cap, drop the page). Under the shipped values a day cannot end broke: eight straight losses at the largest allowed bet leave $15. The rules still end a day early if the bankroll ever cannot cover the minimum bet (BK5), as a guard for a later tuning change. That day gets this same page with the title and line its outcome earns from the table above, and no words of its own.
+
+"Bets made" counts races actually run, so a day cut short never implies races you were shut out of. The page itself carries the kindness: same paper, same New day, no Red title, no sound of loss. "New day" is the only action, and it starts the next day seed with $100.
 
 Rejected: a race-by-race list of tickets. It is a nice back-page tally, but it is more to read, and Joseph asked for less. It is the first addition if he wants the day's story on the page (Later).
 
@@ -297,10 +298,10 @@ These extend UI1 to UI6 and SAFE1 to SAFE4 in `betting-simple.md`. All of those 
 - **BS4 [T]** No string on the result page or in its `aria-live` text contains a profit figure, a change figure or the estimate.
 
 ### End of day
-- **BE1 [T]** Started with, Ended with, Change (sign and color), Bets made ("bets of races run"), Winners hit and Best price hit match the day record for a scripted day, including a broke day and a day of passes.
+- **BE1 [T]** Started with, Ended with, Change (sign and color), Bets made ("bets of races run"), Winners hit and Best price hit match the day record for a scripted day, including a day of passes and a day cut short (reachable only with test rules, see section 6).
 - **BE2 [T]** The title and the day's line follow the table in section 6 for each outcome.
 - **BE3 [T]** New day starts the next day seed with the starting bankroll, on the race 1 program.
-- **BE4 [E]** After going broke, the page reads as a friendly end of a day, not a penalty. Joseph's call, noted in the gate run.
+- **BE4** Dropped 2026-11-14 with the "Tapped out" page. A day cannot end broke under the shipped values, so there is nothing to judge at the gate.
 
 ### Copy and flow
 - **BC1 [T]** Every copy key in section 8, filled with its longest values, fits its field. No copy string contains a word from `copy.bannedWords`, compared case-insensitively.
@@ -314,8 +315,8 @@ Final rulings from the mock (2026-11-13, after Joseph approved it). These win ov
 - **Column heads** (y47, main font, Ink), each starting at its column's stat number: "Speed" x40-79, "Stam." x98-137, "Kick" x156-187, "Odds" right-aligned at x216-247. Centered over the bars they read as one sentence. "Stamina" is printed "Stam." because the stat columns are 58 px apart and the word is 56. The stamina head's text comes from copy in data.
 - **The tote ticket** is a Bone slip at x8-247, y209-235, with an irregular torn top edge and square corners. Text stays at x16 with cell tops y215 and y225.
 - **Money up on paper is Turf**, not Pine, which read as nearly black. Still only on the End of day "Change" figure.
-- **The End of day page lists the day's card.** A 1 px Ink rule at y124, then one row per race actually run, cell tops at y128 + 11 * i: "Race {r}" at x8; the 10x10 saddlecloth box of the horse you bet on at x64-73 (rows y-1 to y+8, Ink border, small-font number); its odds from x80; and the ticket right-aligned to x247, "Paid $70.00" or "Lost $10". On a pass: no box, no odds, "Passed" at x64. All Ink: no Turf, no Red, no band, no tick, no total. A broke day lists only the races run. "New day" stays at y220. New copy: "Race {r}", "Paid {total}", "Lost {amount}", "Passed". This replaces the "Rejected" and "Later" notes that left a race-by-race list out.
-- **BE1** also checks the day's card: one row per race run with the right box, odds and ticket, for a scripted day, a broke day and a day of passes.
+- **The End of day page lists the day's card.** A 1 px Ink rule at y124, then one row per race actually run, cell tops at y128 + 11 * i: "Race {r}" at x8; the 10x10 saddlecloth box of the horse you bet on at x64-73 (rows y-1 to y+8, Ink border, small-font number); its odds from x80; and the ticket right-aligned to x247, "Paid $70.00" or "Lost $10". On a pass: no box, no odds, "Passed" at x64. All Ink: no Turf, no Red, no band, no tick, no total. A day cut short lists only the races run. "New day" stays at y220. New copy: "Race {r}", "Paid {total}", "Lost {amount}", "Passed". This replaces the "Rejected" and "Later" notes that left a race-by-race list out.
+- **BE1** also checks the day's card: one row per race run with the right box, odds and ticket, for a scripted day, a day cut short (test rules only) and a day of passes.
 - Everything else in the mock is accepted as drawn.
 
 Ruled 2026-11-13. All eight items below are settled in DESIGN.md under "Program pages, Betting additions", and those rulings win over the text of this spec where they differ. In short: bars at 40 px accepted; odds in Ink, main font, right-aligned to x247 with the cell top at +8 of the entry, an "Odds" head in Ink at x216-247, and no treatment of any kind for the favorite; a pending price is a single "-" at x240-247; the pencil tick sits in the margin at x8-15, rows +5 to +12, means "bet placed", and is never drawn in the same cell as the cursor (if both, the tick wins); the band means "the horse you are betting on" from ticket open to the result; the tote ticket has a torn top edge; on paper money up is Turf with a plus sign and money down Red with a minus sign, on the End of day "Change" figure only; the End of day title is Maroon, never Red, with "Day" in the main font and the seed in the small font, right-aligned to x247; prices and the bankroll cut to new figures and never roll; no currency icon, no casino or real-money looks, and no celebration effect tied to money. No new art assets.

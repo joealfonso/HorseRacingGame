@@ -367,7 +367,7 @@ The Card, the top of Orders (y0-143) and the Result are pages of one printed rac
 - **Bankroll.** Ink everywhere on paper. It changes by cutting to the new figure, never by counting up or down.
 - **Money colors on paper.** The End of day "Change" figure is the only colored money on paper. Up is Turf with a plus sign, down is Red with a minus sign, and even is the word "Even" in Ink. Turf replaces Emerald on paper because Emerald on Parchment is about 2.3 to 1 and too faint for a key figure. Pine was tried in the mock and read as nearly black beside the Ink rows. Turf is about 3.6 to 1, the same weight as Red (about 3.5 to 1), and reads plainly green, as Red reads plainly red. (Contrast computed by me from the hex values. Turf is chosen from the mock's evidence that Red at that weight reads clearly.) The sign is the second signal and carries it in grayscale. Navy screens keep Emerald. Turf and Red count as one more ink for one figure on one page, not a new body color.
 - **End of day, the back page.** Same paper, rules at y24 and y104.
-  - Title ("That's the card" or "Tapped out") in Maroon, as a title, never Red.
+  - Title ("That's the card", the only title: Joseph dropped "Tapped out" on 2026-11-14) in Maroon, as a title, never Red.
   - "Day" in the main font Ink and "#12345" in the small font Ink, right-aligned to x247 on the title's baseline.
   - Labels at x8 and values right-aligned to x247, all main font Ink, except the Change figure above.
   - The day's line in Ink at y112. The cursor on "New day" at y220.
@@ -380,7 +380,7 @@ The Card, the top of Orders (y0-143) and the Result are pages of one printed rac
     - The ticket, right-aligned to x247, main font Ink: "Paid $70.00" (at most "Paid $20,620.00", 15 characters, from x128) or "Lost $10".
     - On a pass: no box, no odds, and "Passed" at x64 in Ink.
     - All Ink: no Turf, no Red, no band, no tick, no total. Money color stays on the one Change figure.
-    - A broke day lists only the races run, so it never shows races you were shut out of.
+    - A day cut short lists only the races run, so it never shows races you were shut out of. (It cannot happen under the shipped betting values. The rules keep it as a guard.)
   - No other mark: no stamp, no score graphic.
 - **Play money in the look.** No currency icon. The cartridge program look is the signal. No image of real money or gambling hardware anywhere: no banknotes, coins, chips, cards, cash registers, slot-machine reels or casino lights. No celebration effect tied to money: no coin shower, flash, sparkle or counting sound on a win. A win is shown by the race (the winner beat) and a plain paid line.
 - **Cursor.** On paper, the same `art.ui.cursor.horseshoe` pixels recolored by code: Yellow becomes Gold and Gold becomes Auburn, with the Ink outline kept. The mock showed Yellow on Parchment vanishing into a bare Ink arch. A Gold shoe with an Auburn shade reads as a brass shoe on paper. On Navy screens the cursor stays Yellow and Gold. (Settled from the mock, 2026-11-13.)
