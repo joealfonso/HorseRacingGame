@@ -16,12 +16,18 @@ export const boxSchema = z.strictObject({ x0: px, y0: px, x1: px, y1: px })
   .refine((b) => b.x0 <= b.x1 && b.y0 <= b.y1, { error: 'x0 must not be above x1, nor y0 above y1' });
 export type Box = z.infer<typeof boxSchema>;
 
-export const DOOR_ACTIONS = ['program', 'watch'] as const;
+export const DOOR_ACTIONS = ['window', 'watch'] as const;
+
+/**
+ * The box's book row (docs/specs/book-and-window.md section 8): a row with no picture target
+ * that opens the book. Its id stands in a door row's `door` and in the focus.
+ */
+export const BOOK_ROW = 'read';
 
 const door = z.strictObject({
   id: text,
   kind: z.literal('door'),
-  /** program: open the next race's program. watch: go to the post with no bet. */
+  /** window: open the window screen for the next race. watch: go to the post with no bet. */
   action: z.enum(DOOR_ACTIONS, { error: `unknown door action, use one of ${DOOR_ACTIONS.join(', ')}` }),
   hit: boxSchema,
   focus: boxSchema,
@@ -49,8 +55,11 @@ export const hubSchema = z.strictObject({
     textX: px,
     chars: whole.min(1),
     voiceTops: z.tuple([px, px]),
+    /** The menu rows top to bottom: each a door's id, or BOOK_ROW for the book's row. */
     doorRows: z.array(z.strictObject({ door: text, top: px, item: boxSchema })),
   })),
+  /** Where focus lands: arriving from the Result or at day start, back from the book or the window, and from a lookable on Up, Down or Esc. */
+  focus: marked(z.strictObject({ arrival: text, back: text, fromLookable: text })),
   statusBar: marked(z.strictObject({
     raceX: px,
     bankLastX: px,
@@ -70,6 +79,32 @@ export const hubSchema = z.strictObject({
     priceChars: whole.min(1),
   })),
   cornerBobPx: marked(whole.min(0).max(2)),
+  /** The window screen's layout (book-and-window.md sections 7 and 10, art-director 19.3). */
+  window: marked(z.strictObject({
+    booth: z.strictObject({ x: px, y: px }),
+    clerk: z.strictObject({ x: px, y: px }),
+    program: z.strictObject({ x: px, y: px }),
+    sign: z.strictObject({ plate: boxSchema, top: px }),
+    frame: z.strictObject({ x: px, y: px, tilesW: whole.min(2), tilesH: whole.min(2) }),
+    clerkLine: z.strictObject({ x: px, top: px }),
+    rows: z.strictObject({
+      firstTop: px, pitch: whole.min(1), cursorX: px, boxX: px, nameX: px, oddsLastX: px,
+      /** Row i's pointer box: x0-x1, from its cell top + dy0 to + dy1. */
+      hit: z.strictObject({ x0: px, x1: px, dy0: whole, dy1: whole }),
+    }),
+    line: z.strictObject({ y: px, x0: px, x1: px }),
+    ticket: z.strictObject({
+      tops: z.tuple([px, px]),
+      cursorX: px,
+      textX: px,
+      lastX: px,
+      /** "<" and ">": each glyph's cell plus `pad` px each side, rows y0-y1. */
+      arrows: z.strictObject({ y0: px, y1: px, pad: px }),
+      bet: boxSchema,
+      back: boxSchema,
+    }),
+    nameChars: whole.min(1),
+  })),
   idle: marked(z.strictObject({
     everySeconds: z.number().positive(),
     stepSeconds: z.number().positive(),
@@ -87,6 +122,8 @@ export const hubSchema = z.strictObject({
     board: z.strictObject({ race: text }),
     sign: z.strictObject({ windows: text }),
     lookables: z.record(z.string(), lookCopy),
+    /** The window's clerk (book-and-window.md section 7): choosing, the ticket's and the bet's line cycles, and "Esc: back". */
+    window: z.strictObject({ choose: text, ticket: z.array(text).min(1), punch: z.array(text).min(1), back: text }),
     /** On top of betting.json's copy.bannedWords: the spec's "no cash, no buy, in any form". */
     bannedWords: z.array(text),
   }),

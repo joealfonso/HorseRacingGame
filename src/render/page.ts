@@ -21,7 +21,8 @@ export const PAPER_CURSOR_SWAPS: readonly (readonly [string, string])[] = [['Yel
 export const PAPER_MARKER_SWAPS: readonly (readonly [string, string])[] = [['Yellow', 'Ink'], ['Gold', 'Ink']];
 
 export interface PageRect { x: number; y: number; w: number; h: number; color: string }
-export interface PageText { text: string; x: number; y: number; color: string; small?: boolean }
+/** `small` sets it in the small font, `display` in the cover's display font; neither, the main font. */
+export interface PageText { text: string; x: number; y: number; color: string; small?: boolean; display?: boolean }
 export interface PageImage { slot: string; x: number; y: number }
 
 const MAIN_W = 8;

@@ -70,7 +70,7 @@ describe('TH1 boxes', () => {
   });
 
   it('a second door with the same action fails', () => {
-    const err = failure((h) => { target(h, 'rail').action = 'program'; });
+    const err = failure((h) => { target(h, 'rail').action = 'window'; });
     expect(err.message).toContain('exactly one door with action "watch"');
   });
 

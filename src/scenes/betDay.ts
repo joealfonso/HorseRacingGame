@@ -1,6 +1,9 @@
-import { drawnDay, goToPost, newDay, programFor, type DayContext, type DayState, type DrawnRace, type RaceProgram } from '../bet/day';
+import { drawnDay, goToPost, newDay, programFor, quote, type DayContext, type DayState, type DrawnRace, type RaceProgram } from '../bet/day';
+import { newsFor, type NewsItem, type PreviousDay } from '../bet/news';
 import { nextDaySeed } from '../bet/streams';
 import { fieldForRaceDay, type BettingData } from '../data/bettingLoad';
+import { loadBook } from '../data/bookLoad';
+import type { Book } from '../data/bookSchema';
 import { loadHub } from '../data/hubLoad';
 import type { Hub } from '../data/hubSchema';
 import type { RaceDayData } from '../data/raceDayLoad';
@@ -30,13 +33,31 @@ export interface BetDay {
    * new day starts with none. Never in storage (SAFE3).
    */
   looks: Readonly<Record<string, number>>;
+  /** The book's data (src/data/book.json): the cover, the news page, the race pages' words, the running foot. */
+  book: Book;
+  /**
+   * The day before this one in this session, for news slot 5 (book-and-window.md section 4).
+   * Null on the session's first day. Kept in the session only, never in storage (SAFE3).
+   */
+  previous: PreviousDay | null;
+  /**
+   * Uses of the window clerk's two line cycles this day: tickets opened and bets placed
+   * (section 7). Like looks: replaced, never changed in place, reset on New day, no RNG.
+   */
+  clerk: Readonly<ClerkCounts>;
 }
 
-/** A new day on its seed, with the starting bankroll, on race 1. */
+export interface ClerkCounts { ticket: number; punch: number }
+
+/** A new day on its seed, with the starting bankroll, on race 1. `previous` is the day before it in this session, if any. */
 export function startDay(
   ctx: DayContext, betting: BettingData, rd: RaceDayData, estimates: Estimates, daySeed: number, hub: Hub = loadHub(),
+  book: Book = loadBook(), previous: PreviousDay | null = null,
 ): { bet: BetDay; day: DayState } {
-  return { bet: { ctx, betting, rd, drawn: drawnDay(ctx, daySeed), estimates, hub, looks: {} }, day: newDay(ctx, daySeed) };
+  return {
+    bet: { ctx, betting, rd, drawn: drawnDay(ctx, daySeed), estimates, hub, looks: {}, book, previous, clerk: { ticket: 0, punch: 0 } },
+    day: newDay(ctx, daySeed),
+  };
 }
 
 /**
@@ -47,7 +68,40 @@ export function startDay(
 export function nextDay(bet: BetDay, day: DayState): { bet: BetDay; day: DayState } {
   const seed = nextDaySeed(day.daySeed);
   console.info(`Betting day: day seed ${seed}. Add ?seed=${seed} to the address to replay this day.`);
-  return startDay(bet.ctx, bet.betting, bet.rd, bet.estimates, seed, bet.hub);
+  // The day just ended is kept for the new day's news (slot 5), in the session only.
+  return startDay(bet.ctx, bet.betting, bet.rd, bet.estimates, seed, bet.hub, bet.book, { records: day.records });
+}
+
+/** The day's five news items (book-and-window.md section 4): the same day seed and previous day always give the same news (NW1). */
+export function newsOf(bet: BetDay, daySeed: number): NewsItem[] {
+  return newsFor(bet.book, {
+    daySeed,
+    fields: bet.drawn.map((d) => ({ race: d.race, horseIds: d.horseIds })),
+    stable: bet.ctx.stable,
+    races: bet.ctx.races,
+    cardCopy: bet.rd.raceDay.copy.card,
+    previous: bet.previous,
+  });
+}
+
+/** The races whose prices the book shows: r and r + 1, the ones the day has (UI5, BB5). */
+export const bookPriceRaces = (bet: BetDay, day: DayState): number[] =>
+  [day.nextRace, day.nextRace + 1].filter((r) => bet.drawn[r - 1] !== undefined);
+
+/**
+ * The crowd's prices with no bet in the pool, for the book's race pages (section 5): race r
+ * and r + 1 only, as they are posted (UI5, BB5). Reads finished estimates; requests none.
+ * Races already in `known` are kept as they are, so a caller polling each frame prices each race once.
+ */
+export function postedPrices(bet: BetDay, day: DayState, known: ReadonlyMap<number, string[]> = new Map()): Map<number, string[]> {
+  const out = new Map<number, string[]>();
+  for (const race of bookPriceRaces(bet, day)) {
+    const had = known.get(race);
+    if (had !== undefined) { out.set(race, had); continue; }
+    const program = programIfReady(bet, bet.drawn[race - 1]);
+    if (program !== null) out.set(race, quote(bet.ctx, program, null).odds);
+  }
+  return out;
 }
 
 /** The race-day data with this field's looks (coat, silks, blurb) in place of card.json's, parsed as a card look. */
@@ -75,6 +129,14 @@ export function betErrorLines(daySeed: number, race: number, err: unknown): stri
 export function passDay(bet: BetDay, day: DayState, drawn: DrawnRace): DayState {
   const program = programIfReady(bet, drawn);
   return program === null ? day : goToPost(bet.ctx, day, program, null);
+}
+
+/** The estimates the track, the book and the window ask for: race r's, then r + 1's (UI5). Never more (BB5). */
+export function requestNextEstimates(bet: BetDay, day: DayState): void {
+  const now = bet.drawn[day.nextRace - 1];
+  if (now) bet.estimates.request(now);
+  const after = bet.drawn[day.nextRace];
+  if (after) bet.estimates.request(after);
 }
 
 /** The race scene's data for a betting race: the drawn field, the day after Go to the post, the keys still held. */

@@ -3,7 +3,7 @@ import betting from './betting.json';
 import day from './day.json';
 import hub from './hub.json';
 import palette from './palette.json';
-import { hubSchema, type Box, type Hub } from './hubSchema';
+import { BOOK_ROW, hubSchema, type Box, type Hub } from './hubSchema';
 import { templateHoles, fillTemplate } from './template';
 import { DataError, type DataIssue } from './validate';
 
@@ -64,6 +64,7 @@ export function validateHub(raw: HubInput): Hub {
   const issues: DataIssue[] = [];
   const add = (path: string, message: string) => issues.push({ path, message });
   checkTargets(h, add);
+  checkWindow(h, raw.fieldSize, add);
   checkBoard(h, raw.fieldSize, raw.oddsLabels ?? SHIPPED_ODDS, add);
   checkSky(h, new Set(raw.colors), add);
   checkCopy(h, [...raw.bannedWords, ...h.copy.bannedWords], String(raw.races ?? SHIPPED_RACES), add);
@@ -107,7 +108,7 @@ function checkTargets(h: Hub, add: Add): void {
   });
 
   const doors = targets.filter((t) => t.kind === 'door');
-  for (const action of ['program', 'watch'] as const) {
+  for (const action of ['window', 'watch'] as const) {
     const n = doors.filter((d) => d.action === action).length;
     if (n !== 1) add('targets.value', `needs exactly one door with action "${action}", has ${n}`);
   }
@@ -122,16 +123,29 @@ function checkTargets(h: Hub, add: Add): void {
   });
   for (const id of ids.keys()) if (!seen.has(id)) add('targetOrder.value', `is missing "${id}"`);
 
-  // One door row per door.
+  // One row per door, and one for the book (it has no picture target).
   const rows = h.box.value.doorRows;
   const rowDoors = new Set<string>();
   rows.forEach((r, i) => {
     const t = targets.find((x) => x.id === r.door);
-    if (t === undefined || t.kind !== 'door') add(`box.value.doorRows[${i}].door`, `"${r.door}" is not a door`);
+    if (r.door !== BOOK_ROW && (t === undefined || t.kind !== 'door')) add(`box.value.doorRows[${i}].door`, `"${r.door}" is not a door or the book's row "${BOOK_ROW}"`);
     if (rowDoors.has(r.door)) add(`box.value.doorRows[${i}].door`, `"${r.door}" has two rows`);
     rowDoors.add(r.door);
   });
   for (const d of doors) if (!rowDoors.has(d.id)) add('box.value.doorRows', `has no row for the door "${d.id}"`);
+  if (!rowDoors.has(BOOK_ROW)) add('box.value.doorRows', `has no row for the book ("${BOOK_ROW}")`);
+  rows.forEach((r, i) => {
+    if (i > 0 && r.top <= rows[i - 1].top) add(`box.value.doorRows[${i}].top`, `y${r.top} must be below the row before (y${rows[i - 1].top})`);
+    if (r.top < r.item.y0 || r.top + 7 > r.item.y1) add(`box.value.doorRows[${i}].item`, `${showBox(r.item)} does not hold the row's text, rows y${r.top}-${r.top + 7}`);
+  });
+  const lastVoice = Math.max(...h.box.value.voiceTops) + 7;
+  if (rows.length > 0 && lastVoice >= rows[0].top) add('box.value.voiceTops', `voice row 2 ends at y${lastVoice}, over the first row at y${rows[0].top}`);
+
+  // Focus lands on a row (TH4: one focus, and a row is always there to land on).
+  const f = h.focus.value;
+  for (const k of ['arrival', 'back', 'fromLookable'] as const) {
+    if (!rowDoors.has(f[k])) add(`focus.value.${k}`, `"${f[k]}" is not a row in box.value.doorRows`);
+  }
 
   // The idle people.
   const people = h.idle.value.order;
@@ -143,6 +157,28 @@ function checkTargets(h: Hub, add: Add): void {
   targets.forEach((t, i) => {
     if (t.kind === 'lookable' && t.idle !== null && !once.has(t.idle)) add(`targets.value[${i}].idle`, `"${t.idle}" is not in idle.value.order`);
   });
+}
+
+/** The window screen fits the screen, its rows fit above the Ash line, and its pointer boxes never overlap. */
+function checkWindow(h: Hub, fieldSize: number, add: Add): void {
+  const W = h.window.value;
+  const screen: Box = { x0: 0, y0: 0, x1: SCREEN.w - 1, y1: SCREEN.h - 1 };
+  const F = W.frame;
+  if (F.x + 8 * F.tilesW > SCREEN.w || F.y + 8 * F.tilesH > SCREEN.h) add('window.value.frame', `the box runs to x${F.x + 8 * F.tilesW - 1}, y${F.y + 8 * F.tilesH - 1}, off the 256x240 screen`);
+  const R = W.rows;
+  const lastRowEnd = R.firstTop + R.pitch * (fieldSize - 1) + 8;
+  if (lastRowEnd >= W.line.y) add('window.value.rows', `post ${fieldSize}'s row ends at y${lastRowEnd}, over the line at y${W.line.y}`);
+  if (W.ticket.tops[0] <= W.line.y) add('window.value.ticket.tops', `ticket row 1 at y${W.ticket.tops[0]} must be under the line at y${W.line.y}`);
+  const boxes: { path: string; box: Box }[] = Array.from({ length: fieldSize }, (_v, i) => ({
+    path: `window.value.rows (post ${i + 1})`,
+    box: { x0: R.hit.x0, y0: R.firstTop + R.pitch * i + R.hit.dy0, x1: R.hit.x1, y1: R.firstTop + R.pitch * i + R.hit.dy1 },
+  }));
+  boxes.push({ path: 'window.value.ticket.bet', box: W.ticket.bet }, { path: 'window.value.ticket.back', box: W.ticket.back });
+  for (const { path, box } of boxes) if (!inside(box, screen) || box.x0 > box.x1 || box.y0 > box.y1) add(path, `${showBox(box)} is not a box inside the 256x240 screen`);
+  for (let i = 0; i < boxes.length; i++) {
+    for (let j = 0; j < i; j++) if (overlap(boxes[i].box, boxes[j].box)) add(boxes[i].path, `${showBox(boxes[i].box)} overlaps ${boxes[j].path} (${showBox(boxes[j].box)})`);
+  }
+  if (!inside(W.sign.plate, screen)) add('window.value.sign.plate', `${showBox(W.sign.plate)} is not inside the 256x240 screen`);
 }
 
 function checkBoard(h: Hub, fieldSize: number, oddsLabels: readonly string[], add: Add): void {
@@ -198,13 +234,22 @@ function checkCopy(h: Hub, banned: readonly string[], widestRace: string, add: A
   c.flavor.forEach((t, i) => line(`copy.flavor[${i}]`, t, chars));
 
   const targets = h.targets.value;
-  const doors = targets.filter((t) => t.kind === 'door');
-  for (const d of doors) {
-    const t = c.doors[d.id];
-    if (t === undefined) add(`copy.doors.${d.id}`, `missing: the door "${d.id}" needs a label`);
-    else line(`copy.doors.${d.id}`, t, chars, ['r']);
+  const rowIds = h.box.value.doorRows.map((r) => r.door);
+  for (const id of rowIds) {
+    const t = c.doors[id];
+    if (t === undefined) add(`copy.doors.${id}`, `missing: the row "${id}" needs a label`);
+    else line(`copy.doors.${id}`, t, chars, ['r']);
   }
-  for (const k of Object.keys(c.doors)) if (!doors.some((d) => d.id === k)) add(`copy.doors.${k}`, `"${k}" is not a door`);
+  for (const k of Object.keys(c.doors)) if (!rowIds.includes(k)) add(`copy.doors.${k}`, `"${k}" is not a row in box.value.doorRows`);
+
+  // The window's clerk and its back item (book-and-window.md sections 7 and 13).
+  line('copy.window.choose', c.window.choose, chars, ['r']);
+  c.window.ticket.forEach((t, i) => line(`copy.window.ticket[${i}]`, t, chars));
+  c.window.punch.forEach((t, i) => line(`copy.window.punch[${i}]`, t, chars));
+  const back = h.window.value.ticket.back;
+  line('copy.window.back', c.window.back, Math.floor((back.x1 - back.x0 + 1) / MAIN_W));
+  const wplate = h.window.value.sign.plate;
+  line('copy.sign.windows', c.sign.windows, Math.floor((wplate.x1 - wplate.x0 + 1) / MAIN_W));
 
   const b = h.toteBoard.value;
   line('copy.board.race', c.board.race, Math.floor((b.header.lastX - b.header.x + 1) / MAIN_W), ['r']);

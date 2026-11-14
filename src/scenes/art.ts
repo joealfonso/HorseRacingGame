@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { Slot } from '../data/raceDaySchema';
 import { rgbOf, type ColorMap } from '../render/colors';
-import { MAIN_CELL, MAIN_CHARS, SMALL_CELL, SMALL_CHARS, SMALL_FALLBACK, cellOf } from '../render/fontLayout';
+import { DISPLAY_CELL, DISPLAY_CHARS, FONT_DISPLAY, MAIN_CELL, MAIN_CHARS, SMALL_CELL, SMALL_CHARS, SMALL_FALLBACK, cellOf } from '../render/fontLayout';
 import { checkerPixels, paintGlyphs, swapColors } from '../render/recolor';
 import { SLOT_IDS, sheetSize, slotState, type SlotState } from '../render/slotStatus';
 
@@ -18,7 +18,14 @@ export interface ArtInfo {
 }
 
 type Cell = { w: number; h: number; columns: number };
-type FontId = typeof SLOT_IDS.fontMain | typeof SLOT_IDS.fontSmall;
+/** The main, small and display fonts (the display font is the cover's masthead only, book-and-window.md 18.5 D). */
+export type FontId = typeof SLOT_IDS.fontMain | typeof SLOT_IDS.fontSmall | typeof FONT_DISPLAY;
+
+const FONT_SHEETS: Record<FontId, [string, Cell]> = {
+  [SLOT_IDS.fontMain]: [MAIN_CHARS, MAIN_CELL],
+  [SLOT_IDS.fontSmall]: [SMALL_CHARS, SMALL_CELL],
+  [FONT_DISPLAY]: [DISPLAY_CHARS, DISPLAY_CELL],
+};
 
 function addFrames(tex: Phaser.Textures.Texture, slot: Slot): void {
   const w = slot.frameWidth ?? tex.source[0].width;
@@ -130,7 +137,7 @@ export class Art {
   font(id: FontId, color: string): string {
     const key = `${id}|${color}`;
     if (this.scene.cache.bitmapFont.exists(key)) return key;
-    const [chars, cell]: [string, Cell] = id === SLOT_IDS.fontMain ? [MAIN_CHARS, MAIN_CELL] : [SMALL_CHARS, SMALL_CELL];
+    const [chars, cell] = FONT_SHEETS[id];
     const w = cell.w * cell.columns;
     const h = cell.h * Math.ceil(chars.length / cell.columns);
     const tex = canvasTexture(this.scene, key, w, h);
@@ -149,9 +156,9 @@ export class Art {
         });
       }
     } else {
-      // Stand-in for the artist's font: the browser's monospace at 8 px, cut to hard
-      // pixels below. Readable, clearly not ours, and the placeholder tag shows with it.
-      ctx.font = '8px monospace';
+      // Stand-in for the artist's font: the browser's monospace at the cell's size, cut to
+      // hard pixels below. Readable, clearly not ours, and the placeholder tag shows with it.
+      ctx.font = `${cell.h === 16 ? 14 : 8}px monospace`;
       ctx.textBaseline = 'top';
       ctx.fillStyle = '#FFFFFF';
       for (const ch of chars) {
@@ -175,7 +182,7 @@ export class Art {
     return key;
   }
 
-  /** One line of text in the main or small font, at a whole-pixel position. */
+  /** One line of text in the main, small or display font, at a whole-pixel position. */
   text(x: number, y: number, str: string, color = 'Bone', id: FontId = SLOT_IDS.fontMain): Phaser.GameObjects.BitmapText {
     return this.scene.add.bitmapText(x, y, this.font(id, color), str);
   }

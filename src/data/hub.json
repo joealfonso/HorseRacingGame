@@ -6,7 +6,7 @@
   },
   "targets": {
     "value": [
-      { "id": "windows", "kind": "door", "action": "program", "hit": { "x0": 0, "y0": 96, "x1": 111, "y1": 175 }, "focus": { "x0": 4, "y0": 98, "x1": 107, "y1": 145 } },
+      { "id": "windows", "kind": "door", "action": "window", "hit": { "x0": 0, "y0": 96, "x1": 111, "y1": 175 }, "focus": { "x0": 4, "y0": 98, "x1": 107, "y1": 145 } },
       { "id": "rail", "kind": "door", "action": "watch", "hit": { "x0": 160, "y0": 90, "x1": 255, "y1": 139 }, "focus": { "x0": 172, "y0": 104, "x1": 219, "y1": 135 } },
       { "id": "regular", "kind": "lookable", "hit": { "x0": 0, "y0": 24, "x1": 111, "y1": 95 }, "focus": { "x0": 52, "y0": 44, "x1": 75, "y1": 75 }, "idle": "regular" },
       { "id": "board", "kind": "lookable", "hit": { "x0": 124, "y0": 32, "x1": 251, "y1": 87 }, "focus": { "x0": 124, "y0": 32, "x1": 251, "y1": 71 }, "idle": null },
@@ -28,14 +28,20 @@
       "cursorX": 8,
       "textX": 20,
       "chars": 28,
-      "voiceTops": [186, 196],
+      "voiceTops": [185, 194],
       "doorRows": [
-        { "door": "windows", "top": 210, "item": { "x0": 8, "y0": 208, "x1": 247, "y1": 219 } },
-        { "door": "rail", "top": 222, "item": { "x0": 8, "y0": 220, "x1": 247, "y1": 231 } }
+        { "door": "read", "top": 206, "item": { "x0": 8, "y0": 205, "x1": 247, "y1": 213 } },
+        { "door": "windows", "top": 215, "item": { "x0": 8, "y0": 214, "x1": 247, "y1": 222 } },
+        { "door": "rail", "top": 224, "item": { "x0": 8, "y0": 223, "x1": 247, "y1": 231 } }
       ]
     },
     "status": "confirmed",
-    "note": "Spec section 4, The box. Door rows are pointer targets (section 6) that act as their door."
+    "note": "Spec section 4, The box, amended by docs/specs/book-and-window.md section 8 and 18.1 item 7: voice rows at y185 and y194, three rows at y206, y215 and y224. Rows are pointer targets (section 10) that act as their door. The read row opens the book and has no picture target."
+  },
+  "focus": {
+    "value": { "arrival": "read", "back": "windows", "fromLookable": "read" },
+    "status": "confirmed",
+    "note": "docs/specs/book-and-window.md section 2 and FL1 to FL3: focus is Read on arrival from the Result and at day start, Bet on return from the book or the window; Up, Down and Esc on a lookable go to Read."
   },
   "statusBar": {
     "value": { "raceX": 4, "bankLastX": 251, "top": 4, "fill": { "y0": 0, "y1": 14 }, "lineY": 15 },
@@ -104,6 +110,7 @@
       "Make it a good one."
     ],
     "doors": {
+      "read": "Read Race {r}",
       "windows": "Bet Race {r}",
       "rail": "Just watch Race {r}"
     },
@@ -131,6 +138,36 @@
         "lines": ["Hot peanuts! Mostly warm.", "Lemonade, lightly lemony.", "Mind the pigeons. Bold ones.", "Rain or shine. Mostly shine."]
       }
     },
+    "window": {
+      "choose": "Race {r}. Who do you like?",
+      "ticket": ["Pencil's sharp. Ready.", "Take your time. No rush.", "Ready when you are."],
+      "punch": ["There you go. Enjoy it.", "Fresh off the machine.", "Mind the peanut shells."],
+      "back": "Esc: back"
+    },
     "bannedWords": ["cash", "buy"]
+  },
+  "window": {
+    "value": {
+      "booth": { "x": 0, "y": 16 },
+      "clerk": { "x": 112, "y": 34 },
+      "program": { "x": 176, "y": 72 },
+      "sign": { "plate": { "x0": 16, "y0": 28, "x1": 79, "y1": 39 }, "top": 30 },
+      "frame": { "x": 0, "y": 88, "tilesW": 32, "tilesH": 19 },
+      "clerkLine": { "x": 20, "top": 98 },
+      "rows": { "firstTop": 112, "pitch": 11, "cursorX": 8, "boxX": 20, "nameX": 36, "oddsLastX": 247, "hit": { "x0": 8, "x1": 247, "dy0": -1, "dy1": 9 } },
+      "line": { "y": 202, "x0": 8, "x1": 247 },
+      "ticket": {
+        "tops": [208, 220],
+        "cursorX": 8,
+        "textX": 20,
+        "lastX": 247,
+        "arrows": { "y0": 206, "y1": 217, "pad": 4 },
+        "bet": { "x0": 164, "y0": 206, "x1": 247, "y1": 217 },
+        "back": { "x0": 176, "y0": 218, "x1": 247, "y1": 229 }
+      },
+      "nameChars": 18
+    },
+    "status": "starting guess",
+    "note": "docs/specs/book-and-window.md sections 7 and 10, art-director 19.3: the booth picture at y16, the close-up clerk at x112-143, y34-81 over it (the counter's top row y80 is in the booth art), your program on the counter at x176-191, y72-79, the sign's word centered on its plate at cell top y30. The Navy box x0-255, y88-239; row i at cell top y112 + 11i, its pointer box y111 + 11i to y121 + 11i; the Ash line y202; ticket rows y208 and y220."
   }
 }

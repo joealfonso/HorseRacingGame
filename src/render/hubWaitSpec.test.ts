@@ -31,7 +31,8 @@ describe('TH7: a click on any other target cancels the wait', () => {
   });
 
   it('a click on the Windows door row also cancels and opens nothing', () => {
-    const win = hitTest(hubPointerTargets(hub), { x: 100, y: 212 })!;
+    // The Bet row is y214-222 since book-and-window.md section 8 (was y208-219; y212 is now the Read row).
+    const win = hitTest(hubPointerTargets(hub), { x: 100, y: 218 })!;
     const r = hubClick(hub, waiting(), win, pending);
     expect(r.outcome).toBeNull();
     expect(r.state).toMatchObject({ railWaiting: false, focus: 'windows' });
@@ -43,17 +44,17 @@ describe('TH7: a click on any other target cancels the wait', () => {
 
   it('a click after cancelling acts normally again', () => {
     const cancelled = hubClick(hub, waiting(), 'fans', pending).state;
-    expect(hubClick(hub, cancelled, 'windows', pending).outcome).toEqual({ kind: 'program', post: 1 });
+    expect(hubClick(hub, cancelled, 'windows', pending).outcome).toEqual({ kind: 'window', post: 1 });
     expect(hubClick(hub, cancelled, 'fans', pending).outcome).toEqual({ kind: 'look', id: 'fans' });
   });
 
   it('while waiting, the screen keeps the corners and cursor on the rail and the toRail voice; after the cancel it moves', () => {
     const wait = hubScreen({ hub, rd, ctx, day: dayWith(10000), drawn: drawnOf()[2], program: null, state: waiting(), seconds: 0, reducedMotion: true });
     expect(wait.voice.map((v) => v.text)).toEqual(['Off to the rail.', 'Post in a moment.']);
-    expect(wait.cursor.y).toBe(222);
+    expect(wait.cursor.y).toBe(224); // the Watch row's cell top since book-and-window.md section 8 (was y222)
     const after = hubScreen({ hub, rd, ctx, day: dayWith(10000), drawn: drawnOf()[2], program: null, state: hubClick(hub, waiting(), 'windows', pending).state, seconds: 0, reducedMotion: true });
     expect(after.voice[0].text).toBe('The crowd is still betting.');
-    expect(after.cursor.y).toBe(210);
+    expect(after.cursor.y).toBe(215); // the Bet row since book-and-window.md section 8 (was y210)
   });
 });
 

@@ -4,6 +4,7 @@ import palette from './data/palette.json';
 import { paletteSchema, type Slot } from './data/raceDaySchema';
 import { checkBettingCopy, checkProgramLines, loadRaceDay } from './data/raceDayLoad';
 import { loadBetting } from './data/bettingLoad';
+import { loadBook } from './data/bookLoad';
 import { loadHub } from './data/hubLoad';
 import { dayContext } from './bet/day';
 import { colorMap, type ColorMap } from './render/colors';
@@ -14,6 +15,7 @@ import { parseSeedParam } from './render/session';
 import { ERROR_SCREEN_SLOT_IDS, SLOT_IDS } from './render/slotStatus';
 import type { ArtInfo } from './scenes/art';
 import { startDay } from './scenes/betDay';
+import { BookScene } from './scenes/BookScene';
 import { BootScene, type BootData } from './scenes/BootScene';
 import { CardScene } from './scenes/CardScene';
 import { ErrorScene } from './scenes/ErrorScene';
@@ -23,6 +25,7 @@ import { OrdersScene } from './scenes/OrdersScene';
 import { ProgramScene } from './scenes/ProgramScene';
 import { RaceScene } from './scenes/RaceScene';
 import { ResultScene } from './scenes/ResultScene';
+import { WindowScene } from './scenes/WindowScene';
 
 // The page background in index.html is the single letterbox color. Phaser takes
 // it from there so the two cannot drift apart.
@@ -70,14 +73,15 @@ async function start(): Promise<void> {
     // in app code, never inside src/sim/ or src/bet/.
     const daySeed = seed.seed ?? crypto.getRandomValues(new Uint32Array(1))[0];
     console.info(`Betting day: day seed ${daySeed}. Add ?seed=${daySeed} to the address to replay this day.`);
-    const day = startDay(ctx, betting, rd, new Estimates(ctx.rules.runsPerRace), daySeed, loadHub());
-    // Race 1's estimate starts now, while the art loads; the track's board shows dashes until it is in.
+    const day = startDay(ctx, betting, rd, new Estimates(ctx.rules.runsPerRace), daySeed, loadHub(), loadBook());
+    // Race 1's estimate starts now, while the art loads; the cover and the news fill the wait (book-and-window.md section 2).
     day.bet.estimates.request(day.bet.drawn[0]);
     boot = {
       slots: rd.slots.slots,
       colors: colorMap(rd.palette),
       keys: rd.palette.keyColors,
-      next: { key: 'hub', data: { ...day } },
+      // FL1: the day opens on its cover.
+      next: { key: 'book', data: { ...day, from: 'dayStart' } },
     };
   } catch (err) {
     console.error(err instanceof Error ? err.message : err);
@@ -100,7 +104,10 @@ async function start(): Promise<void> {
     // only to whole numbers.
     scale: { mode: Phaser.Scale.NONE, zoom: integerScale(window.innerWidth, window.innerHeight) },
   });
+  game.scene.add('book', BookScene);
   game.scene.add('hub', HubScene);
+  game.scene.add('window', WindowScene);
+  // The program page left the loop: reading moved to the book and betting to the window. Kept, not deleted.
   game.scene.add('program', ProgramScene);
   // The Card and Orders screens left the loop for the betting program; kept, not deleted.
   game.scene.add('card', CardScene);

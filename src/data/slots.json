@@ -54,6 +54,11 @@
     {"id": "art.hub.fan.back", "file": "assets/art/hub/fan/back.png", "frameWidth": 16, "frameHeight": 24, "frames": 2, "recolor": false, "placeholder": false},
     {"id": "art.hub.bugler", "file": "assets/art/hub/bugler.png", "frameWidth": 16, "frameHeight": 24, "frames": 3, "recolor": false, "placeholder": false},
     {"id": "art.hub.vendor", "file": "assets/art/hub/vendor.png", "frameWidth": 16, "frameHeight": 24, "frames": 2, "recolor": false, "placeholder": false},
+    {"id": "font.ui.display", "file": "assets/font/ui/display.png", "frameWidth": 12, "frameHeight": 16, "frames": 41, "columns": 16, "recolor": false, "placeholder": false},
+    {"id": "art.book.cover.art", "file": "assets/art/book/cover/art.png", "frameWidth": 240, "frameHeight": 128, "frames": 1, "recolor": false, "placeholder": false},
+    {"id": "art.window.booth", "file": "assets/art/window/booth.png", "frameWidth": 256, "frameHeight": 72, "frames": 1, "recolor": false, "placeholder": false},
+    {"id": "art.window.clerk", "file": "assets/art/window/clerk.png", "frameWidth": 32, "frameHeight": 48, "frames": 2, "recolor": false, "placeholder": false},
+    {"id": "art.window.program", "file": "assets/art/window/program.png", "frameWidth": 16, "frameHeight": 8, "frames": 1, "recolor": false, "placeholder": false},
     {"id": "sfx.race.gate_open", "file": null, "placeholder": true},
     {"id": "sfx.race.call_to_post", "file": null, "placeholder": true},
     {"id": "sfx.photo.shutter", "file": null, "placeholder": true}

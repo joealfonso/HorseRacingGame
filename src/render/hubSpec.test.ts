@@ -10,15 +10,18 @@ import {
 import { gridPoint, hitTest, pointerMove, pointerState } from './pointer';
 
 // Written from docs/specs/track-hub.md sections 2, 4, 5, 7, 9 and DESIGN "The track (between
-// races)". Expected values are typed from those, not read back from the code under test.
+// races)", as amended by docs/specs/book-and-window.md section 11 (amendments 11 to 20) and
+// 18.1 item 7. Expected values are typed from those, not read back from the code under test.
 
 const hub = loadHub();
 const ready: HubKeyContext = { fieldSize: 8, ready: true };
 const pending: HubKeyContext = { fieldSize: 8, ready: false };
 const START = 10000;
 const drawn = (race: number): DrawnRace => drawnOf()[race - 1];
+// Focus on Windows (Bet), as it is back from the book or the window (book-and-window.md FL2).
+const onWindows = arriveHub(hub, {}, 'back');
 const input = (over: Partial<HubInput> = {}): HubInput => ({
-  hub, rd, ctx, day: dayWith(START), drawn: drawn(3), program: programOf(3), state: initialHubState(hub), seconds: 0, reducedMotion: false, ...over,
+  hub, rd, ctx, day: dayWith(START), drawn: drawn(3), program: programOf(3), state: onWindows, seconds: 0, reducedMotion: false, ...over,
 });
 const at = (focus: string, over: Partial<HubState> = {}): HubState => ({ ...initialHubState(hub), focus, ...over });
 const press = (s: HubState, codes: string[], k: HubKeyContext = ready) => {
@@ -47,40 +50,48 @@ const FOCUS: Record<string, [number, number, number, number]> = {
   windows: [4, 98, 107, 145], rail: [172, 104, 219, 135], regular: [52, 44, 75, 75], board: [124, 32, 251, 71],
   fans: [120, 104, 159, 135], bugler: [124, 144, 147, 173], snackCart: [180, 140, 235, 171],
 };
-const DOOR_TOP: Record<string, number> = { windows: 210, rail: 222 };
+// book-and-window.md section 8: three rows at y206, y215, y224 (were the two doors at y210 and y222).
+const DOOR_TOP: Record<string, number> = { read: 206, windows: 215, rail: 224 };
+// 18.1 item 7: voice rows at y185 and y194 (were y186 and y196).
+const VOICE_TOPS = [185, 194];
 
 afterEach(() => vi.restoreAllMocks());
 
-describe('TH5: arrival focus is Windows', () => {
-  it('arriving with any looks, from the result, New day or boot, is Windows with nothing pending', () => {
+describe('TH5, replaced by book-and-window.md FL2: arrival focus is Read, back from the book or the window it is Bet', () => {
+  it('arriving with any looks, from the result, New day or boot, is Read with nothing pending; back is Windows', () => {
     const lookSets: Record<string, number>[] = [{}, { fans: 3 }, { board: 1, regular: 2, snackCart: 5 }];
     for (const looks of lookSets) {
-      const s = arriveHub(hub, looks);
-      expect(s.focus).toBe('windows');
-      expect(s.railWaiting).toBe(false);
-      expect(s.lineShown).toBe(false);
+      for (const [from, want] of [['arrival', 'read'], ['back', 'windows']] as const) {
+        const s = arriveHub(hub, looks, from);
+        expect(s.focus).toBe(want);
+        expect(s.railWaiting).toBe(false);
+        expect(s.lineShown).toBe(false);
+      }
     }
-    expect(initialHubState(hub).focus).toBe('windows');
+    expect(initialHubState(hub).focus).toBe('read');
   });
 
-  it('the first screen shows the horseshoe on the Windows row and the corners on the Windows box', () => {
+  it('the first screen shows the horseshoe on the Read row and no corners; back, on the Bet row with the corners on the Windows box', () => {
+    const first = hubScreen(input({ state: initialHubState(hub) }));
+    expect(first.cursor).toEqual({ x: 8, y: 206 });
+    expect(first.corners).toEqual([]);
     const sc = hubScreen(input());
-    expect(sc.cursor).toEqual({ x: 8, y: 210 });
+    expect(sc.cursor).toEqual({ x: 8, y: 215 });
     const xs = sc.corners.map((c) => c.x);
     expect(Math.min(...xs)).toBe(4);
   });
 });
 
-describe('TH6: Windows and the digits', () => {
-  it.each(['Enter', 'Space', 'KeyZ'])('%s on Windows opens the program at post 1, prices posted or not', (code) => {
-    expect(hubKey(hub, initialHubState(hub), code, ready).outcome).toEqual({ kind: 'program', post: 1 });
-    expect(hubKey(hub, initialHubState(hub), code, pending).outcome).toEqual({ kind: 'program', post: 1 });
+describe('TH6, replaced by book-and-window.md FL4: Windows and the digits open the window', () => {
+  it.each(['Enter', 'Space', 'KeyZ'])('%s on Windows opens the window at post 1, prices posted or not', (code) => {
+    expect(hubKey(hub, onWindows, code, ready).outcome).toEqual({ kind: 'window', post: 1 });
+    expect(hubKey(hub, onWindows, code, pending).outcome).toEqual({ kind: 'window', post: 1 });
   });
 
-  it('digit k opens the program at post k from every focus, pending or not', () => {
-    for (const id of ORDER) for (let k = 1; k <= 8; k++) {
+  it('digit k opens the window at post k from every focus, pending or not', () => {
+    for (const id of [...ORDER, 'read']) for (let k = 1; k <= 8; k++) {
       for (const c of [ready, pending]) {
-        expect(hubKey(hub, at(id), `Digit${k}`, c).outcome, `${id} ${k}`).toEqual({ kind: 'program', post: k });
+        expect(hubKey(hub, at(id), `Digit${k}`, c).outcome, `${id} ${k}`).toEqual({ kind: 'window', post: k });
       }
     }
   });
@@ -92,7 +103,7 @@ describe('TH6: Windows and the digits', () => {
         expect(r.outcome, `field ${size} digit ${k}`).toBeNull();
         expect(r.state).toEqual(at('fans'));
       }
-      expect(hubKey(hub, at('fans'), `Digit${size}`, { fieldSize: size, ready: true }).outcome).toEqual({ kind: 'program', post: size });
+      expect(hubKey(hub, at('fans'), `Digit${size}`, { fieldSize: size, ready: true }).outcome).toEqual({ kind: 'window', post: size });
     }
   });
 
@@ -105,7 +116,7 @@ describe('TH6: Windows and the digits', () => {
 describe('TH7: the rail', () => {
   it('with prices posted, Enter goes to the post with no bet', () => {
     expect(press(at('rail'), ['Enter']).outcomes).toEqual([{ kind: 'watch' }]);
-    expect(press(initialHubState(hub), ['ArrowDown', 'Enter']).outcomes).toEqual([null, { kind: 'watch' }]);
+    expect(press(onWindows, ['ArrowDown', 'Enter']).outcomes).toEqual([null, { kind: 'watch' }]);
   });
 
   it('while pending, Enter starts nothing, shows the toRail voice, and focus stays on the rail', () => {
@@ -115,7 +126,7 @@ describe('TH7: the rail', () => {
     expect(sc.voice.map((t) => t.text)).toEqual(['Off to the rail.', 'Post in a moment.']);
     const xs = sc.corners.map((c) => c.x);
     expect(Math.min(...xs)).toBe(172);
-    expect(sc.cursor.y).toBe(222);
+    expect(sc.cursor.y).toBe(DOOR_TOP.rail);
   });
 
   it('the frame the prices post, the race starts, once', () => {
@@ -139,10 +150,10 @@ describe('TH7: the rail', () => {
     expect(hubPricesPosted(press(at('windows'), ['Enter'], pending).state).outcome).toBeNull();
   });
 
-  it('Enter on Windows while pending never waits: it opens the program', () => {
+  it('Enter on Windows while pending never waits: it opens the window', () => {
     const r = press(at('windows'), ['Enter'], pending);
     expect(r.state.railWaiting).toBe(false);
-    expect(r.outcomes).toEqual([{ kind: 'program', post: 1 }]);
+    expect(r.outcomes).toEqual([{ kind: 'window', post: 1 }]);
   });
 });
 
@@ -166,23 +177,25 @@ describe('TH17: key order', () => {
     expect(press(at('windows'), ['ArrowLeft']).state.focus).toBe('regular');
   });
 
-  it('Up and Down move between the two doors and wrap', () => {
+  it('Up and Down move through Read, Bet and Watch and wrap (FL3)', () => {
+    expect(press(at('read'), ['ArrowDown']).state.focus).toBe('windows');
     expect(press(at('windows'), ['ArrowDown']).state.focus).toBe('rail');
-    expect(press(at('windows'), ['ArrowUp']).state.focus).toBe('rail');
-    expect(press(at('rail'), ['ArrowDown']).state.focus).toBe('windows');
+    expect(press(at('rail'), ['ArrowDown']).state.focus).toBe('read');
+    expect(press(at('read'), ['ArrowUp']).state.focus).toBe('rail');
     expect(press(at('rail'), ['ArrowUp']).state.focus).toBe('windows');
+    expect(press(at('windows'), ['ArrowUp']).state.focus).toBe('read');
   });
 
-  it.each(LOOKABLES)('from %s, Up, Down and Esc go to Windows', (id) => {
+  it.each(LOOKABLES)('from %s, Up, Down and Esc go to Read (FL3)', (id) => {
     for (const code of ['ArrowUp', 'ArrowDown', 'Escape']) {
       const r = press(at(id), [code]);
-      expect(r.state.focus, code).toBe('windows');
+      expect(r.state.focus, code).toBe('read');
       expect(r.outcomes).toEqual([null]);
     }
   });
 
-  it('Esc on a door does nothing', () => {
-    for (const id of ['windows', 'rail']) {
+  it('Esc on a row does nothing', () => {
+    for (const id of ['read', 'windows', 'rail']) {
       const r = press(at(id), ['Escape']);
       expect(r.state).toEqual(at(id));
       expect(r.outcomes).toEqual([null]);
@@ -196,7 +209,7 @@ describe('TH17: key order', () => {
 });
 
 describe('TH18: looks', () => {
-  const row2 = (s: HubState) => hubScreen(input({ state: s })).voice.find((t) => t.y === 196)?.text ?? null;
+  const row2 = (s: HubState) => hubScreen(input({ state: s })).voice.find((t) => t.y === VOICE_TOPS[1])?.text ?? null;
 
   it.each(LOOKABLES)('%s: lines cycle in order from line 1 and wrap', (id) => {
     let s = at(id);
@@ -222,8 +235,8 @@ describe('TH18: looks', () => {
       const s = at(id);
       for (const st of [s, press(s, ['Enter']).state]) {
         const sc = hubScreen(input({ state: st }));
-        expect(sc.voice[0]).toMatchObject({ text: NAMES[id], x: 20, y: 186 });
-        expect(sc.cursor).toEqual({ x: 8, y: 186 });
+        expect(sc.voice[0]).toMatchObject({ text: NAMES[id], x: 20, y: VOICE_TOPS[0] });
+        expect(sc.cursor).toEqual({ x: 8, y: VOICE_TOPS[0] });
       }
     }
   });
@@ -457,10 +470,10 @@ describe('TH10: copy fits its fields and holds no banned word', () => {
     }
   });
 
-  it('the door labels read "Bet Race {r}" and "Just watch Race {r}"', () => {
+  it('the row labels read "Read Race {r}" (amendment 18), "Bet Race {r}" and "Just watch Race {r}"', () => {
     const sc = hubScreen(input());
-    expect(sc.doors.map((d) => d.text)).toEqual(['Bet Race 3', 'Just watch Race 3']);
-    expect(sc.doors.map((d) => d.y)).toEqual([210, 222]);
+    expect(sc.doors.map((d) => d.text)).toEqual(['Read Race 3', 'Bet Race 3', 'Just watch Race 3']);
+    expect(sc.doors.map((d) => d.y)).toEqual([DOOR_TOP.read, DOOR_TOP.windows, DOOR_TOP.rail]);
     expect(sc.sign.text).toBe('Windows');
   });
 
@@ -487,6 +500,12 @@ describe('TH4: one focus', () => {
 
   const check = (s: HubState, seconds: number, label: string) => {
     const sc = hubScreen(input({ state: s, seconds }));
+    // Amendment 19: Read has no picture target, so no corners; the horseshoe is on its row.
+    if (s.focus === 'read') {
+      expect(sc.corners, label).toEqual([]);
+      expect(sc.cursor, label).toEqual({ x: 8, y: DOOR_TOP.read });
+      return;
+    }
     // Exactly one cursor, four corners.
     expect(sc.corners, label).toHaveLength(4);
     const f = FOCUS[s.focus];
@@ -501,7 +520,7 @@ describe('TH4: one focus', () => {
     if (s.focus === 'windows' || s.focus === 'rail') {
       expect(sc.cursor, label).toEqual({ x: 8, y: DOOR_TOP[s.focus] });
     } else {
-      expect(sc.cursor, label).toEqual({ x: 8, y: 186 });
+      expect(sc.cursor, label).toEqual({ x: 8, y: VOICE_TOPS[0] });
       expect(sc.voice[0].text, label).toBe(NAMES[s.focus]);
     }
     expect(sc.cursorFrame, label).toBe(d);
@@ -539,7 +558,7 @@ describe('TH4: one focus', () => {
   it('the horseshoe is on a door row for doors, and never on a door row for a lookable', () => {
     for (const id of ORDER) {
       const sc = hubScreen(input({ state: at(id) }));
-      const onDoor = sc.cursor.y === 210 || sc.cursor.y === 222;
+      const onDoor = sc.cursor.y === DOOR_TOP.windows || sc.cursor.y === DOOR_TOP.rail;
       expect(onDoor).toBe(id === 'windows' || id === 'rail');
     }
   });
@@ -593,9 +612,9 @@ describe('TH16: reduced motion', () => {
 });
 
 describe('TH12 and TH4 on the whole: pointer and key outcomes agree', () => {
-  it('hubPointerTargets covers the seven targets and the two door rows', () => {
+  it('hubPointerTargets covers the seven targets and the three rows (Read, Bet, Watch)', () => {
     const ids = hubPointerTargets(hub).map((t) => t.id);
-    expect(new Set(ids)).toEqual(new Set(ORDER));
-    expect(ids).toHaveLength(9);
+    expect(new Set(ids)).toEqual(new Set([...ORDER, 'read']));
+    expect(ids).toHaveLength(10);
   });
 });

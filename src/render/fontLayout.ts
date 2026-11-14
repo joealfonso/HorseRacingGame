@@ -1,11 +1,18 @@
-// The two fixed-cell font sheets (DESIGN.md, HUD, UI frame and font).
+// The three fixed-cell font sheets (DESIGN.md, HUD, UI frame and font).
 // Main: 8x8 cells, 16 a row, printable ASCII from space. Small: 4x6 cells, one row.
+// Display: 12x16 cells, 16 a row, the cover's masthead only.
 
 export const MAIN_CHARS = Array.from({ length: 95 }, (_, i) => String.fromCharCode(32 + i)).join('');
 export const MAIN_CELL = { w: 8, h: 8, columns: 16 } as const;
 
 export const SMALL_CHARS = '0123456789:./#- ';
 export const SMALL_CELL = { w: 4, h: 6, columns: 16 } as const;
+
+/** The cover's masthead font (DESIGN 18.5 D in docs/specs/book-and-window.md): capitals only, 12x16 cells, 16 a row. */
+export const DISPLAY_CHARS = " &'-.0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+export const DISPLAY_CELL = { w: 12, h: 16, columns: 16 } as const;
+/** Its slot id. Not a race-day slot, so not in SLOT_IDS. */
+export const FONT_DISPLAY = 'font.ui.display';
 
 /** Top-left of a glyph's cell in its sheet, or null when the sheet has no such glyph. */
 export function cellOf(chars: string, cell: { w: number; h: number; columns: number }, ch: string): { x: number; y: number } | null {

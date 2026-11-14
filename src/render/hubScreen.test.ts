@@ -9,13 +9,16 @@ import {
 import { hitTest } from './pointer';
 
 // The track screen's logic (docs/specs/track-hub.md sections 2, 4, 5 and 8, DESIGN "The track
-// (between races)"). Expected values are the spec's and DESIGN's.
+// (between races)", as amended by docs/specs/book-and-window.md section 11). Expected values
+// are the specs' and DESIGN's.
 
 const hub = loadHub();
 const ORDER = ['regular', 'windows', 'board', 'fans', 'rail', 'bugler', 'snackCart'];
 const ready: HubKeyContext = { fieldSize: 8, ready: true };
 const pending: HubKeyContext = { fieldSize: 8, ready: false };
-const start = initialHubState(hub);
+// Most tests start with focus on Windows (the Bet row), where it lands back from the book or
+// the window (book-and-window.md FL2). Arrival itself is on Read (FL1, FL2, amendment 13).
+const start = arriveHub(hub, {}, 'back');
 const at = (focus: string, over: Partial<HubState> = {}): HubState => ({ ...start, focus, ...over });
 const press = (s: HubState, codes: string[], k = ready) => {
   const outcomes: unknown[] = [];
@@ -29,14 +32,16 @@ const input = (over: Partial<HubInput> = {}): HubInput => ({
   hub, rd, ctx, day: dayWith(START), drawn: drawn(3), program: programOf(3), state: start, seconds: 0, reducedMotion: false, ...over,
 });
 
-describe('focus on arrival (TH5)', () => {
-  it('starts on Windows', () => {
+describe('focus on arrival (TH5, replaced by book-and-window.md FL2)', () => {
+  it('starts on Read; back from the book or the window it is on Windows (Bet)', () => {
+    expect(initialHubState(hub).focus).toBe('read');
     expect(start.focus).toBe('windows');
   });
 
-  it('arriving again is on Windows whatever had focus, and keeps the day\'s looks', () => {
+  it('arriving again is on Read whatever had focus, and keeps the day\'s looks; coming back is on Windows', () => {
     const s = arriveHub(hub, { fans: 2 });
-    expect(s).toEqual({ focus: 'windows', looks: { fans: 2 }, lineShown: false, railWaiting: false });
+    expect(s).toEqual({ focus: 'read', looks: { fans: 2 }, lineShown: false, railWaiting: false });
+    expect(arriveHub(hub, { fans: 2 }, 'back')).toEqual({ focus: 'windows', looks: { fans: 2 }, lineShown: false, railWaiting: false });
   });
 });
 
@@ -51,16 +56,18 @@ describe('keys (TH17)', () => {
     expect(press(at('windows'), ['ArrowRight']).state.focus).toBe('board');
   });
 
-  it('Up and Down move between the doors, wrapping', () => {
+  it('Up and Down move through the three rows, Read, Bet, Watch, wrapping (book-and-window.md FL3)', () => {
+    expect(press(at('read'), ['ArrowDown']).state.focus).toBe('windows');
+    expect(press(at('read'), ['ArrowUp']).state.focus).toBe('rail');
     expect(press(at('windows'), ['ArrowDown']).state.focus).toBe('rail');
-    expect(press(at('windows'), ['ArrowUp']).state.focus).toBe('rail');
-    expect(press(at('rail'), ['ArrowDown']).state.focus).toBe('windows');
+    expect(press(at('windows'), ['ArrowUp']).state.focus).toBe('read');
+    expect(press(at('rail'), ['ArrowDown']).state.focus).toBe('read');
     expect(press(at('rail'), ['ArrowUp']).state.focus).toBe('windows');
   });
 
-  it('from a lookable, Up, Down and Esc go to Windows', () => {
+  it('from a lookable, Up, Down and Esc go to Read (FL3)', () => {
     for (const id of ['regular', 'board', 'fans', 'bugler', 'snackCart']) {
-      for (const code of ['ArrowUp', 'ArrowDown', 'Escape']) expect(press(at(id), [code]).state.focus, `${id} ${code}`).toBe('windows');
+      for (const code of ['ArrowUp', 'ArrowDown', 'Escape']) expect(press(at(id), [code]).state.focus, `${id} ${code}`).toBe('read');
     }
   });
 
@@ -74,22 +81,22 @@ describe('keys (TH17)', () => {
   });
 });
 
-describe('doors (TH6, TH7)', () => {
-  it.each(['Enter', 'NumpadEnter', 'Space', 'KeyZ'])('%s on Windows opens the program at post 1', (code) => {
-    expect(hubKey(hub, start, code, ready).outcome).toEqual({ kind: 'program', post: 1 });
-    expect(hubKey(hub, start, code, pending).outcome).toEqual({ kind: 'program', post: 1 });
+describe('doors (TH6 and TH7, TH6 replaced by book-and-window.md FL4)', () => {
+  it.each(['Enter', 'NumpadEnter', 'Space', 'KeyZ'])('%s on Windows opens the window at post 1', (code) => {
+    expect(hubKey(hub, start, code, ready).outcome).toEqual({ kind: 'window', post: 1 });
+    expect(hubKey(hub, start, code, pending).outcome).toEqual({ kind: 'window', post: 1 });
   });
 
-  it('digit k opens the program at post k from any focus, pending or not; above the field does nothing', () => {
-    for (const id of ORDER) {
+  it('digit k opens the window at post k from any focus, pending or not; above the field does nothing', () => {
+    for (const id of [...ORDER, 'read']) {
       for (let k = 1; k <= 8; k++) {
-        expect(hubKey(hub, at(id), `Digit${k}`, ready).outcome).toEqual({ kind: 'program', post: k });
-        expect(hubKey(hub, at(id), `Numpad${k}`, pending).outcome).toEqual({ kind: 'program', post: k });
+        expect(hubKey(hub, at(id), `Digit${k}`, ready).outcome).toEqual({ kind: 'window', post: k });
+        expect(hubKey(hub, at(id), `Numpad${k}`, pending).outcome).toEqual({ kind: 'window', post: k });
       }
     }
     expect(hubKey(hub, start, 'Digit9', ready).outcome).toBeNull();
     expect(hubKey(hub, start, 'Digit7', { fieldSize: 6, ready: true }).outcome).toBeNull();
-    expect(hubKey(hub, start, 'Digit6', { fieldSize: 6, ready: true }).outcome).toEqual({ kind: 'program', post: 6 });
+    expect(hubKey(hub, start, 'Digit6', { fieldSize: 6, ready: true }).outcome).toEqual({ kind: 'window', post: 6 });
   });
 
   it('the rail with prices posted goes to the post with no bet', () => {
@@ -134,7 +141,7 @@ describe('doors (TH6, TH7)', () => {
 
   it('after a click cancels the wait, the next click acts as usual', () => {
     const cancelled = hubClick(hub, at('rail', { railWaiting: true }), 'windows', pending).state;
-    expect(hubClick(hub, cancelled, 'windows', pending).outcome).toEqual({ kind: 'program', post: 1 });
+    expect(hubClick(hub, cancelled, 'windows', pending).outcome).toEqual({ kind: 'window', post: 1 });
   });
 
   it('prices posting with no wait does nothing', () => {
@@ -144,7 +151,8 @@ describe('doors (TH6, TH7)', () => {
 
 describe('looks (TH18)', () => {
   const lines = hub.copy.lookables.regular.lines;
-  const voice2 = (s: HubState) => hubScreen(input({ state: s })).voice.find((t) => t.y === 196)?.text ?? null;
+  // Voice row 2's cell top, y194 since the art-director's 18.1 item 7 in book-and-window.md (was y196).
+  const voice2 = (s: HubState) => hubScreen(input({ state: s })).voice.find((t) => t.y === 194)?.text ?? null;
 
   it('a lookable focused shows its name and a blank row 2 until a look', () => {
     const s = at('regular');
@@ -200,16 +208,18 @@ describe('pointer (TH4, TH12)', () => {
   });
 
   it('a click does what Enter does on that target', () => {
-    expect(hubClick(hub, at('fans'), 'windows', ready).outcome).toEqual({ kind: 'program', post: 1 });
+    expect(hubClick(hub, at('fans'), 'windows', ready).outcome).toEqual({ kind: 'window', post: 1 });
     expect(hubClick(hub, start, 'rail', ready)).toEqual({ state: at('rail'), outcome: { kind: 'watch' } });
     const r = hubClick(hub, start, 'snackCart', ready);
     expect(r.outcome).toEqual({ kind: 'look', id: 'snackCart' });
     expect(r.state).toEqual(at('snackCart', { looks: { snackCart: 1 }, lineShown: true }));
   });
 
-  it('the door rows hit as their doors; the voice rows and the status bar hit nothing', () => {
-    expect(hitTest(targets, { x: 100, y: 212 })).toBe('windows');
-    expect(hitTest(targets, { x: 100, y: 225 })).toBe('rail');
+  it('the rows hit as their doors and Read as the book row; the voice rows and the status bar hit nothing', () => {
+    // book-and-window.md section 8: Read y205-213, Bet y214-222, Watch y223-231 (were Bet y208-219, Watch y220-231).
+    expect(hitTest(targets, { x: 100, y: 209 })).toBe('read');
+    expect(hitTest(targets, { x: 100, y: 218 })).toBe('windows');
+    expect(hitTest(targets, { x: 100, y: 227 })).toBe('rail');
     expect(hitTest(targets, { x: 100, y: 190 })).toBeNull();
     expect(hitTest(targets, { x: 100, y: 5 })).toBeNull();
   });
@@ -261,17 +271,19 @@ describe('the screen', () => {
     expect(hubScreen(input({ state: at('rail', { railWaiting: true }), program: null })).voice.map((t) => t.text)).toEqual(['Off to the rail.', 'Post in a moment.']);
   });
 
-  it('the door labels sit at x20, y210 and y222', () => {
+  it('the row labels sit at x20, y206, y215 and y224 (book-and-window.md section 8, was y210 and y222)', () => {
     expect(hubScreen(input()).doors).toEqual([
-      { text: 'Bet Race 3', x: 20, y: 210, color: 'Bone' },
-      { text: 'Just watch Race 3', x: 20, y: 222, color: 'Bone' },
+      { text: 'Read Race 3', x: 20, y: 206, color: 'Bone' },
+      { text: 'Bet Race 3', x: 20, y: 215, color: 'Bone' },
+      { text: 'Just watch Race 3', x: 20, y: 224, color: 'Bone' },
     ]);
   });
 
   it('exactly one cursor, and the corners frame the same target (TH4)', () => {
     for (const t of hub.targets.value) {
       const sc = hubScreen(input({ state: at(t.id) }));
-      const wantY = t.id === 'windows' ? 210 : t.id === 'rail' ? 222 : 186;
+      // book-and-window.md section 8 and 18.1 item 7: rows y215 and y224, voice row 1 y185 (were y210, y222, y186).
+      const wantY = t.id === 'windows' ? 215 : t.id === 'rail' ? 224 : 185;
       expect(sc.cursor, t.id).toEqual({ x: 8, y: wantY });
       const f = t.focus;
       expect(sc.corners, t.id).toEqual([

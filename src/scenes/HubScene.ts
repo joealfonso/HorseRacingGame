@@ -4,22 +4,24 @@ import { rgbOf } from '../render/colors';
 import { HUB_SLOTS, HUB_SLOT_IDS, hubBackdrop, hubFills, hubSprites, type HubImage } from '../render/hubPicture';
 import {
   arriveHub, hubClick, hubFocusMarks, hubHover, hubKey, hubPointerTargets, hubPricesPosted, hubScreen, idleAfterLook, idleClock,
-  type HubKeyContext, type HubOutcome, type HubScreen, type HubState, type IdleClock,
+  type HubArrival, type HubKeyContext, type HubOutcome, type HubScreen, type HubState, type IdleClock,
 } from '../render/hubScreen';
 import { PLACEHOLDER_TAG_AT, SLOT_IDS, showPlaceholderTag, standIns } from '../render/slotStatus';
 import { Art, type ArtInfo } from './art';
 import { announce } from './ariaLive';
-import { betErrorLines, betRaceData, nextDay, passDay, programIfReady, type BetDay } from './betDay';
+import { betErrorLines, betRaceData, nextDay, passDay, programIfReady, requestNextEstimates, type BetDay } from './betDay';
+import type { BookData } from './BookScene';
 import { MenuKeys } from './menuKeys';
 import { PagePainter } from './paper';
 import { PointerInput } from './pointerInput';
-import type { ProgramData } from './ProgramScene';
+import type { WindowData } from './WindowScene';
 
-// The track between races (docs/specs/track-hub.md, DESIGN "The track (between races)"): one
-// still picture with two doors and five things to look at. Everything drawn comes from
+// The track between races (docs/specs/track-hub.md, DESIGN "The track (between races)", as
+// amended by docs/specs/book-and-window.md): one still picture with two doors and five things
+// to look at, and a box with three rows (Read, Bet, Watch). Everything drawn comes from
 // src/render/hubScreen.ts and src/render/hubPicture.ts, every price from src/bet; this file
 // places it, keeps the clock (the bob, the crowd, the flag, the idles), forwards keys and
-// clicks, and acts on the outcome: the program, the post with no bet, or a look.
+// clicks, and acts on the outcome: the book, the window, the post with no bet, or a look.
 
 export interface HubData {
   bet: BetDay;
@@ -28,6 +30,8 @@ export interface HubData {
   art: ArtInfo;
   /** Keys still down from the screen before, ignored until released (IN2). */
   held?: string[];
+  /** Where focus lands: Read on arrival (the default), Bet back from the book or the window (FL1, FL2). */
+  focus?: HubArrival;
 }
 
 const DEPTH = { fills: 0, picture: 1, sprites: 2, box: 9, ui: 10, cursor: 12, corners: 13, tag: 20 } as const;
@@ -64,22 +68,20 @@ export class HubScene extends Phaser.Scene {
     this.corners = [];
     this.idle = idleClock(0);
     this.art = new Art(this, data.art);
-    // Never shown after the last race or broke (TH9): a day that has ended starts the next one here.
+    // Never shown after the last race or broke (TH9): a day that has ended starts the next one on its cover (BE3 as amended).
     if (data.day.ended !== null) {
       this.leaving = true;
       const next = nextDay(data.bet, data.day);
-      this.scene.start('hub', { ...next, art: data.art, held: data.held } satisfies HubData);
+      this.scene.start('book', { ...next, art: data.art, held: data.held, from: 'dayStart' } satisfies BookData);
       return;
     }
     this.day = data.day;
     this.drawn = data.bet.drawn[data.day.nextRace - 1];
-    // TH5: focus arrives on Windows; the day's looks carry over.
-    this.state = arriveHub(data.bet.hub, data.bet.looks);
+    // FL1, FL2: focus arrives on Read, or on Bet back from the book or the window; the day's looks carry over.
+    this.state = arriveHub(data.bet.hub, data.bet.looks, data.focus ?? 'arrival');
     this.reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     // This race's estimate first, then the next race's (UI5).
-    data.bet.estimates.request(this.drawn);
-    const after = data.bet.drawn[data.day.nextRace];
-    if (after) data.bet.estimates.request(after);
+    requestNextEstimates(data.bet, data.day);
     this.program = this.tryProgram();
     if (this.leaving) return;
 
@@ -182,7 +184,12 @@ export class HubScene extends Phaser.Scene {
   /** The horseshoe's frame and the four corners, on the same frame so the two read as one focus. */
   private place(m: { cursorFrame: number; corners: HubScreen['corners'] }): void {
     this.cursor.setFrame(String(m.cursorFrame));
-    m.corners.forEach((c, i) => this.corners[i].setPosition(c.x, c.y).setFrame(c.frame === 'top' ? '0' : '1').setFlipX(c.flipX));
+    // With Read focused there are no corners (TB1): the four images hide.
+    this.corners.forEach((img, i) => {
+      const c = m.corners[i];
+      img.setVisible(c !== undefined);
+      if (c) img.setPosition(c.x, c.y).setFrame(c.frame === 'top' ? '0' : '1').setFlipX(c.flipX);
+    });
   }
 
   private setState(next: HubState): void {
@@ -201,8 +208,10 @@ export class HubScene extends Phaser.Scene {
       return;
     }
     const bet: BetDay = { ...this.data0.bet, looks: this.state.looks };
-    if (o.kind === 'program') return this.leave(() => this.scene.start('program', { bet, day: this.day, art: this.data0.art, held: this.keys.down(), post: o.post } satisfies ProgramData));
-    // The rail: the program page's Pass path, with prices posted (a waiting rail comes here when they post).
+    const held = this.keys.down();
+    if (o.kind === 'book') return this.leave(() => this.scene.start('book', { bet, day: this.day, art: this.data0.art, held, from: 'track' } satisfies BookData));
+    if (o.kind === 'window') return this.leave(() => this.scene.start('window', { bet, day: this.day, art: this.data0.art, held, post: o.post } satisfies WindowData));
+    // The rail: no bet, with prices posted (a waiting rail comes here when they post).
     let day: DayState;
     try {
       day = passDay(bet, this.day, this.drawn);

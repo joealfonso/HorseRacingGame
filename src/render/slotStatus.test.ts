@@ -381,7 +381,7 @@ describe('IN1 and TH15: every action has a keyboard binding; the mouse is bound 
 
   it('TH15: the screens that take the mouse do it through the helper; the race and the Card loop take none', () => {
     const scene = (f: string) => readFileSync(join(ROOT, 'src/scenes', f), 'utf8');
-    for (const f of ['HubScene.ts', 'ProgramScene.ts', 'ResultScene.ts']) {
+    for (const f of ['BookScene.ts', 'HubScene.ts', 'ProgramScene.ts', 'ResultScene.ts', 'WindowScene.ts']) {
       expect(scene(f), f).toContain('new PointerInput');
       // The arrival guard (section 6): every screen hands the helper the guard from data.
       expect(scene(f), f).toMatch(/new PointerInput\([\s\S]*?pointer\.arrivalGuardSeconds\.value\);/);
@@ -395,6 +395,7 @@ describe('IN1 and TH15: every action has a keyboard binding; the mouse is bound 
   const TARGETS: [screen: string, target: string, kind: string, keys: string[]][] = [
     ['track', 'windows', 'door', ['Enter']],
     ['track', 'rail', 'door', ['Enter']],
+    ['track', 'read', 'doorRow', ['Enter']],
     ['track', '"Bet Race r" row', 'doorRow', ['Enter']],
     ['track', '"Just watch Race r" row', 'doorRow', ['Enter']],
     ['track', 'regular', 'lookable', ['Enter']],

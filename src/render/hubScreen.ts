@@ -1,4 +1,4 @@
-import type { Hub, HubTarget } from '../data/hubSchema';
+import { BOOK_ROW, type Hub, type HubTarget } from '../data/hubSchema';
 import type { RaceDay } from '../data/raceDaySchema';
 import { fillTemplate } from '../data/template';
 import { quote, type DayContext, type DayState, type DrawnRace, type RaceProgram } from '../bet/day';
@@ -24,11 +24,11 @@ export const HUB_PENDING = '-';
 /** Enter, Space or Z: act on the focus. */
 export const HUB_CONFIRM_KEYS: readonly string[] = ['Enter', 'NumpadEnter', 'Space', 'KeyZ'];
 
-/** The key each kind of track target stands for (TH15): a click on a door, a door row or a lookable is Enter with it focused. */
+/** The key each kind of track target stands for (TH15): a click on a door, a box row (Read, Bet, Watch) or a lookable is Enter with it focused. */
 export const HUB_POINTER_KEYS: Readonly<Record<'door' | 'doorRow' | 'lookable', readonly string[]>> = { door: ['Enter'], doorRow: ['Enter'], lookable: ['Enter'] };
 
 export interface HubState {
-  /** The one focus: a target id from hub.json. */
+  /** The one focus: a target id from hub.json, or BOOK_ROW for the box's Read row (no picture target). */
   focus: string;
   /** Looks per lookable this day. Lives in the day session, reset on New day, never in storage. */
   looks: Readonly<Record<string, number>>;
@@ -42,10 +42,10 @@ export interface HubState {
  * What the scene does next. `look` changes nothing in the flow; the scene restarts the idle
  * clock with it (idleAfterLook) and mirrors the line to aria-live.
  */
-export type HubOutcome = { kind: 'program'; post: number } | { kind: 'watch' } | { kind: 'look'; id: string } | null;
+export type HubOutcome = { kind: 'window'; post: number } | { kind: 'book' } | { kind: 'watch' } | { kind: 'look'; id: string } | null;
 
 export interface HubKeyContext {
-  /** Horses in this race's field: digits 1 to this open the program. */
+  /** Horses in this race's field: digits 1 to this open the window. */
   fieldSize: number;
   /** The prices are posted (the program exists). */
   ready: boolean;
@@ -58,19 +58,24 @@ const targetOf = (hub: Hub, id: string): HubTarget => {
   if (t === undefined) throw new Error(`hub: no target "${id}"`);
   return t;
 };
-/** The doors in box-row order: Windows, then the rail. */
-const doorsInRows = (hub: Hub): Door[] => hub.box.value.doorRows.map((r) => targetOf(hub, r.door) as Door);
+/** The box's rows top to bottom (Read, Bet, Watch): Up and Down step through these ids. */
+const rowIds = (hub: Hub): string[] => hub.box.value.doorRows.map((r) => r.door);
+/** The focus is a picture target (not the Read row): only then are the focus corners drawn (book-and-window.md amendment 19). */
+export const isPictureTarget = (hub: Hub, id: string): boolean => hub.targets.value.some((t) => t.id === id);
 const doorWith = (hub: Hub, action: Door['action']): Door => {
   const d = hub.targets.value.find((t): t is Door => t.kind === 'door' && t.action === action);
   if (d === undefined) throw new Error(`hub: no door with action "${action}"`);
   return d;
 };
-/** Windows: the door that opens the program. Focus arrives here (TH5). */
-export const windowsId = (hub: Hub): string => doorWith(hub, 'program').id;
+/** Windows: the door that opens the window screen. Focus comes back here from the book or the window (FL2). */
+export const windowsId = (hub: Hub): string => doorWith(hub, 'window').id;
 
-/** TH5: arriving at the track, from the result, New day, boot or the program, focus is Windows. Looks carry over within the day. */
-export const arriveHub = (hub: Hub, looks: Readonly<Record<string, number>> = {}): HubState =>
-  ({ focus: windowsId(hub), looks, lineShown: false, railWaiting: false });
+/** Where the track's focus lands: `arrival` from the Result and at day start, `back` from the book or the window (FL1, FL2). */
+export type HubArrival = 'arrival' | 'back';
+
+/** FL1, FL2: arriving at the track, focus is Read; back from the book or the window, Bet. Looks carry over within the day. */
+export const arriveHub = (hub: Hub, looks: Readonly<Record<string, number>> = {}, from: HubArrival = 'arrival'): HubState =>
+  ({ focus: hub.focus.value[from], looks, lineShown: false, railWaiting: false });
 
 /** The day's first arrival: no looks yet. */
 export const initialHubState = (hub: Hub): HubState => arriveHub(hub);
@@ -79,9 +84,10 @@ const focusOn = (s: HubState, id: string): HubState => (id === s.focus ? s : { .
 
 /** Enter, Space, Z or a click on target `id`, with focus already there. */
 function act(hub: Hub, s: HubState, id: string, k: HubKeyContext): { state: HubState; outcome: HubOutcome } {
+  if (id === BOOK_ROW) return { state: s, outcome: { kind: 'book' } };
   const t = targetOf(hub, id);
   if (t.kind === 'door') {
-    if (t.action === 'program') return { state: s, outcome: { kind: 'program', post: 1 } };
+    if (t.action === 'window') return { state: s, outcome: { kind: 'window', post: 1 } };
     if (k.ready) return { state: s, outcome: { kind: 'watch' } };
     return { state: { ...s, railWaiting: true }, outcome: null };
   }
@@ -90,11 +96,13 @@ function act(hub: Hub, s: HubState, id: string, k: HubKeyContext): { state: HubS
 }
 
 /**
- * One key press, already past the held-key guard (spec section 2, TH6, TH7, TH17). Left and
- * Right step through every target in picture order, wrapping. Up and Down step between the
- * doors, wrapping, and from a lookable go to Windows. Esc on a lookable goes to Windows, on a
- * door does nothing. Digits 1 to the field size open the program at that post from any focus.
- * Enter, Space or Z acts. While the rail waits on prices, Esc cancels and no other key acts.
+ * One key press, already past the held-key guard (book-and-window.md section 2, FL3, FL4, TH7).
+ * Left and Right step through every picture target in picture order, wrapping; from the Read
+ * row (no picture target) they step from the windows' place, as from Bet. Up and Down step
+ * through the box's rows (Read, Bet, Watch), wrapping, and from a lookable go to Read. Esc on a
+ * lookable goes to Read, on a row does nothing. Digits 1 to the field size open the window at
+ * that post from any focus. Enter, Space or Z acts. While the rail waits on prices, Esc
+ * cancels and no other key acts.
  */
 export function hubKey(hub: Hub, s: HubState, code: string, k: HubKeyContext): { state: HubState; outcome: HubOutcome } {
   const none = (state: HubState = s) => ({ state, outcome: null });
@@ -104,24 +112,26 @@ export function hubKey(hub: Hub, s: HubState, code: string, k: HubKeyContext): {
   const digit = /^(Digit|Numpad)([1-9])$/.exec(code);
   if (digit) {
     const post = Number(digit[2]);
-    return post <= k.fieldSize ? { state: s, outcome: { kind: 'program', post } } : none();
+    return post <= k.fieldSize ? { state: s, outcome: { kind: 'window', post } } : none();
   }
-  const focused = targetOf(hub, s.focus);
-  const windows = windowsId(hub);
+  const onLookable = isPictureTarget(hub, s.focus) && targetOf(hub, s.focus).kind === 'lookable';
+  const fromLookable = hub.focus.value.fromLookable;
   if (code === 'ArrowLeft' || code === 'ArrowRight') {
     const order = hub.targetOrder.value;
     const i = order.indexOf(s.focus);
     const step = code === 'ArrowRight' ? 1 : -1;
-    return none(focusOn(s, order[(i + step + order.length) % order.length]));
+    // Guess (the spec is silent): Read is not in the picture, so Left and Right step from the windows' place, as from Bet.
+    const from = i >= 0 ? i : order.indexOf(windowsId(hub));
+    return none(focusOn(s, order[(from + step + order.length) % order.length]));
   }
   if (code === 'ArrowUp' || code === 'ArrowDown') {
-    if (focused.kind === 'lookable') return none(focusOn(s, windows));
-    const doors = doorsInRows(hub);
-    const i = doors.findIndex((d) => d.id === s.focus);
+    if (onLookable) return none(focusOn(s, fromLookable));
+    const rows = rowIds(hub);
+    const i = rows.indexOf(s.focus);
     const step = code === 'ArrowDown' ? 1 : -1;
-    return none(focusOn(s, doors[(i + step + doors.length) % doors.length].id));
+    return none(focusOn(s, rows[(i + step + rows.length) % rows.length]));
   }
-  if (code === 'Escape') return focused.kind === 'lookable' ? none(focusOn(s, windows)) : none();
+  if (code === 'Escape') return onLookable ? none(focusOn(s, fromLookable)) : none();
   if (HUB_CONFIRM_KEYS.includes(code)) return act(hub, s, s.focus, k);
   return none();
 }
@@ -147,8 +157,9 @@ export function hubPricesPosted(s: HubState): { state: HubState; outcome: HubOut
 }
 
 /**
- * The track's pointer targets, for pointer.ts hitTest: every target's hit box, then each door
- * row in the box, which acts as its door. Everything else does nothing when clicked.
+ * The track's pointer targets, for pointer.ts hitTest: every target's hit box, then each row
+ * in the box (Read, Bet, Watch), which acts as its door or opens the book. Everything else
+ * does nothing when clicked.
  */
 export function hubPointerTargets(hub: Hub): PointerTarget[] {
   return [
@@ -228,15 +239,15 @@ export interface HubScreen {
   board: { header: PageText; posts: HubBoardPost[] };
   /** Voice rows 1 and 2; an empty row is left out. */
   voice: PageText[];
-  /** The two door labels. */
+  /** The box's row labels: Read, Bet, Watch. */
   doors: PageText[];
-  /** The horseshoe's top-left: exactly one, on the focused door's row or beside a lookable's name. */
+  /** The horseshoe's top-left: exactly one, on the focused row or beside a lookable's name. */
   cursor: { x: number; y: number };
   /** The frame the scene sets on the horseshoe; the corners bob with it, so the two read as one focus. */
   cursorFrame: number;
-  /** The four focus corners around the focused target's focus box. */
+  /** The four focus corners around the focused picture target's focus box; none with Read focused (amendment 19). */
   corners: HubCorner[];
-  /** The aria-live text: race, bank, the voice rows and the focused door. Never a price or the estimate (TH9). */
+  /** The aria-live text: race, bank, the voice rows and the focused row. Never a price or the estimate (TH9). */
   aria: string;
 }
 
@@ -282,11 +293,11 @@ export function hubScreen(input: HubInput): HubScreen {
   const header = text(fillTemplate(hub.copy.board.race, { r: race }), T.header.x, T.header.y);
 
   // The box.
-  const focused = targetOf(hub, state.focus);
+  const focused = isPictureTarget(hub, state.focus) ? targetOf(hub, state.focus) : null;
   const [v1, v2] = B.voiceTops;
   let voice: PageText[];
   let cursor: { x: number; y: number };
-  if (focused.kind === 'lookable') {
+  if (focused?.kind === 'lookable') {
     const line = state.lineShown ? lookLine(hub, focused.id, state.looks[focused.id] ?? 0) : null;
     voice = [text(hub.copy.lookables[focused.id]?.name ?? '', B.textX, v1), ...(line === null ? [] : [text(line, B.textX, v2)])];
     cursor = { x: B.cursorX, y: v1 };
@@ -295,13 +306,14 @@ export function hubScreen(input: HubInput): HubScreen {
       ? [hub.copy.state.toRail, hub.copy.state.toRailSecond]
       : [stateLine(hub, rd, race, races, ready), flavorLine(hub, race, races)];
     voice = [text(rows[0], B.textX, v1), text(rows[1], B.textX, v2)];
-    cursor = { x: B.cursorX, y: B.doorRows.find((r) => r.door === focused.id)!.top };
+    cursor = { x: B.cursorX, y: B.doorRows.find((r) => r.door === state.focus)!.top };
   }
   const doors = B.doorRows.map((r) => text(fillTemplate(hub.copy.doors[r.door] ?? '', { r: race }), B.textX, r.top));
 
   const { cursorFrame: frame, corners } = hubFocusMarks(input);
 
-  const focusLabel = focused.kind === 'door' ? [doors[B.doorRows.findIndex((r) => r.door === focused.id)].text] : [];
+  const row = B.doorRows.findIndex((r) => r.door === state.focus);
+  const focusLabel = row >= 0 ? [doors[row].text] : [];
   const aria = [raceOf, bank, ...voice.map((t) => t.text), ...focusLabel].filter((t) => t !== '').map(sentence).join(' ');
 
   return { sky: skyFor(hub, race), bar, status, sign, board: { header, posts }, voice, doors, cursor, cursorFrame: frame, corners, aria };
@@ -316,6 +328,8 @@ export function hubFocusMarks(input: Pick<HubInput, 'hub' | 'rd' | 'state' | 'se
   const { hub, rd } = input;
   const frame = input.reducedMotion || (input.cursorFrames ?? 2) < 2 ? 0 : bobFrame(input.seconds, rd.ambient.cursorSwapsPerSecond.value);
   const d = frame === 1 ? hub.cornerBobPx.value : 0;
+  // Read has no picture target, so no corners (book-and-window.md amendment 19, TB1).
+  if (!isPictureTarget(hub, input.state.focus)) return { cursorFrame: frame, corners: [] };
   // The outer corner of each mark on the focus box's corner.
   const f = targetOf(hub, input.state.focus).focus;
   const corners: HubCorner[] = [

@@ -475,3 +475,23 @@ Kick is the remainder, so a stalker can wobble up to 8 from a third: p08 and p11
 **Extra checks the spec's section 13 implies.** "Official" is on the book's own banned list (news.bannedWords), and `news.bannedChars` holds "$", since the spec says no copy uses either. Banned words are matched as whole words, case-insensitive, on the copy as written: a horse's name is the stable's content and is not checked against the lists.
 
 **CV1 fails against day.json, not book.json.** The track name is race 1's `track`, so a name over 19 characters, or with a character the display font lacks, is a DataError for `src/data/day.json` at `races[0].track`. The display font's 19 and its glyph list live in book.json (`cover.display`).
+
+## Book and window, step 3 (the screens and the flow)
+
+**The day opens on the cover, and Esc from it lands the track on Read; from the track's book, on Bet.** FL1 says Esc on the day's cover goes to the track on Read, FL2 says return from the book is Bet. I read the day-start book as part of arriving, so the whole book opened at boot or New day closes to Read, and the book opened from the Read row closes to Bet. `BookData.from` carries which. The window always returns to Bet.
+
+**The door action is `window`, not `program`, and the track has two new outcomes.** Amendment 11 makes Windows open the window screen, so hub.json's door action and `HubOutcome` say `window`, and the Read row's outcome is `book`. The Read row is a box row with id `read` (`BOOK_ROW`) and no picture target; the focus on arrival, on return and from a lookable is data (`hub.json` `focus`).
+
+**Left and Right from Read step from the windows' place (guess, the spec is silent).** Read has no picture target. Stepping as from Bet keeps the arrival habit of the approved track (Left reaches the regular, Right the tote board).
+
+**A page turn puts the book's cursor on post 1 (guess).** The spec says only that Read opens with the cursor on post 1. The book and the window take clicks only, no hover, as the program page did: a hover at the window would move the ticket's horse.
+
+**The clerk's cycles count uses in the day session (`BetDay.clerk`).** The ticket line advances each time a ticket opens (choosing to ticket, or the book's hand-off), the bet line each bet. Moving an open ticket to another row by click is not a new use. New day resets both. The stamp on the bet beat is frame 1 for one idle step (hub.json `idle.stepSeconds`), then rest; with reduced motion he does not move. The beat is `program.punchSeconds`, the approved 0.6 s.
+
+**News is worked out when the book opens, not stored.** `newsOf` runs `newsFor` on the day and `BetDay.previous`, which `nextDay` fills with the day just ended. Nothing is written to storage, so a reload starts with no previous day and slot 5 is flavor.
+
+**The program page left the loop, and the window reuses its pure parts.** `ProgramScene` is still registered and compiles, but nothing opens it. The window shares `openingDollars`, `shownOdds`, `toteSlip` and the ticket strings with it, so BP3, BP7 and the slip pixels cannot drift. `requestNextEstimates` is the one place the track, the book and the window ask for races r and r + 1 (UI5, BB5).
+
+**The screens are checked against the approved mock pixel for pixel.** `src/render/bookWindowComposite.test.ts` draws the cover, the news, three race pages and four window states from the pure modules and the shipped PNGs and compares them with `docs/mocks/book-and-window/`. The track's composite test moved to sheets 6a and 6b, since its box rows moved. The PNG reader and compositor are shared in `src/render/compositeKit.ts` (test support only).
+
+**The close-up clerk is drawn whole at x112, y34.** The counter's cut at y80 needs no crop: his frame's rows from y80 down are transparent, and the counter is in the booth art below him.

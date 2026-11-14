@@ -18,9 +18,11 @@ const BOXES: [string, B][] = [
   ['fans', [112, 90, 159, 139]],
   ['bugler', [112, 140, 159, 175]],
   ['snackCart', [160, 140, 255, 175]],
-  // The two door rows in the box act as their doors (section 4 table, section 6 table).
-  ['windows', [8, 208, 247, 219]],
-  ['rail', [8, 220, 247, 231]],
+  // The rows in the box act as their doors, and Read opens the book (book-and-window.md
+  // sections 8 and 10, which replace the two door rows at y208-219 and y220-231).
+  ['read', [8, 205, 247, 213]],
+  ['windows', [8, 214, 247, 222]],
+  ['rail', [8, 223, 247, 231]],
 ];
 const expectedAt = (x: number, y: number): string | null => {
   for (const [id, [x0, y0, x1, y1]] of BOXES) if (x >= x0 && x <= x1 && y >= y0 && y <= y1) return id;
@@ -231,11 +233,13 @@ describe('TH12 (hub): a click on each target is the same outcome as Enter with t
     });
   }
 
-  it('a click on a door row acts as that door', () => {
+  it('a click on a row acts as that door, and on Read opens the book (book-and-window.md section 10)', () => {
     const k: HubKeyContext = { fieldSize: 8, ready: true };
-    const win = hitTest(targets, { x: 100, y: 212 })!;
-    const rail = hitTest(targets, { x: 100, y: 225 })!;
-    expect(hubClick(hub, initialHubState(hub), win, k).outcome).toEqual({ kind: 'program', post: 1 });
+    const read = hitTest(targets, { x: 100, y: 209 })!;
+    const win = hitTest(targets, { x: 100, y: 218 })!;
+    const rail = hitTest(targets, { x: 100, y: 227 })!;
+    expect(hubClick(hub, initialHubState(hub), read, k).outcome).toEqual({ kind: 'book' });
+    expect(hubClick(hub, initialHubState(hub), win, k).outcome).toEqual({ kind: 'window', post: 1 });
     expect(hubClick(hub, initialHubState(hub), rail, k).outcome).toEqual({ kind: 'watch' });
   });
 });
