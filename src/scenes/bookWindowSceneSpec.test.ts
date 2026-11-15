@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { settle, type DayState, type DrawnRace } from '../bet/day';
+import { drawnDay, settle, type DayState, type DrawnRace } from '../bet/day';
+import { newsFor } from '../bet/news';
 import { offeredAmounts } from '../bet/money';
 import { startEstimate, stepEstimate } from '../bet/estimate';
 import { betting, ctx, DAY_SEED, dayWith, fakeResult, programOf, RUNS, settled } from '../render/betKit';
@@ -274,7 +275,7 @@ describe('FL1 as amended by 24.6: the day\'s first Read opens the cover; Enter s
   it('Enter on the cover shows the news (Rail Talk), and Enter on the news shows race 1\'s page', () => {
     const r = atCover().press('Enter');
     expect(r.texts).toContain('Rail Talk');
-    expect(r.texts).toContain("Today's card");
+    expect(r.texts.filter((t) => /^Race [1-8]: /.test(t)).length).toBeGreaterThan(0); // the news items' headlines (book-useful.md 3.5)
     r.press('Enter');
     expect(r.texts).toContain('Race 1 of 8');
   });
@@ -308,7 +309,7 @@ describe('FL1 as amended by 24.6: the day\'s first Read opens the cover; Enter s
     expect(d.bet.looks).toEqual({});
     expect(d.bet.clerk).toEqual({ ticket: 0, punch: 0 });
     expect(d.bet.bookOpened).toBe(false);
-    expect(d.bet.previous).not.toBeNull();
+    expect(d.bet).not.toHaveProperty('previous'); // no previous day is kept (book-useful.md section 2)
     r.press('Enter'); // Read
     expect(r.at).toBe('book');
     expect(r.texts).toContain(`#${DAY_SEED + 1}`);
@@ -1068,9 +1069,8 @@ describe('the End of day page: from the result, and New day to the cover', () =>
     expect(afterRace1().press('Enter').at).toBe('hub');
   });
 
-  it('Enter, Space and Z each are New day, to the next day seed\'s track on Read with the starting bankroll and the day just ended as previous (24.1)', () => {
+  it('Enter, Space and Z each are New day, to the next day seed\'s track on Read with the starting bankroll (24.1), and no previous day kept', () => {
     for (const key of ['Enter', 'Space', 'KeyZ']) {
-      const state = endedDay();
       const r = atEnd().press('Enter').press(key);
       expect(r.at, key).toBe('hub');
       expect(r.aria.endsWith('Read Race 1.'), key).toBe(true);
@@ -1078,7 +1078,7 @@ describe('the End of day page: from the result, and New day to the cover', () =>
       expect(d.day.daySeed).toBe(DAY_SEED + 1);
       expect(d.day.bankrollCents).toBe(10000);
       expect(d.day.nextRace).toBe(1);
-      expect(d.bet.previous).toEqual({ records: state.records });
+      expect(d.bet).not.toHaveProperty('previous');
       expect(d.bet.bookOpened).toBe(false);
       r.press('Enter'); // Read: the day's first opening is on the cover (24.2)
       expect(r.texts).toContain('Race Day Program');
@@ -1182,7 +1182,7 @@ describe('the End of day page: BE3, the flow and what acts on it (second pass)',
     expect(r.texts).toContain(`#${DAY_SEED}`);
   });
 
-  it('New day by Enter, Space, Z, NumpadEnter and click: the next seed, the starting bankroll, race 1, the ended day kept as previous, at the track on Read; the first Read opens the cover (24.1, 24.2)', () => {
+  it('New day by Enter, Space, Z, NumpadEnter and click: the next seed, the starting bankroll, race 1, no previous day kept, at the track on Read; the first Read opens the cover (24.1, 24.2)', () => {
     for (const how of ['Enter', 'Space', 'KeyZ', 'NumpadEnter', 'click'] as const) {
       const r = atPage();
       if (how === 'click') r.click(...NEW_DAY()); else r.press(how);
@@ -1195,7 +1195,7 @@ describe('the End of day page: BE3, the flow and what acts on it (second pass)',
       expect(d.day.nextRace).toBe(1);
       expect(d.day.records).toEqual([]);
       expect(d.day.open).toBeNull();
-      expect(d.bet.previous).toEqual({ records: endedDay().records });
+      expect(d.bet).not.toHaveProperty('previous');
       expect(d.bet.looks).toEqual({});
       expect(d.bet.clerk).toEqual({ ticket: 0, punch: 0 });
       r.press('Enter'); // Read
@@ -1211,16 +1211,16 @@ describe('the End of day page: BE3, the flow and what acts on it (second pass)',
     expect((r.data as { day: DayState }).day.daySeed).toBe(0);
   });
 
-  it('the ended day is kept for the news: the next day\'s news page names yesterday\'s longest winner from the record', () => {
-    const s = endedDay();
-    const parse = (o: string) => { const [n, d] = o.split('-').map(Number); return n / d; };
-    const top = s.records.reduce((b, r) => (parse(r.winnerOdds) > parse(b.winnerOdds) ? r : b));
-    const name = ctx.stable.find((h) => h.id === top.horseIds[top.winnerPost - 1])!.name;
+  it('the next day\'s news page is its own seed\'s news, whatever was played the day before (book-useful.md section 2: no previous day is kept)', () => {
     const r = atPage().press('Enter').press('Enter').press('Enter'); // New day (the track, 24.1), Read (the cover, 24.2), the news
     expect(r.texts).toContain('Rail Talk');
-    expect(r.texts).toContain("Yesterday's longest price");
-    expect(r.texts.join(' ')).toContain(name);
-    expect(r.texts.join(' ')).toContain(top.winnerOdds);
+    const expected = newsFor(bet.book, { daySeed: DAY_SEED + 1, fields: drawnDay(ctx, DAY_SEED + 1), stable: ctx.stable });
+    expect(expected.length).toBeGreaterThan(0);
+    for (const i of expected) {
+      expect(r.texts).toContain(i.headline);
+      for (const line of i.body) expect(r.texts).toContain(line);
+    }
+    expect(r.texts.join(' ')).not.toContain('Yesterday');
   });
 
   it('nothing but New day acts: no other key and no click anywhere else moves the page', () => {

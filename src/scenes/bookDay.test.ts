@@ -10,8 +10,8 @@ import { shippedRaceDay } from '../render/testkit';
 import { newsOf, nextDay, postedPrices, requestNextEstimates, startDay } from './betDay';
 import type { Estimates } from './estimates';
 
-// The book's half of the day session (docs/specs/book-and-window.md sections 4, 5 and 15
-// item 5): the previous day kept for news slot 5, the clerk's cycles reset on New day, the
+// The book's half of the day session (docs/specs/book-and-window.md sections 5 and 15 and
+// book-useful.md section 2): no previous day kept, the clerk's cycles reset on New day, the
 // prices the book shows (races r and r + 1 only, BB5), and FL6: reading changes nothing.
 
 afterEach(() => vi.restoreAllMocks());
@@ -29,25 +29,24 @@ function stubEstimates(done: readonly number[] = []) {
 }
 
 describe('the day session for the book', () => {
-  it('the session\'s first day has no previous day; New day keeps the day just ended for news slot 5', () => {
+  it('New day starts the next day with the clerk\'s cycles reset, and keeps no previous day: the news reads none (book-useful.md section 2)', () => {
     vi.spyOn(console, 'info').mockImplementation(() => undefined);
     const { bet, day } = startDay(ctx, betting, shippedRaceDay, stubEstimates().e, DAY_SEED, loadHub());
-    expect(bet.previous).toBeNull();
+    expect(bet).not.toHaveProperty('previous');
     const ended = { ...settled(programOf(1), day, null, 4), ended: 'lastRace' as const };
-    const next = nextDay(bet, ended);
-    expect(next.bet.previous).toEqual({ records: ended.records });
+    const next = nextDay({ ...bet, clerk: { ticket: 3, punch: 2 } }, ended);
+    expect(next.bet).not.toHaveProperty('previous');
+    expect(next.day.daySeed).toBe(DAY_SEED + 1);
     expect(next.bet.clerk).toEqual({ ticket: 0, punch: 0 });
-    // Slot 5 names the previous day's longest-priced winner; with no previous day it is flavor (section 9).
-    expect(newsOf(bet, day.daySeed)[4].kind).toBe('flavor');
-    const items = newsOf(next.bet, next.day.daySeed);
-    expect(items[4].id).toBe('fact:longest');
+    // The next day's news is the news of its own seed, whatever was played the day before.
+    expect(newsOf(next.bet, next.day.daySeed)).toEqual(newsOf(startDay(ctx, betting, shippedRaceDay, stubEstimates().e, DAY_SEED + 1, loadHub()).bet, DAY_SEED + 1));
   });
 
-  it('NW1: the same day seed and previous day give the same news; newsOf is newsFor on the session\'s day', () => {
+  it('NU1: the same day seed gives the same news; newsOf is newsFor on the session\'s day', () => {
     const { bet, day } = startDay(ctx, betting, shippedRaceDay, stubEstimates().e, DAY_SEED, loadHub());
     expect(newsOf(bet, day.daySeed)).toEqual(newsOf(bet, day.daySeed));
     expect(newsOf(bet, day.daySeed)).toEqual(newsFor(bet.book, {
-      daySeed: DAY_SEED, fields: bet.drawn, stable: ctx.stable, races: ctx.races, cardCopy: shippedRaceDay.raceDay.copy.card, previous: null,
+      daySeed: DAY_SEED, fields: bet.drawn, stable: ctx.stable,
     }));
   });
 
@@ -70,7 +69,7 @@ describe('BB5 and FL6: reading the book', () => {
     const rand = vi.spyOn(Math, 'random');
     const { e, asked } = stubEstimates([1, 2]);
     const { bet, day } = startDay(ctx, betting, shippedRaceDay, e, DAY_SEED, loadHub());
-    const before = JSON.stringify({ day, looks: bet.looks, clerk: bet.clerk, previous: bet.previous });
+    const before = JSON.stringify({ day, looks: bet.looks, clerk: bet.clerk });
     // What the book scene does on opening, then on every page.
     requestNextEstimates(bet, day);
     const posted = postedPrices(bet, day);
@@ -90,7 +89,7 @@ describe('BB5 and FL6: reading the book', () => {
       s = bookClick(s, 'entry:3', k).state;
     }
     expect(asked).toEqual([1, 2]);
-    expect(JSON.stringify({ day, looks: bet.looks, clerk: bet.clerk, previous: bet.previous })).toBe(before);
+    expect(JSON.stringify({ day, looks: bet.looks, clerk: bet.clerk })).toBe(before);
     expect(rand).not.toHaveBeenCalled();
   });
 

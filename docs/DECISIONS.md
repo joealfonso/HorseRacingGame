@@ -522,3 +522,25 @@ Kick is the remainder, so a stalker can wobble up to 8 from a third: p08 and p11
 **Enter on the news goes to race r through `BookKeyContext.nextRace`.** Right and the foot's next item are unchanged (one page, to race 1). The field is optional and means race 1 when left out, which is the first race's page and so the old behavior for the day's first race; the book scene always sets it.
 
 **There is no day-start book mode.** `BookData.from` and the `from` argument of `bookCloseFocus` are removed rather than left unused: the close focus is the page's (cover or news to Read, a race page to Bet).
+
+## Useful news
+
+**Seven kinds, computed, no flavor.** The news is book-useful.md section 3 with the section 13 rulings: crowded lead (K3) fires at five or more front-runners only, the inside draw (K6 inside) is dropped and the wide draw stays, priority is lone speed, class, crowded lead, easier crowd, no speed, drawn wide, top on the numbers. The old flavor list, "Today's card", "Running in two races today" and "Yesterday's longest price" are gone from `book.json` and from the code. Their text stays in docs/specs/book-and-window.md section 4.
+
+**The previous day's record is gone too.** Its only reader was "Yesterday's longest price", so `BetDay.previous`, the `previous` argument of `startDay` and the `PreviousDay` type are removed. Nothing else read them.
+
+**The news module reads stats, styles and posts only.** `NewsInput` is `{ daySeed, fields, stable }`: no races, no card words, no odds. It imports no estimate, market or crowd code, and a test reads the import lines to say so (NU5).
+
+**Whole numbers for every threshold.** Lead is compared as `top * n - sum >= leadMin * n` and the easier-crowd difference by cross-multiplying the two rivals' means, so 26 and 6 are exact and 25.9 and 5.857 are not. Ties in a sort go to the earlier race, then the lower post (3.4 step 3); a rank tie shares the better rank (3.1).
+
+**Wording draws once an item, in the order taken.** One `rng.int` on the `news` stream per printed item, among the kind's pairs not yet used that day. Taking the order of priority rather than race order means the page's wording does not depend on how races are laid out. K7 is uncapped and has two pairs, so a day of three K7 items repeats a pair; when every pair of a kind is used, all become available again. The spec says only that a used pair is skipped.
+
+**Two spec pairs are not shipped.** K2 "add up the bars" and K7 "most in the bars" need a third line for some stable names (Biscuit Emergency and Medium Everything; Unsolicited Advice), which the spec's own load check fails. The spec's sample wraps used "Mint Julep Lawsuit". They need rewording by whoever owns the copy; the loader will take them back once they fit. Until then K2 and K7 have two pairs each.
+
+**No word for eight front-runners, and none is needed.** A field of eight front-runners has no closer to name, so K3 cannot fire there. The loader requires a count word for every count from the K3 threshold up to a field with one closer (5, 6, 7).
+
+**The pace phrase is the book's, not the shelved program page's.** `programConditionsLine` takes an optional pace phrase that stands in for "playing fair" while the bias is fair. Only `bookScreen.ts` passes it, so `programScreen.ts` (the shelved program page) still prints "playing fair". Header line 4 is also read out by the book's aria-live line now, as section 6 asks.
+
+**The harness bets the horse each printed item names.** One blind rule per kind and one for the whole news, each held to the existing "at most 0" band, plus a check that the whole news returns more than random on the same days. Random here is every horse in every race with the $2 in its own pool, like the other blind rules, so its figure is a little below the playtester's.
+
+**The mock is stale in two rows, and the composite test says so.** `docs/mocks/book-and-window/` was drawn with "Gossip, facts and peanuts." and "playing fair". `bookWindowComposite.test.ts` leaves those two rows out of its pixel comparison (y14-21 on the news sheet, y34-41 on the race sheets) and compares everything else, until the artist redraws the sheets.

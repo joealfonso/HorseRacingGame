@@ -1,5 +1,5 @@
 import { drawnDay, goToPost, newDay, programFor, quote, type DayContext, type DayState, type DrawnRace, type RaceProgram } from '../bet/day';
-import { newsFor, type NewsItem, type PreviousDay } from '../bet/news';
+import { newsFor, type NewsItem } from '../bet/news';
 import { nextDaySeed } from '../bet/streams';
 import { fieldForRaceDay, type BettingData } from '../data/bettingLoad';
 import { loadBook } from '../data/bookLoad';
@@ -36,11 +36,6 @@ export interface BetDay {
   /** The book's data (src/data/book.json): the cover, the news page, the race pages' words, the running foot. */
   book: Book;
   /**
-   * The day before this one in this session, for news slot 5 (book-and-window.md section 4).
-   * Null on the session's first day. Kept in the session only, never in storage (SAFE3).
-   */
-  previous: PreviousDay | null;
-  /**
    * Uses of the window clerk's two line cycles this day: tickets opened and bets placed
    * (section 7). Like looks: replaced, never changed in place, reset on New day, no RNG.
    */
@@ -54,13 +49,13 @@ export interface BetDay {
 
 export interface ClerkCounts { ticket: number; punch: number }
 
-/** A new day on its seed, with the starting bankroll, on race 1. `previous` is the day before it in this session, if any. */
+/** A new day on its seed, with the starting bankroll, on race 1. */
 export function startDay(
   ctx: DayContext, betting: BettingData, rd: RaceDayData, estimates: Estimates, daySeed: number, hub: Hub = loadHub(),
-  book: Book = loadBook(), previous: PreviousDay | null = null,
+  book: Book = loadBook(),
 ): { bet: BetDay; day: DayState } {
   return {
-    bet: { ctx, betting, rd, drawn: drawnDay(ctx, daySeed), estimates, hub, looks: {}, book, previous, clerk: { ticket: 0, punch: 0 }, bookOpened: false },
+    bet: { ctx, betting, rd, drawn: drawnDay(ctx, daySeed), estimates, hub, looks: {}, book, clerk: { ticket: 0, punch: 0 }, bookOpened: false },
     day: newDay(ctx, daySeed),
   };
 }
@@ -72,19 +67,15 @@ export function startDay(
 export function nextDay(bet: BetDay, day: DayState): { bet: BetDay; day: DayState } {
   const seed = nextDaySeed(day.daySeed);
   console.info(`Betting day: day seed ${seed}. Add ?seed=${seed} to the address to replay this day.`);
-  // The day just ended is kept for the new day's news (slot 5), in the session only.
-  return startDay(bet.ctx, bet.betting, bet.rd, bet.estimates, seed, bet.hub, bet.book, { records: day.records });
+  return startDay(bet.ctx, bet.betting, bet.rd, bet.estimates, seed, bet.hub, bet.book);
 }
 
-/** The day's five news items (book-and-window.md section 4): the same day seed and previous day always give the same news (NW1). */
+/** The day's news items (book-useful.md section 3): the same day seed always gives the same news (NU1). */
 export function newsOf(bet: BetDay, daySeed: number): NewsItem[] {
   return newsFor(bet.book, {
     daySeed,
     fields: bet.drawn.map((d) => ({ race: d.race, horseIds: d.horseIds })),
     stable: bet.ctx.stable,
-    races: bet.ctx.races,
-    cardCopy: bet.rd.raceDay.copy.card,
-    previous: bet.previous,
   });
 }
 

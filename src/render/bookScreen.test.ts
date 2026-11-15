@@ -123,7 +123,7 @@ describe('BB6 and section 10: the running foot and the pointer', () => {
   });
 
   it('the foot prints "< page", "Esc: close" at x88 and "page >" to x247 on every page, within 8 characters', () => {
-    const items = newsFor(book, { daySeed: 1, fields: drawnOf(), stable: ctx.stable, races: ctx.races, cardCopy: rd.copy.card, previous: null });
+    const items = newsFor(book, { daySeed: 1, fields: drawnOf(), stable: ctx.stable });
     const c = coverFor(book, { daySeed: 1, trackName: ctx.races[0].track, raceCount: RACES, news: items });
     const foot = (texts: { text: string; x: number; y: number }[]) => texts.filter((t) => t.y === 226);
     expect(foot(coverScreen(book, c, RACES).texts).map((t) => [t.text, t.x])).toEqual([['Esc: close', 88], ['News >', 200]]);
@@ -144,7 +144,13 @@ describe('BB2 and BB3: a race page is the approved program page, less the bank, 
       const p = programScreen(inputFor(program, drawn, day, initialProgramState()));
       const top = <T extends { y: number }>(xs: readonly T[]) => xs.filter((t) => t.y < 210);
       const bank = p.header[1];
-      expect(top(b.texts).filter((t) => !(t.y === 4 && t.text === 'Enter: to window'))).toEqual(top([...p.header.filter((t) => t !== bank), ...p.heads, ...p.odds]));
+      // NU10 (book-useful.md): header line 4 (y34) is the one other line that differs: its third part is the pace phrase while the bias is fair.
+      const l4 = (t: { y: number }) => t.y === 34;
+      expect(top(b.texts).filter((t) => !(t.y === 4 && t.text === 'Enter: to window') && !l4(t))).toEqual(top([...p.header.filter((t) => t !== bank), ...p.heads, ...p.odds]).filter((t) => !l4(t)));
+      const fronts = drawn.styles.filter((s) => s === 'frontRunner').length;
+      const pace = fronts === 0 ? 'none up front' : `${fronts} up front`;
+      expect(b.texts.filter(l4).map((t) => t.text)).toEqual(p.header.filter(l4).map((t) => t.text.replace('playing fair', pace)));
+      expect(p.header.filter(l4)[0].text).toContain('playing fair');
       expect(b.entries).toEqual(p.rows);
       expect(b.rects).toEqual(p.rules);
       expect(b.cursor).toEqual(p.cursor);

@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import raceDayJson from '../data/raceDay.json';
 import { loadBook } from '../data/bookLoad';
 import { drawnDay, programFor } from './day';
 import { runEstimate } from './estimate';
@@ -34,7 +33,7 @@ describe('NW1: golden, race 1 unchanged by the news', () => {
   it.each(Object.keys(GOLDEN).map(Number))('NW1: day seed %i', (seed) => {
     const fields = drawnDay(ctx, seed);
     // Make the news first, so any draw it made would already have happened.
-    newsFor(book, { daySeed: seed, fields, stable: ctx.stable, races: ctx.races, cardCopy: raceDayJson.copy.card, previous: null });
+    newsFor(book, { daySeed: seed, fields, stable: ctx.stable });
     const r1 = drawnDay(ctx, seed)[0];
     const program = programFor(ctx, r1, runEstimate(r1.input, seed, 1, 8));
     expect({ horseIds: r1.horseIds, raceSeed: r1.raceSeed, seeds: estimateSeedsOf(seed, 1, 5), crowd: program.crowdDollars }).toEqual(GOLDEN[seed]);

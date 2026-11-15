@@ -24,18 +24,18 @@ export interface CoverFields {
   /** "8 races today", right-aligned to the layout's racesRight. */
   races: string;
   racesX: number;
-  /** News item 1's headline, and where it starts. */
+  /** The headline of the news item taken first (the highest priority), blank with no news, and where it starts. */
   line: string;
   lineX: number;
 }
 
-/** CV1: the cover's fields. `news` is the day's five items; the cover line is the first one's headline. */
+/** CV1: the cover's fields. `news` is the day's items; the cover line is the headline of the one marked `lead` (book-useful.md 3.4 step 5). */
 export function coverFor(book: Book, input: { daySeed: number; trackName: string; raceCount: number; news: readonly NewsItem[] }): CoverFields {
   const c = book.cover;
   const lay = c.layout.value;
   const mastheadName = input.trackName.toUpperCase();
   const races = fillHoles(c.races.value, { n: input.raceCount });
-  const line = input.news[0].headline;
+  const line = input.news.find((n) => n.lead)?.headline ?? '';
   return {
     track: input.trackName,
     mastheadName,
@@ -146,4 +146,13 @@ export function racePageState(book: Book, input: RacePageInput): RacePageState {
     if (prices !== undefined) return { ...base, kind: 'nextPosted', odds: [...prices], right: '' };
   }
   return { ...base, kind: 'later', odds: none(), right: rp.later.value };
+}
+
+/** The front-runners among a field's styles: the pace phrase's number. */
+export const frontCount = (styles: readonly string[]): number => styles.filter((s) => s === 'frontRunner').length;
+
+/** Header line 4's third part while the bias is fair: "{k} up front", or "none up front" with no front-runner (book-useful.md section 6, NU10). */
+export function paceWords(book: Book, fronts: number): string {
+  const pace = book.racePage.pace.value;
+  return fronts === 0 ? pace.none : fillHoles(pace.some, { k: fronts });
 }

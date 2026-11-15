@@ -12,11 +12,15 @@ const text = z.string()
 const whole = z.int({ error: 'must be a whole number' });
 const px = whole.min(0);
 
-/** Where each news slot's item comes from. `fallback` is used when the source has nothing true to say. */
-export const NEWS_SOURCES = ['flavor', 'card', 'double', 'longest'] as const;
-export type NewsSource = (typeof NEWS_SOURCES)[number];
+/** The seven kinds of news item (docs/specs/book-useful.md section 3.2). K6 is the draw item: only its "wide" half ships (13.3). */
+export const NEWS_KINDS = ['K1', 'K2', 'K3', 'K4', 'K5', 'K6', 'K7'] as const;
+export type NewsKind = (typeof NEWS_KINDS)[number];
 
-const fact = (body: z.ZodType<string>) => z.strictObject({ headline: text, body });
+/** A headline and a body written as a pair (3.5). The prefix "Race {r}:" is added to the headline by code. */
+const pair = z.strictObject({ headline: text, body: text });
+/** Every kind: how many of it may print in a day (null: no cap), and its pairs. */
+const kind = <T extends z.ZodRawShape>(thresholds: T) =>
+  z.strictObject({ cap: whole.min(1).nullable(), ...thresholds, pairs: z.array(pair).min(1) });
 
 export const bookSchema = z.strictObject({
   cover: z.strictObject({
@@ -63,20 +67,32 @@ export const bookSchema = z.strictObject({
       titleChars: whole.min(1),
       subtitleChars: whole.min(1),
     })),
-    /** The five slots in order (spec section 4). `fallback` is null or "flavor". */
-    slots: marked(z.array(z.strictObject({
-      source: z.enum(NEWS_SOURCES, { error: `unknown source, use one of ${NEWS_SOURCES.join(', ')}` }),
-      fallback: z.literal('flavor').nullable(),
-    })).min(1)),
-    facts: marked(z.strictObject({
-      /** "{n} races, all {distance} on {going} {surface}." and, when the races differ, "{n} races today. First up: the {race1Name}." */
-      card: fact(text).extend({ bodyMixed: text }),
-      /** One line per horse: "{name}, races {a}, {b}". */
-      double: z.strictObject({ headline: text, line: text }),
-      longest: fact(text),
+    /** How many items print in a day (3.4). */
+    slots: marked(whole.min(1)),
+    /** "Race {r}:", before every headline. */
+    prefix: marked(text),
+    /** Front-runners as a word, by count: the {k} of the crowded-lead headline. Every count from the crowded lead's `frontsMin` up to a field with one closer needs one. */
+    count: marked(z.record(z.string().regex(/^\d+$/, { error: 'the key must be a whole number' }), text)),
+    /** Thresholds and pairs per kind (3.2, 3.5). */
+    kinds: marked(z.strictObject({
+      /** Lone speed: one front-runner, and its rank at most `frontRankMax`. */
+      K1: kind({ frontRankMax: whole.min(1) }),
+      /** Class above: a unique top total, lead at least `leadMin`, gap at least `gapMin`. */
+      K2: kind({ leadMin: whole.min(0), gapMin: whole.min(0) }),
+      /** Crowded lead: at least `frontsMin` front-runners, and the top closer's rank at most `closerRankMax`. */
+      K3: kind({ frontsMin: whole.min(1), closerRankMax: whole.min(1) }),
+      /** Easier crowd: rivals' means differ by `diffMin` or more, and the horse's rank in the softer race at most `rankMax`. */
+      K4: kind({ diffMin: whole.min(0), rankMax: whole.min(1) }),
+      /** No speed: no front-runner, and the top stalker's rank at most `stalkerRankMax`. */
+      K5: kind({ stalkerRankMax: whole.min(1) }),
+      /** Drawn wide: a front-runner of rank at most `frontRankMax`, in a field of `frontsMin` or more, in the last `widePosts` posts. */
+      K6: kind({ frontRankMax: whole.min(1), frontsMin: whole.min(1), widePosts: whole.min(1) }),
+      /** Top on the numbers: a unique top total where class above did not fire. */
+      K7: kind({}),
     })),
-    flavor: marked(z.array(z.strictObject({ headline: text, body: text })).min(1)),
-    /** On top of betting.json's and hub.json's lists: spec section 4, "News rules the loader checks", and section 13. */
+    /** The order the five are taken in (3.4 step 2). */
+    priority: marked(z.array(z.enum(NEWS_KINDS, { error: `unknown kind, use one of ${NEWS_KINDS.join(', ')}` })).min(1)),
+    /** On top of betting.json's and hub.json's lists: book-and-window.md section 4 and 13, and book-useful.md section 2 (words that hint at something measured false). */
     bannedWords: marked(z.array(text)),
     /** Characters that may not appear anywhere in the book's copy (spec section 13: no "$" outside money figures, and the book has none). */
     bannedChars: marked(z.array(text)),
@@ -86,6 +102,8 @@ export const bookSchema = z.strictObject({
     /** "Winner: #{n}". */
     winner: marked(text),
     later: marked(text),
+    /** Header line 4's third part while the bias is fair: the field's front-runner count (book-useful.md section 6). */
+    pace: marked(z.strictObject({ none: text, some: text })),
     /** The focused entry as aria-live reads it (sections 10 and 23.6). */
     ariaEntry: marked(text),
     /** Characters, the right slot of header line 1. */

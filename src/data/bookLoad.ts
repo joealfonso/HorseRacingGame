@@ -5,9 +5,8 @@ import day from './day.json';
 import hub from './hub.json';
 import raceDay from './raceDay.json';
 import stable from './stable.json';
-import { bookSchema, NEWS_SOURCES, type Book } from './bookSchema';
+import { bookSchema, NEWS_KINDS, type Book, type NewsKind } from './bookSchema';
 import { bannedWordIn, fillHoles, holesOf } from './bookText';
-import { distanceWords } from './cardWords';
 import type { RaceDay } from './raceDaySchema';
 import type { Race } from './schema';
 import { SCREEN } from './hubLoad';
@@ -23,18 +22,19 @@ import { DataError, type DataIssue } from './validate';
 const FILE = 'src/data/book.json';
 const PRINTABLE = /^[\x20-\x7E]*$/;
 const MAIN_W = 8;
+/** Header line 4 of a program page (raceDayLoad's PROGRAM_LINE_CHARS), and the 13 its bias phrases already use (book-useful.md section 6). */
+const PROGRAM_LINE_CHARS = 30;
+const PACE_CHARS = 13;
 
 export interface BookInput {
   book: unknown;
   /** betting.json's copy.bannedWords plus hub.json's copy.bannedWords. The book's own list is added. */
   bannedWords: readonly string[];
-  /** day.json's races: the cover's track name is race 1's, and the card fact is filled from them. */
-  races: readonly Pick<Race, 'name' | 'track' | 'distanceFurlongs'>[];
-  /** Every stable horse's name: the fact templates are filled with each. */
+  /** day.json's races: the cover's track name is race 1's, and the race page's header line 4 is made from each. */
+  races: readonly (Pick<Race, 'name' | 'track'> & { surface: string; going: string })[];
+  /** Every stable horse's name: the news pairs are filled with each. */
   horseNames: readonly string[];
-  /** Every odds label a price can print (betting.json odds.steps). */
-  oddsLabels: readonly string[];
-  /** Most horses in a field (betting.json field.size): "Winner: #{n}" is filled with each post. */
+  /** Most horses in a field (betting.json field.size): "Winner: #{n}" and the posts are filled with each. */
   fieldSize: number;
   /** raceDay.json copy.card: the program's words for a distance, a surface and a going. */
   cardCopy: RaceDay['copy']['card'];
@@ -80,7 +80,7 @@ export function validateBook(raw: BookInput): Book {
 
   checkCover(b, raw, line, add);
   checkNews(b, raw, line, add, raceNumbers);
-  checkRacePage(b, raw, line);
+  checkRacePage(b, raw, line, add);
   checkFoot(b, raceNumbers, line, add);
   if (issues.length > 0) throw new DataError(FILE, issues);
 
@@ -129,106 +129,90 @@ function checkCover(b: Book, raw: BookInput, line: Line, add: Add): void {
   if (nameWidth > room) add('cover.display.value.trackMaxChars', `${c.display.value.trackMaxChars} characters are ${nameWidth} px; the keyline holds ${room}`);
 }
 
+/** The holes a kind's pairs may use: headline, then body. {r} is the prefix's, filled by code. */
+const PAIR_HOLES: Record<NewsKind, { headline: readonly string[]; body: readonly string[] }> = {
+  K1: { headline: [], body: ['name'] },
+  K2: { headline: [], body: ['name'] },
+  K3: { headline: ['k'], body: ['name'] },
+  K4: { headline: [], body: ['name', 'soft'] },
+  K5: { headline: [], body: ['name'] },
+  K6: { headline: [], body: ['name', 'post'] },
+  K7: { headline: [], body: ['name'] },
+};
+
 function checkNews(b: Book, raw: BookInput, line: Line, add: Add, raceNumbers: readonly string[]): void {
   const n = b.news;
   const lay = n.layout.value;
   line('news.title.value', n.title.value, lay.titleChars);
   line('news.subtitle.value', n.subtitle.value, lay.subtitleChars);
+  line('news.prefix.value', n.prefix.value, lay.headlineChars, { r: raceNumbers });
+  for (const [count, word] of Object.entries(n.count.value)) line(`news.count.value.${count}`, word, lay.headlineChars);
+  // Crowded lead names a closer, so its field has at most fieldSize - 1 front-runners: each count needs its word.
+  for (let k = n.kinds.value.K3.frontsMin; k < raw.fieldSize; k++) {
+    if (!(String(k) in n.count.value)) add(`news.count.value.${k}`, `missing: a field with ${k} front-runners and a closer can print the crowded-lead item`);
+  }
 
-  // Wraps to at most bodyLines lines of lineChars, as the page draws it.
-  const body = (path: string, text: string) => {
-    const lines = wrapWords(text, lay.lineChars);
-    if (lines.length > lay.bodyLines) add(path, `"${text}" wraps to ${lines.length} lines of ${lay.lineChars}; at most ${lay.bodyLines}`);
-    else for (const l of lines) if (l.length > lay.lineChars) add(path, `the word in "${l}" is over ${lay.lineChars} characters`);
+  // NU4: every pair, filled with every stable name, race number, post and count, fits.
+  const values: Record<string, readonly (string | number)[]> = {
+    name: raw.horseNames, soft: raceNumbers, post: range(raw.fieldSize), k: Object.values(n.count.value), r: raceNumbers,
   };
-  const names = raw.horseNames;
-  const facts = n.facts.value;
-  const flavor = n.flavor.value;
-  const longestHoles = { name: names, r: raceNumbers, odds: raw.oddsLabels };
-  const doubleHoles = { name: names, a: raceNumbers, b: raceNumbers };
-
-  // NW3: every fact template, filled with every horse, odds label and race number.
-  const fact = (path: string, template: string, holes: Record<string, readonly (string | number)[]>, asBody: boolean) => {
-    line(path, template, Infinity, holes);
-    if (!asBody) return;
-    for (const filled of fills(template, holes)) {
-      const lines = wrapWords(filled, lay.lineChars);
-      if (lines.length > lay.bodyLines || lines.some((l) => l.length > lay.lineChars)) {
-        add(path, `"${filled}" needs more than ${lay.bodyLines} lines of ${lay.lineChars}`);
-        return;
-      }
-    }
-  };
-  const cardHoles = {
-    n: [raw.races.length],
-    distance: [...new Set([...raw.races.map((r) => r.distanceFurlongs), ...range(20)].map((f) => distanceWords(f, raw.cardCopy)))],
-    going: Object.values(raw.cardCopy.goings),
-    surface: Object.values(raw.cardCopy.surfaces),
-  };
-  fact('news.facts.value.card.body', facts.card.body, cardHoles, true);
-  fact('news.facts.value.card.bodyMixed', facts.card.bodyMixed, { n: [raw.races.length], race1Name: raw.races.map((r) => r.name) }, true);
-  fact('news.facts.value.longest.body', facts.longest.body, longestHoles, true);
-  // One horse to a line, each line a whole line of its own.
-  line('news.facts.value.double.line', facts.double.line, lay.lineChars, doubleHoles);
-  if (lay.bodyLines < 2) add('news.layout.value.bodyLines', 'the two-starts item prints two lines; at least 2');
-
-  const headlines: { path: string; text: string; cover: boolean }[] = [
-    { path: 'news.facts.value.card.headline', text: facts.card.headline, cover: false },
-    { path: 'news.facts.value.double.headline', text: facts.double.headline, cover: false },
-    { path: 'news.facts.value.longest.headline', text: facts.longest.headline, cover: false },
-    ...flavor.map((f, i) => ({ path: `news.flavor.value[${i}].headline`, text: f.headline, cover: true })),
-  ];
+  const only = (keys: readonly string[]) => Object.fromEntries(keys.map((k) => [k, values[k]]));
+  const prefixWidth = n.prefix.value.replace('{r}', String(raw.races.length)).length + 1;
   const coverLine = b.cover.limits.value.line;
-  for (const h of headlines) {
-    line(h.path, h.text, h.cover ? Math.min(lay.headlineChars, coverLine) : lay.headlineChars);
-    if (holesOf(h.text).length > 0) add(h.path, 'a headline has no fills');
+  const kinds = n.kinds.value;
+  for (const kind of NEWS_KINDS) {
+    const at = `news.kinds.value.${kind}`;
+    if (!n.priority.value.includes(kind)) add('news.priority.value', `is missing ${kind}`);
+    if (kinds[kind].cap !== null && kinds[kind].cap! > n.slots.value) add(`${at}.cap`, `${kinds[kind].cap} is more than the ${n.slots.value} items a day`);
+    const seen = new Set<string>();
+    kinds[kind].pairs.forEach((p, i) => {
+      const hAt = `${at}.pairs[${i}].headline`;
+      const bAt = `${at}.pairs[${i}].body`;
+      // The headline with its prefix: at most headlineChars (and so at most the cover line's).
+      const room = Math.min(lay.headlineChars, coverLine) - prefixWidth;
+      line(hAt, p.headline, room, only(PAIR_HOLES[kind].headline));
+      if (seen.has(p.headline.toLowerCase())) add(hAt, `"${p.headline}" repeats an earlier pair of ${kind}`);
+      seen.add(p.headline.toLowerCase());
+      const holes = only(PAIR_HOLES[kind].body);
+      line(bAt, p.body, Infinity, holes);
+      for (const filled of fills(p.body, holes)) {
+        const lines = wrapWords(filled, lay.lineChars);
+        if (lines.length > lay.bodyLines || lines.some((l) => l.length > lay.lineChars)) {
+          add(bAt, `"${filled}" needs more than ${lay.bodyLines} lines of ${lay.lineChars}`);
+          break;
+        }
+      }
+    });
   }
-  flavor.forEach((f, i) => {
-    const at = `news.flavor.value[${i}].body`;
-    // A flavor item never names a horse, a post, a race or a price: no fill at all.
-    if (holesOf(f.body).length > 0) add(at, `has a fill {${holesOf(f.body)[0]}}; a flavor item has none`);
-    line(at, f.body, Infinity);
-    body(at, f.body);
-    if (!PRINTABLE.test(f.headline)) add(`news.flavor.value[${i}].headline`, 'must be printable ASCII');
+  const listed = new Set<string>();
+  n.priority.value.forEach((k, i) => {
+    if (listed.has(k)) add(`news.priority.value[${i}]`, `${k} is listed twice`);
+    listed.add(k);
   });
-  // No item repeats within a day: no two headlines alike.
-  const seen = new Map<string, string>();
-  for (const h of headlines) {
-    const key = h.text.toLowerCase();
-    const first = seen.get(key);
-    if (first !== undefined) add(h.path, `"${h.text}" repeats ${first}`);
-    else seen.set(key, h.path);
-  }
 
-  // The slots (spec section 4): five, each fact once, flavor enough for every slot that can fall back to it.
   const slots = n.slots.value;
-  const used = new Map<string, number>();
-  let flavorNeeded = 0;
-  slots.forEach((s, i) => {
-    if (!NEWS_SOURCES.includes(s.source)) add(`news.slots.value[${i}].source`, `unknown source "${s.source}"`);
-    if (s.source !== 'flavor') {
-      const first = used.get(s.source);
-      if (first !== undefined) add(`news.slots.value[${i}].source`, `"${s.source}" repeats news.slots.value[${first}]`);
-      else used.set(s.source, i);
-    }
-    if (s.source === 'flavor') {
-      if (s.fallback !== null) add(`news.slots.value[${i}].fallback`, 'a flavor slot has no fallback');
-      flavorNeeded++;
-    } else if (s.fallback !== null) flavorNeeded++;
-  });
-  if (slots.length !== 5) add('news.slots.value', `has ${slots.length} slots; five items print every day`);
-  if (slots[0] !== undefined && slots[0].source !== 'flavor') add('news.slots.value[0].source', 'slot 1 is flavor: its headline is the cover line');
-  if (flavor.length < flavorNeeded) add('news.flavor.value', `has ${flavor.length} items; ${flavorNeeded} are needed so five distinct items always print`);
-  const bottom = lay.firstTop + lay.pitch * (slots.length - 1) + Math.max(...lay.bodyTops) + 8 - 1;
+  const bottom = lay.firstTop + lay.pitch * (slots - 1) + Math.max(...lay.bodyTops) + 8 - 1;
   if (bottom >= lay.ruleTops[1]) add('news.layout.value', `the last item ends at y${bottom}, over the rule at y${lay.ruleTops[1]}`);
+  if (lay.bodyLines > lay.bodyTops.length) add('news.layout.value.bodyLines', `${lay.bodyLines} lines, but only ${lay.bodyTops.length} body tops`);
 }
 
-function checkRacePage(b: Book, raw: BookInput, line: Line): void {
+function checkRacePage(b: Book, raw: BookInput, line: Line, add: Add): void {
   const r = b.racePage;
   const max = r.rightChars.value;
   line('racePage.toWindow.value', r.toWindow.value, max);
   line('racePage.winner.value', r.winner.value, max, { n: range(raw.fieldSize) });
   line('racePage.later.value', r.later.value, max);
+  // Header line 4 while the bias is fair: "{Surface}, {going}, {pace}", at most 30, for every race of the day and every count.
+  const { none, some } = r.pace.value;
+  line('racePage.pace.value.none', none, PACE_CHARS);
+  line('racePage.pace.value.some', some, PACE_CHARS, { k: range(raw.fieldSize) });
+  const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
+  for (const race of raw.races) {
+    for (const phrase of [none, ...range(raw.fieldSize).map((k) => fillHoles(some, { k }))]) {
+      const l4 = [cap((raw.cardCopy.surfaces as Record<string, string>)[race.surface] ?? race.surface), (raw.cardCopy.goings as Record<string, string>)[race.going] ?? race.going, phrase].join(', ');
+      if (l4.length > PROGRAM_LINE_CHARS) add('racePage.pace.value', `"${l4}" is ${l4.length} characters; header line 4 holds ${PROGRAM_LINE_CHARS}`);
+    }
+  }
   // Read aloud only, so no width; every hole must be known.
   const one = ['x'];
   line('racePage.ariaEntry.value', r.ariaEntry.value, Infinity, {
@@ -265,7 +249,6 @@ export const loadBook = (): Book => validateBook({
   bannedWords: [...betting.copy.bannedWords, ...hub.copy.bannedWords],
   races: day.races,
   horseNames: stable.horses.map((h) => h.name),
-  oddsLabels: betting.odds.steps.value.map((s) => s.label),
   fieldSize: betting.field.size.value,
   cardCopy: raceDay.copy.card,
 });

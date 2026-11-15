@@ -43,15 +43,19 @@ const capitalized = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1
 /** Line 3: "Churchill Downs, 1 1/4 miles". */
 export const programPlaceLine = (race: Race, copy: CardCopy): string => `${race.track}, ${distanceWords(race.distanceFurlongs, copy)}`;
 
-/** Line 4: "Dirt, fast, playing fair", with the short bias phrases; both sides of a bias join with a comma. */
-export function programConditionsLine(race: Race, copy: CardCopy, bias: RaceDay['copy']['program']['bias']): string {
+/**
+ * Line 4: "Dirt, fast, playing fair", with the short bias phrases; both sides of a bias join with a comma.
+ * With `pace` (the book's race pages: "3 up front"), the pace phrase stands in for "playing fair" while
+ * the bias is fair; a real bias keeps its phrases. The shelved program page passes none, so it is unchanged.
+ */
+export function programConditionsLine(race: Race, copy: CardCopy, bias: RaceDay['copy']['program']['bias'], pace?: string): string {
   const phrases = [
     race.trackBias.lane === 'neutral' ? null : bias[race.trackBias.lane],
     race.trackBias.style === 'neutral' ? null : bias[race.trackBias.style],
   ].filter((p): p is string => p !== null);
   const surface = (copy.surfaces as Record<string, string>)[race.surface] ?? race.surface;
   const going = (copy.goings as Record<string, string>)[race.going] ?? race.going;
-  return [capitalized(surface), going, ...(phrases.length > 0 ? phrases : [bias.fair])].join(', ');
+  return [capitalized(surface), going, ...(phrases.length > 0 ? phrases : [pace ?? bias.fair])].join(', ');
 }
 
 /** Every bias line the copy can make, for the width check. */

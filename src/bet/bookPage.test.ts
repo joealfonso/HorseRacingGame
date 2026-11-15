@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import raceDayJson from '../data/raceDay.json';
 import { loadBook } from '../data/bookLoad';
 import { bookPages, centeredX, coverFor, pageName, racePageState, runningFoot, type RacePageInput, type RunRace } from './bookPage';
 import { drawnDay } from './day';
@@ -10,10 +9,10 @@ import { realCtx } from './testkit';
 
 const ctx = realCtx();
 const book = loadBook();
-const news = (seed: number) => newsFor(book, { daySeed: seed, fields: drawnDay(ctx, seed), stable: ctx.stable, races: ctx.races, cardCopy: raceDayJson.copy.card, previous: null });
+const news = (seed: number) => newsFor(book, { daySeed: seed, fields: drawnDay(ctx, seed), stable: ctx.stable });
 
 describe('CV1: the cover\'s fields', () => {
-  it('CV1: track is race 1\'s, the day pair is the seed, the race count is the day\'s, the line is news item 1\'s headline', () => {
+  it('CV1: track is race 1\'s, the day pair is the seed, the race count is the day\'s, the line is the headline of the item taken first (book-useful.md 3.4)', () => {
     const items = news(12345);
     const c = coverFor(book, { daySeed: 12345, trackName: ctx.races[0].track, raceCount: ctx.races.length, news: items });
     expect(c.track).toBe('Churchill Downs');
@@ -22,7 +21,7 @@ describe('CV1: the cover\'s fields', () => {
     expect(c.dayLabel).toBe('Day');
     expect(c.dayNumber).toBe('#12345');
     expect(c.races).toBe('8 races today');
-    expect(c.line).toBe(items[0].headline);
+    expect(c.line).toBe(items.find((i) => i.lead)!.headline);
   });
 
   it('CV1: the type is centered as the spec says (display font 12 px a character, main font 8)', () => {
@@ -35,14 +34,15 @@ describe('CV1: the cover\'s fields', () => {
     expect(centeredX(19, 12)).toBe(14);
   });
 
-  it('CV1: the cover line is the first headline for every seed, and fits 30', () => {
+  it('CV1: the cover line is the lead item\'s headline for every seed, and fits 30; with no news it is blank', () => {
     for (let s = 0; s < 50; s++) {
       const items = news(s);
       const c = coverFor(book, { daySeed: s, trackName: 'Churchill Downs', raceCount: 8, news: items });
-      expect(c.line).toBe(items[0].headline);
+      expect(c.line).toBe(items.find((i) => i.lead)!.headline);
       expect(c.line.length).toBeLessThanOrEqual(30);
       expect(c.dayNumber).toBe(`#${s}`);
     }
+    expect(coverFor(book, { daySeed: 1, trackName: 'Churchill Downs', raceCount: 8, news: [] }).line).toBe('');
   });
 });
 

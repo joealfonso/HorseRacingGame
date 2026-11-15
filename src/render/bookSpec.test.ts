@@ -21,7 +21,7 @@ import { programScreen } from './programScreen';
 
 const book = loadBook();
 const RACES = 8;
-const news = newsFor(book, { daySeed: 12345, fields: drawnOf(), stable: ctx.stable, races: ctx.races, cardCopy: rd.copy.card, previous: null });
+const news = newsFor(book, { daySeed: 12345, fields: drawnOf(), stable: ctx.stable });
 const cover = coverFor(book, { daySeed: 12345, trackName: ctx.races[0].track, raceCount: RACES, news });
 const covScreen = coverScreen(book, cover, RACES);
 const nwsScreen = newsScreen(book, news, cover.dayLabel, cover.dayNumber, RACES);
@@ -54,19 +54,19 @@ describe('CV1: the cover (section 3 as amended by 18.2)', () => {
     expect(covScreen.texts).toContainEqual({ text: `${dayJson.races.length} races today`, x: 248 - 8 * 13, y: 48, color: 'Ink' });
   });
 
-  it('the cover line is news item 1\'s headline, centered, Ink, cell top y196', () => {
-    const line = news[0].headline;
+  it('the cover line is the headline of the item taken first (book-useful.md 3.4), centered, Ink, cell top y196', () => {
+    const line = news.find((n) => n.lead)!.headline;
     expect(covScreen.texts).toContainEqual({ text: line, x: Math.floor((256 - 8 * line.length) / 2), y: 196, color: 'Ink' });
   });
 
   it('the day pair is the seed for every seed, the race count follows the day, and the line follows the news', () => {
     for (const seed of [0, 1, 99999, 4294967295]) {
-      const n = newsFor(book, { daySeed: seed, fields: drawnOf(), stable: ctx.stable, races: ctx.races, cardCopy: rd.copy.card, previous: null });
+      const n = newsFor(book, { daySeed: seed, fields: drawnOf(), stable: ctx.stable });
       const c = coverFor(book, { daySeed: seed, trackName: 'Any Track', raceCount: 5, news: n });
       expect(c.dayLabel).toBe('Day');
       expect(c.dayNumber).toBe(`#${seed}`);
       expect(c.races).toBe('5 races today');
-      expect(c.line).toBe(n[0].headline);
+      expect(c.line).toBe(n.find((i) => i.lead)!.headline);
     }
   });
 
@@ -120,7 +120,6 @@ describe('CV1 loader: the track name is at most 19 characters (art-director 18.2
     bannedWords: [...bettingJson.copy.bannedWords, ...hubJson.copy.bannedWords],
     races: dayJson.races.map((r, i) => (i === 0 ? { ...r, track } : r)),
     horseNames: stableJson.horses.map((h) => h.name),
-    oddsLabels: bettingJson.odds.steps.value.map((s) => s.label),
     fieldSize: bettingJson.field.size.value,
     cardCopy: raceDayJson.copy.card,
     ...over,
@@ -152,7 +151,7 @@ describe('CV1 loader: the track name is at most 19 characters (art-director 18.2
   });
 });
 
-describe('NW3 loader: the news data is checked at load, with the key', () => {
+describe('NU4 loader: the news data is checked at load, with the key (replaces NW3 loader)', () => {
   const rawFor = (mutate: (b: typeof bookJson) => void): BookInput => {
     const b = structuredClone(bookJson);
     mutate(b);
@@ -161,7 +160,6 @@ describe('NW3 loader: the news data is checked at load, with the key', () => {
       bannedWords: [...bettingJson.copy.bannedWords, ...hubJson.copy.bannedWords],
       races: dayJson.races,
       horseNames: stableJson.horses.map((h) => h.name),
-      oddsLabels: bettingJson.odds.steps.value.map((s) => s.label),
       fieldSize: bettingJson.field.size.value,
       cardCopy: raceDayJson.copy.card,
     };
@@ -171,31 +169,31 @@ describe('NW3 loader: the news data is checked at load, with the key', () => {
     return '';
   };
 
-  it('a headline of 31 characters fails, naming the file and its key; 30 is fine', () => {
-    expect(msg(rawFor((b) => { b.news.flavor.value[0].headline = 'H'.repeat(30); }))).toBe('');
-    const m = msg(rawFor((b) => { b.news.flavor.value[0].headline = 'H'.repeat(31); }));
+  it('a headline over 22 characters (30 with "Race 8: ") fails, naming the file and its key; 22 is fine', () => {
+    expect(msg(rawFor((b) => { b.news.kinds.value.K1.pairs[0].headline = 'H'.repeat(22); }))).toBe('');
+    const m = msg(rawFor((b) => { b.news.kinds.value.K1.pairs[0].headline = 'H'.repeat(23); }));
     expect(m).toContain('src/data/book.json');
-    expect(m).toContain('news.flavor.value[0].headline');
+    expect(m).toContain('news.kinds.value.K1.pairs[0].headline');
   });
 
-  it('a flavor item with a fill fails', () => {
-    expect(msg(rawFor((b) => { b.news.flavor.value[3].body = 'Race {r} was won by {name}.'; }))).toContain('news.flavor.value[3].body');
+  it('a pair with a hole its kind does not have fails', () => {
+    expect(msg(rawFor((b) => { b.news.kinds.value.K1.pairs[0].body = 'Race {r} was won by {name}.'; }))).toContain('news.kinds.value.K1.pairs[0].body');
   });
 
-  it('a flavor body that wraps to three lines fails', () => {
-    expect(msg(rawFor((b) => { b.news.flavor.value[2].body = 'one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen'; }))).toContain('news.flavor.value[2].body');
+  it('a body that wraps to three lines fails', () => {
+    expect(msg(rawFor((b) => { b.news.kinds.value.K2.pairs[0].body = 'one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen'; }))).toContain('news.kinds.value.K2.pairs[0].body');
   });
 
-  it('a fact template whose longest fill needs a third line fails, naming the template', () => {
-    const m = msg(rawFor((b) => { (b.news.facts.value.longest as { body: string }).body = '{name} won race {r} at {odds}, a price this track has not seen in years of racing.'; }));
-    expect(m).toContain('news.facts.value.longest.body');
+  it('a body whose longest fill (the longest stable name) needs a third line fails, naming the pair', () => {
+    const m = msg(rawFor((b) => { b.news.kinds.value.K1.pairs[2].body = 'No rival for the lead at all, and {name} likes that a great deal today.'; }));
+    expect(m).toContain('news.kinds.value.K1.pairs[2].body');
   });
 
   it('a banned word anywhere in the news fails, as a whole word, in any case', () => {
-    for (const word of ['injured', 'Favorite', 'sure thing', 'LAME', 'tip']) {
-      expect(msg(rawFor((b) => { b.news.flavor.value[1].body = `A ${word} remark for today.`; })), word).toContain('news.flavor.value[1].body');
+    for (const word of ['injured', 'Favorite', 'sure thing', 'LAME', 'tip', 'Fresh', 'TIRED']) {
+      expect(msg(rawFor((b) => { b.news.kinds.value.K1.pairs[1].body = `A ${word} remark for today.`; })), word).toContain('news.kinds.value.K1.pairs[1].body');
     }
-    expect(msg(rawFor((b) => { b.news.flavor.value[1].body = 'The picket fence is painted.'; }))).toBe('');
+    expect(msg(rawFor((b) => { b.news.kinds.value.K1.pairs[1].body = 'The picket fence is painted.'; }))).toBe('');
   });
 });
 
@@ -309,7 +307,7 @@ describe('BB2: a race page\'s pixels y0-209 are the approved program page\'s, le
     return { b, p };
   };
 
-  it('every entry, the heads, the rules, the odds column and the header lines equal the program page\'s; only the right slot of line 1 differs', () => {
+  it('every entry, the heads, the rules, the odds column and the header lines equal the program page\'s; only the right slot of line 1 and the pace phrase of line 4 differ', () => {
     for (const r of [1, 4, 8]) {
       for (const open of [true, false]) {
         const { b, p } = render(r, open, r % 3);
@@ -317,10 +315,14 @@ describe('BB2: a race page\'s pixels y0-209 are the approved program page\'s, le
         expect(b.rects).toEqual(p.rules);
         const top = <T extends { y: number }>(xs: readonly T[]) => xs.filter((t) => t.y < 210);
         const bankText = p.header[1];
-        const expected = top([...p.header.filter((t) => t !== bankText), ...p.heads, ...p.odds]);
+        // NU10 (book-useful.md section 9): header line 4 (y34) also differs, in its third part only: the pace phrase stands in for "playing fair".
+        const l4 = (t: { y: number }) => t.y === 34;
+        const expected = top([...p.header.filter((t) => t !== bankText), ...p.heads, ...p.odds]).filter((t) => !l4(t));
         const rightSlot = b.texts.filter((t) => t.y === 4 && t.x > 100);
-        const rest = top(b.texts).filter((t) => !rightSlot.includes(t));
+        const rest = top(b.texts).filter((t) => !rightSlot.includes(t) && !l4(t));
         expect(rest).toEqual(expected);
+        const fronts = drawnOf()[r - 1].styles.filter((s) => s === 'frontRunner').length;
+        expect(b.texts.filter(l4).map((t) => t.text)).toEqual(p.header.filter(l4).map((t) => t.text.replace('playing fair', fronts === 0 ? 'none up front' : `${fronts} up front`)));
         expect(rightSlot.length).toBe(open ? 1 : 0);
       }
     }
@@ -425,7 +427,7 @@ describe('BB6: the running foot shows the right items on every page, fits its fi
 describe('the news page layout (section 4 wireframe)', () => {
   it('the title "Rail Talk" Maroon at y4, the subtitle at y14, five headlines in Maroon at y30 + 36k, bodies in Ink at +10 and +20', () => {
     expect(nwsScreen.texts).toContainEqual({ text: 'Rail Talk', x: 8, y: 4, color: 'Maroon' });
-    expect(nwsScreen.texts).toContainEqual({ text: 'Gossip, facts and peanuts.', x: 8, y: 14, color: 'Ink' });
+    expect(nwsScreen.texts).toContainEqual({ text: 'Pace, class and peanuts.', x: 8, y: 14, color: 'Ink' });
     news.forEach((item, k) => {
       expect(nwsScreen.texts).toContainEqual({ text: item.headline, x: 8, y: 30 + 36 * k, color: 'Maroon' });
       item.body.forEach((line, j) => expect(nwsScreen.texts).toContainEqual({ text: line, x: 8, y: 30 + 36 * k + 10 * (j + 1), color: 'Ink' }));

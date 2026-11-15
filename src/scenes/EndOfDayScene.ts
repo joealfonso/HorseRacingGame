@@ -88,7 +88,7 @@ export class EndOfDayScene extends Phaser.Scene {
     this.cursor.setFrame(String(frames > 1 ? cursorFrame(this.seconds, rd.ambient.cursorSwapsPerSecond.value) : 0));
   }
 
-  /** New day: the next day seed, the starting bankroll, at that day's track on Read (book-and-window.md 24.1). The day just ended is kept as `previous` for the news. */
+  /** New day: the next day seed, the starting bankroll, at that day's track on Read (book-and-window.md 24.1). */
   private newDay(): void {
     if (this.leaving) return;
     this.leaving = true;

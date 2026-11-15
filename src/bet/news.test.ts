@@ -1,226 +1,298 @@
 import { describe, expect, it } from 'vitest';
-import raceDayJson from '../data/raceDay.json';
 import { loadBook } from '../data/bookLoad';
-import type { Race } from '../data/schema';
+import type { StableHorse } from '../data/bettingSchema';
 import { createStream } from '../sim/rng';
 import { BET_STREAM_NAMES } from './streams';
-import { drawnDay, type DrawnRace } from './day';
-import { compareOdds, newsFor, type NewsInput, type PreviousDay } from './news';
+import { drawnDay } from './day';
+import { newsFor, type NewsItem } from './news';
 import { realCtx } from './testkit';
 
-// NW1, NW2, NW4 and NW5 (docs/specs/book-and-window.md section 14), headless.
+// NU1 to NU3 (docs/specs/book-useful.md section 9, with the section 13 rulings), on hand-built
+// fields so each trigger is tested at its edge, and on the real stable for the day as a whole.
 
 const ctx = realCtx();
 const book = loadBook();
-const cardCopy = raceDayJson.copy.card;
 
-const inputFor = (daySeed: number, previous: PreviousDay | null = null, over: Partial<NewsInput> = {}): NewsInput => ({
-  daySeed, fields: drawnDay(ctx, daySeed), stable: ctx.stable, races: ctx.races, cardCopy, previous, ...over,
+type Style = StableHorse['style'];
+type Spec = readonly [Style, number];
+const F: Style = 'frontRunner', S: Style = 'stalker', C: Style = 'closer';
+
+/** Hand-built days: races of [style, total] by post. A horse is "r{race}p{post}" unless given an id as a third item. */
+function world(races: readonly (readonly (Spec | readonly [Style, number, string])[])[]) {
+  const horses = new Map<string, Pick<StableHorse, 'id' | 'name' | 'style' | 'stats'>>();
+  const fields = races.map((specs, r) => ({
+    race: r + 1,
+    horseIds: specs.map((s, i) => {
+      const id = s[2] ?? `r${r + 1}p${i + 1}`;
+      const a = Math.floor(s[1] / 3);
+      horses.set(id, { id, name: `Horse ${id}`, style: s[0], stats: { speed: a, stamina: a, kick: s[1] - 2 * a } });
+      return id;
+    }),
+  }));
+  return { fields, stable: [...horses.values()] };
+}
+const newsOf = (races: Parameters<typeof world>[0], daySeed = 7): NewsItem[] => newsFor(book, { daySeed, ...world(races) });
+const kindsOf = (races: Parameters<typeof world>[0], daySeed = 7): string[] => newsOf(races, daySeed).map((i) => i.kind);
+
+// Fields (by post) that fire exactly one kind, alone in a one-race day.
+const K1_FIELD: Spec[] = [[C, 250], [F, 246], [S, 240], [C, 238], [S, 236], [C, 230], [S, 228], [C, 226]];
+const K2_FIELD: Spec[] = [[C, 270], [S, 240], [F, 230], [F, 225], [C, 220], [S, 215], [C, 210], [S, 205]];
+const K3_FIELD: Spec[] = [[C, 250], [F, 245], [F, 240], [F, 235], [F, 230], [F, 225], [S, 220], [S, 215]];
+const K5_FIELD: Spec[] = [[S, 250], [C, 245], [C, 240], [S, 235], [C, 230], [S, 225], [C, 220], [S, 215]];
+const K6_FIELD: Spec[] = [[C, 250], [S, 246], [S, 240], [C, 236], [S, 232], [C, 228], [F, 244], [F, 220]];
+const K7_FIELD: Spec[] = [[C, 250], [S, 245], [S, 240], [C, 235], [S, 230], [C, 225], [F, 220], [F, 215]];
+
+/** A field with the given totals by post, styles as given. */
+const withTotals = (styles: Style[], totals: number[]): Spec[] => styles.map((s, i) => [s, totals[i]]);
+
+describe('the hand-built fields fire the kind they are for, and only that kind', () => {
+  it.each([
+    ['K1', K1_FIELD], ['K2', K2_FIELD], ['K3', K3_FIELD], ['K5', K5_FIELD], ['K6', K6_FIELD], ['K7', K7_FIELD],
+  ])('%s', (kind, field) => {
+    expect(kindsOf([field])).toEqual([kind]);
+  });
 });
-const rec = (race: number, winnerPost: number, winnerOdds: string, fields: readonly DrawnRace[]) => ({ race, horseIds: fields[race - 1].horseIds, winnerPost, winnerOdds });
-/** Eight races of five different horses each: no horse runs twice. */
-const noDoubleFields = () => Array.from({ length: 8 }, (_v, i) => ({ race: i + 1, horseIds: ctx.stable.slice(i * 5, i * 5 + 5).map((h) => h.id) }));
-const nameOf = (id: string) => ctx.stable.find((h) => h.id === id)!.name;
 
-describe('NW1: same inputs, same news; picks draw only from the news stream', () => {
-  it('NW1: the same day seed and previous record give identical news', () => {
-    const prev: PreviousDay = { records: [rec(1, 3, '9-2', drawnDay(ctx, 6))] };
-    for (const seed of [0, 1, 12345, 4294967295]) {
-      expect(newsFor(book, inputFor(seed, prev))).toEqual(newsFor(book, inputFor(seed, prev)));
-      expect(newsFor(book, inputFor(seed))).toEqual(newsFor(book, inputFor(seed)));
+describe('NU2: each kind fires exactly when its trigger holds', () => {
+  it('NU2: K1 lone speed fires at one front-runner of rank 4 and not at rank 5', () => {
+    // The lone front-runner is post 2 at total 240; three horses above it make it rank 4, four make it rank 5.
+    const rank4 = withTotals([C, F, S, C, S, C, S, C], [250, 240, 245, 244, 236, 230, 228, 226]);
+    const rank5 = withTotals([C, F, S, C, S, C, S, C], [250, 240, 245, 244, 243, 230, 228, 226]);
+    expect(kindsOf([rank4])).toEqual(['K1']);
+    expect(kindsOf([rank5])).not.toContain('K1');
+    expect(newsOf([rank4])[0]).toMatchObject({ post: 2, race: 1 });
+  });
+
+  it('NU2: K1 does not fire with two front-runners or none', () => {
+    expect(kindsOf([withTotals([C, F, F, C, S, C, S, C], [250, 246, 240, 238, 236, 230, 228, 226])])).not.toContain('K1');
+    expect(kindsOf([withTotals([C, S, S, C, S, C, S, C], [250, 246, 240, 238, 236, 230, 228, 226])])).not.toContain('K1');
+  });
+
+  // Top 260, others sum 1612: lead = 260 - mean of all eight = 26 exactly, gap = 260 - 251 = 9 exactly.
+  const lead = (others: number[], top = 260): Spec[] => withTotals([C, S, F, F, S, C, S, C], [top, ...others]);
+  it('NU2: K2 fires at lead 26 and gap 9', () => {
+    const f = lead([251, 227, 227, 227, 227, 227, 226]);
+    expect(kindsOf([f])).toEqual(['K2']);
+    expect(newsOf([f])[0].post).toBe(1);
+  });
+  it('NU2: K2 does not fire at lead 25.875 (one point less) or at gap 8', () => {
+    expect(kindsOf([lead([251, 227, 227, 227, 227, 227, 227])])).not.toContain('K2'); // lead 25.875
+    expect(kindsOf([lead([252, 227, 227, 226, 226, 226, 226])])).not.toContain('K2'); // lead 26, gap 8
+  });
+  it('NU2: K2 does not fire with a tie at the top, and then K7 does not either', () => {
+    const f = withTotals([C, C, S, F, F, S, C, S], [270, 270, 230, 225, 220, 215, 210, 205]);
+    expect(kindsOf([f])).toEqual([]);
+  });
+
+  it('NU2: K3 fires at five front-runners and not at four, naming the top closer', () => {
+    const news = newsOf([K3_FIELD]);
+    expect(news[0]).toMatchObject({ kind: 'K3', post: 1 });
+    const four = withTotals([C, F, F, F, F, S, S, S], [250, 245, 240, 235, 230, 225, 220, 215]);
+    expect(kindsOf([four])).not.toContain('K3');
+  });
+  it('NU2: K3 fires at six and seven front-runners (with a closer), and says the count as a word', () => {
+    const six = withTotals([C, F, F, F, F, F, F, S], [250, 245, 240, 235, 230, 225, 220, 215]);
+    const seven = withTotals([C, F, F, F, F, F, F, F], [250, 245, 240, 235, 230, 225, 220, 215]);
+    expect(kindsOf([six])).toEqual(['K3']);
+    expect(kindsOf([seven])).toEqual(['K3']);
+    const heads = new Set(Array.from({ length: 30 }, (_v, s) => newsOf([seven], s)[0].headline));
+    expect([...heads]).toContain('Race 1: Seven want the lead');
+  });
+  it('NU2: K3 names no one when the top closer is out of the first four, and never fires with no closer', () => {
+    // The closer is post 8 at total 200: rank 8.
+    expect(kindsOf([withTotals([F, F, F, F, F, S, S, C], [250, 245, 240, 235, 230, 225, 220, 200])])).not.toContain('K3');
+    expect(kindsOf([withTotals([F, F, F, F, F, F, F, F], [250, 245, 240, 235, 230, 225, 220, 215])])).not.toContain('K3');
+  });
+
+  // Horse X (total 250) runs in two races. Rivals' means: race 1 sums 1445, race 2 sums 1445 + diff * 7.
+  const rivals = (six: number[]): Spec[] => withTotals([S, S, C, S, C, S, C], [245, ...six]);
+  const twoRaces = (a: number[], b: number[], x: Spec = [C, 250]): Parameters<typeof world>[0] => [
+    [[x[0], x[1], 'X'], ...rivals(a)], [[x[0], x[1], 'X'], ...rivals(b)],
+  ];
+  it('NU2: K4 fires at a difference of 6 and not 5.857 (41 over seven rivals), naming the softer race whether first or second', () => {
+    const soft = [200, 200, 200, 200, 200, 200];
+    const hard = [207, 207, 207, 207, 207, 207]; // rivals' sum 42 more: exactly 6 a rival
+    const almost = [207, 207, 207, 207, 207, 206]; // 41 more
+    const first = newsOf(twoRaces(soft, hard));
+    expect(first.find((i) => i.kind === 'K4')).toMatchObject({ race: 1, horseId: 'X' });
+    const second = newsOf(twoRaces(hard, soft));
+    expect(second.find((i) => i.kind === 'K4')).toMatchObject({ race: 2, horseId: 'X' });
+    expect(kindsOf(twoRaces(soft, almost))).not.toContain('K4');
+    expect(kindsOf(twoRaces(almost, soft))).not.toContain('K4');
+  });
+  it('NU2: K4 needs the horse to rank 3 or better in the softer race', () => {
+    // X at 244 with rivals above it: 247 and 246 make it rank 3, a third (245) makes it rank 4. Rivals' sums differ by exactly 42.
+    const race = (above: number[], rest: number[]): (Spec | readonly [Style, number, string])[] =>
+      [[C, 244, 'X'], ...withTotals([S, S, C, S, C, S, C], [...above, ...rest])];
+    const rank3: Parameters<typeof world>[0] = [race([247, 246], [200, 200, 200, 200, 200]), race([247, 246], [208, 208, 208, 208, 210])];
+    const rank4: Parameters<typeof world>[0] = [race([247, 246, 245], [200, 200, 200, 200]), race([247, 246, 245], [210, 210, 211, 211])];
+    expect(newsOf(rank3).find((i) => i.kind === 'K4')).toMatchObject({ race: 1, horseId: 'X' });
+    expect(kindsOf(rank4)).not.toContain('K4');
+  });
+  it('NU2: K4 is about a horse that runs twice: one start never fires it', () => {
+    expect(kindsOf([K7_FIELD, K7_FIELD.map((s, i) => (i === 0 ? s : [s[0], s[1] + 40] as Spec))])).not.toContain('K4');
+  });
+
+  it('NU2: K5 fires with no front-runner and the top stalker in the first four, and not at rank 5', () => {
+    expect(kindsOf([K5_FIELD])).toEqual(['K5']);
+    const rank5 = withTotals([S, C, C, C, C, S, C, S], [235, 250, 245, 244, 243, 225, 220, 215]);
+    expect(kindsOf([rank5])).not.toContain('K5');
+    expect(kindsOf([K1_FIELD])).not.toContain('K5');
+  });
+
+  it('NU2: K6 fires for a front-runner of rank 3 or better in the last two posts, at posts 7 and 8', () => {
+    expect(newsOf([K6_FIELD])[0]).toMatchObject({ kind: 'K6', post: 7 });
+    const eight = withTotals([C, S, S, C, S, C, F, F], [250, 246, 240, 236, 232, 228, 220, 244]);
+    expect(newsOf([eight])[0]).toMatchObject({ kind: 'K6', post: 8 });
+  });
+  it('NU2: K6 never fires at posts 1 to 6 (inside is dropped, 13.3), and not with one front-runner', () => {
+    for (let post = 1; post <= 6; post++) {
+      const styles: Style[] = [C, S, S, C, S, C, S, F];
+      const totals = [250, 246, 240, 236, 232, 228, 220, 215];
+      styles[post - 1] = F; // a second front-runner at this post, in the first three ranks only for posts 1 to 3
+      const field = withTotals(styles, post <= 3 ? totals : totals);
+      expect(kindsOf([field]), `post ${post}`).not.toContain('K6');
+    }
+    const lone = withTotals([C, S, S, C, S, C, F, S], [250, 246, 240, 236, 232, 228, 244, 220]);
+    expect(kindsOf([lone])).toEqual(['K1']);
+  });
+  it('NU2: K6 needs rank 3 or better, and the last two posts of a smaller field are its wide posts', () => {
+    const rank4 = withTotals([C, S, S, C, S, C, F, F], [250, 246, 244, 236, 232, 228, 240, 220]);
+    expect(kindsOf([rank4])).not.toContain('K6');
+    const six = withTotals([C, S, S, C, F, F], [250, 246, 240, 236, 244, 220]);
+    expect(newsOf([six])[0]).toMatchObject({ kind: 'K6', post: 5 });
+  });
+
+  it('NU2: K7 fires for a unique top where K2 did not, and not where K2 did or the top is tied', () => {
+    expect(kindsOf([K7_FIELD])).toEqual(['K7']);
+    expect(kindsOf([K2_FIELD])).toEqual(['K2']);
+    expect(kindsOf([withTotals([C, C, S, F, F, S, C, S], [250, 250, 245, 225, 220, 215, 210, 205])])).toEqual([]);
+  });
+});
+
+describe('NU3: filling the five slots (3.4)', () => {
+  it('NU3: priority K1, K2, K3, K4, K5, K6, K7; the page is in race order; the cover line is the first taken', () => {
+    // Races 1 to 6 are K7, K6, K5, K3, K2, K1 in that order of race and the reverse of priority.
+    const news = newsOf([K7_FIELD, K6_FIELD, K5_FIELD, K3_FIELD, K2_FIELD, K1_FIELD]);
+    // Five of six: K7 (the lowest priority) is left out.
+    expect(news.map((i) => [i.race, i.kind])).toEqual([[2, 'K6'], [3, 'K5'], [4, 'K3'], [5, 'K2'], [6, 'K1']]);
+    expect(news.map((i) => i.slot)).toEqual([1, 2, 3, 4, 5]);
+    expect(news.filter((i) => i.lead).map((i) => i.kind)).toEqual(['K1']);
+  });
+
+  it('NU3: one item per race, at most two of a kind, K7 uncapped, five when five exist', () => {
+    const news = newsOf([K2_FIELD, K2_FIELD, K2_FIELD, K7_FIELD, K7_FIELD, K7_FIELD, K7_FIELD, K7_FIELD]);
+    // Three K2 races: two print (the earlier two), the third prints nothing (K7 never fires where K2 did).
+    expect(news.filter((i) => i.kind === 'K2').map((i) => i.race)).toEqual([1, 2]);
+    expect(news.filter((i) => i.kind === 'K7').map((i) => i.race)).toEqual([4, 5, 6]);
+    expect(news).toHaveLength(5);
+    expect(new Set(news.map((i) => i.race)).size).toBe(news.length);
+  });
+
+  it('NU3: five K7 items print on a day of K7, in race order (K7 is the filler, uncapped)', () => {
+    const news = newsOf(Array.from({ length: 8 }, () => K7_FIELD));
+    expect(news.map((i) => i.kind)).toEqual(['K7', 'K7', 'K7', 'K7', 'K7']);
+    expect(news.map((i) => i.race)).toEqual([1, 2, 3, 4, 5]);
+    expect(news.filter((i) => i.lead)).toHaveLength(1);
+  });
+
+  it('NU3: inside K2, the bigger lead first; the cap keeps the two biggest leads', () => {
+    const big = K2_FIELD.map((s, i) => (i === 0 ? ([s[0], 290] as Spec) : s));
+    const mid = K2_FIELD;
+    const small = K2_FIELD.map((s, i) => (i === 0 ? ([s[0], 262] as Spec) : s));
+    const news = newsOf([small, mid, big]);
+    expect(news.map((i) => i.race)).toEqual([2, 3]);
+    expect(news.find((i) => i.lead)!.race).toBe(3);
+  });
+
+  it('NU3: inside K1, the bigger front-runner first; ties go to the earlier race', () => {
+    const hi = K1_FIELD.map((s, i) => (i === 1 ? ([s[0], 249] as Spec) : s));
+    const news = newsOf([K1_FIELD, hi, K1_FIELD, K1_FIELD]);
+    expect(news.filter((i) => i.kind === 'K1').map((i) => i.race)).toEqual([1, 2]);
+    expect(news.find((i) => i.lead)!.race).toBe(2);
+    const tie = newsOf([K1_FIELD, K1_FIELD, K1_FIELD]);
+    expect(tie.find((i) => i.lead)!.race).toBe(1);
+  });
+
+  it('NU3: inside K3, more front-runners first; inside K6, post 8 before post 7', () => {
+    const six = withTotals([C, F, F, F, F, F, F, S], [250, 245, 240, 235, 230, 225, 220, 215]);
+    const news = newsOf([K3_FIELD, six]);
+    expect(news.find((i) => i.lead)!.race).toBe(2);
+    const eight = withTotals([C, S, S, C, S, C, F, F], [250, 246, 240, 236, 232, 228, 220, 244]);
+    const k6 = newsOf([K6_FIELD, eight]);
+    expect(k6.find((i) => i.lead)!.race).toBe(2);
+  });
+
+  it('NU3: a K4 item is skipped when its race already has a higher item, and a horse gives one candidate', () => {
+    const soft = [200, 200, 200, 200, 200, 200];
+    const hard = [207, 207, 207, 207, 207, 207];
+    const rivals = (six: number[]): Spec[] => withTotals([S, S, C, S, C, S, C], [245, ...six]);
+    const day = (x: Spec): Parameters<typeof world>[0] => [[[x[0], x[1], 'X'], ...rivals(soft)], [[x[0], x[1], 'X'], ...rivals(hard)]];
+    expect(newsOf(day([C, 250])).filter((i) => i.kind === 'K4')).toHaveLength(1);
+    // Race 1 replaced by a lone-speed race holding X as the lone front-runner: K1 takes the race, K4 gives it up.
+    const lone: Parameters<typeof world>[0] = [
+      [[F, 246, 'X'], [C, 250], [S, 240], [C, 238], [S, 236], [C, 230], [S, 228], [C, 226]],
+      [[F, 246, 'X'], ...withTotals([S, S, C, S, C, S, C], [245, 207, 207, 207, 207, 207, 207])],
+    ];
+    const kinds = newsOf(lone).map((i) => [i.race, i.kind]);
+    expect(kinds).toContainEqual([1, 'K1']);
+    expect(kinds).not.toContainEqual([1, 'K4']);
+  });
+
+  it('NU3: fewer than five candidates print what there is; none prints nothing and no cover line', () => {
+    expect(newsOf([K7_FIELD, K1_FIELD])).toHaveLength(2);
+    expect(newsOf([])).toEqual([]);
+    expect(newsOf([withTotals([C, C, S, F, F, S, C, S], [250, 250, 245, 225, 220, 215, 210, 205])])).toEqual([]);
+  });
+
+  it('NU3: the terms work on any field size', () => {
+    expect(kindsOf([[[C, 300], [S, 200]]])).toEqual(['K2']);
+    expect(kindsOf([[[S, 250]]])).toEqual(['K5']);
+  });
+
+  it('NU3: a pair is not used twice in a day while the kind has unused ones', () => {
+    for (let seed = 0; seed < 40; seed++) {
+      const news = newsOf([K2_FIELD, K2_FIELD, K7_FIELD, K7_FIELD], seed);
+      const k2 = news.filter((i) => i.kind === 'K2');
+      expect(new Set(k2.map((i) => i.headline.replace(/^Race \d: /, ''))).size).toBe(k2.length);
+    }
+  });
+});
+
+describe('NU1: same inputs, same news; the wording draws only the `news` stream', () => {
+  const seeds = [0, 1, 99, 12345, 20261113, 4294967295];
+
+  it('NU1: the same day seed gives identical items, order and wording', () => {
+    for (const seed of seeds) {
+      const input = { daySeed: seed, fields: drawnDay(ctx, seed), stable: ctx.stable };
+      expect(newsFor(book, input)).toEqual(newsFor(book, structuredClone(input)));
     }
   });
 
-  it('NW1: `news` is a betting stream, added last, and the older four keep their places', () => {
+  it('NU1: `news` is the last betting stream, and the older four keep their places', () => {
     expect([...BET_STREAM_NAMES]).toEqual(['fieldDraw', 'raceSeed', 'estimateSeeds', 'crowd', 'news']);
   });
 
-  it('NW1: the flavor picks are the shuffle of the pool on createStream(seed, "news", "day"), and nothing else', () => {
-    for (const seed of [3, 99, 20261113]) {
-      const n = book.news.flavor.value.length;
-      const rng = createStream(seed, 'news', 'day');
-      const order = Array.from({ length: n }, (_v, i) => i);
-      for (let i = n - 1; i > 0; i--) { const j = rng.int(0, i); [order[i], order[j]] = [order[j], order[i]]; }
-      const items = newsFor(book, inputFor(seed));
-      // Slot 3 is a fact here (horses run twice) and there is no previous day: slots 1 and 4 take the first two of the order, then slot 5's fallback the third.
-      expect(items[0].id).toBe(`flavor:${order[0]}`);
-      expect(items[3].id).toBe(`flavor:${order[1]}`);
-      expect(items[4].id).toBe(`flavor:${order[2]}`);
-    }
-  });
-
-  it('NW1: the news changes with the day seed (it is not one fixed page)', () => {
-    const lead = new Set(Array.from({ length: 40 }, (_v, s) => newsFor(book, inputFor(s))[0].headline));
-    expect(lead.size).toBeGreaterThan(5);
-  });
-});
-
-describe('NW2: facts are true', () => {
-  it('NW2: today\'s card matches day.json', () => {
-    const item = newsFor(book, inputFor(7))[1];
-    expect(item).toMatchObject({ slot: 2, id: 'fact:card', kind: 'fact', headline: "Today's card" });
-    expect(item.body).toEqual(['8 races, all 1 1/4 miles on', 'fast dirt.']);
-  });
-
-  it('NW2: when the races differ, the card says how many and what is first up', () => {
-    const races: Race[] = ctx.races.map((r, i) => (i === 2 ? { ...r, distanceFurlongs: 8 } : r));
-    expect(newsFor(book, inputFor(7, null, { races }))[1].body).toEqual(['8 races today. First up: the', `${races[0].name}.`]);
-    const mud: Race[] = ctx.races.map((r, i) => (i === 5 ? { ...r, going: 'muddy' } : r));
-    expect(newsFor(book, inputFor(7, null, { races: mud }))[1].body.join(' ')).toContain('First up');
-    const turf: Race[] = ctx.races.map((r) => ({ ...r, distanceFurlongs: 8, surface: 'turf' as const, going: 'firm' as const }));
-    expect(newsFor(book, inputFor(7, null, { races: turf }))[1].body).toEqual(['8 races, all 1 mile on firm', 'turf.']);
-  });
-
-  it('NW2: two starts names the two horses whose first start is earliest, with both race numbers', () => {
-    for (const seed of [1, 2, 3, 42, 12345, 20261113]) {
-      const fields = drawnDay(ctx, seed);
-      const starts = new Map<string, number[]>();
-      fields.forEach((f) => f.horseIds.forEach((id) => starts.set(id, [...(starts.get(id) ?? []), f.race])));
-      const twice = [...starts.entries()].filter(([, r]) => r.length === 2).sort((a, b) => a[1][0] - b[1][0] || a[1][1] - b[1][1]);
-      const item = newsFor(book, inputFor(seed))[2];
-      expect(item.id).toBe('fact:double');
-      expect(item.headline).toBe('Running in two races today');
-      expect(item.body).toHaveLength(2);
-      const picked = item.body.map((line) => {
-        const m = /^(.*), races (\d+), (\d+)$/.exec(line)!;
-        return { name: m[1], a: Number(m[2]), b: Number(m[3]) };
-      });
-      // The earliest first start among all horses with two starts.
-      const earliest = twice[0][1][0];
-      expect(Math.min(...picked.map((p) => p.a))).toBe(earliest);
-      // No horse with two starts has a first start earlier than the second pick's.
-      const second = Math.max(...picked.map((p) => p.a));
-      expect(twice.filter(([, r]) => r[0] < second).length).toBeLessThanOrEqual(2);
-      for (const p of picked) {
-        const id = [...starts.entries()].find(([hid]) => nameOf(hid) === p.name)![0];
-        expect(starts.get(id)).toEqual([p.a, p.b]);
-      }
-    }
-  });
-
-  it('NW2: ties on the first start go to the earlier second start, then the lower post', () => {
-    const horses = ctx.stable.slice(0, 6).map((h) => h.id);
-    // Race 1: A B C. Race 2: D. Races 3 and 4: C then A, B and D rerun later. A's second is 3, B's 5, C's 4.
-    const fields = [
-      { race: 1, horseIds: [horses[0], horses[1], horses[2]] },
-      { race: 2, horseIds: [horses[3]] },
-      { race: 3, horseIds: [horses[0]] },
-      { race: 4, horseIds: [horses[2]] },
-      { race: 5, horseIds: [horses[1], horses[3]] },
-    ];
-    const item = newsFor(book, inputFor(1, null, { fields }))[2];
-    expect(item.body).toEqual([`${nameOf(horses[0])}, races 1, 3`, `${nameOf(horses[2])}, races 1, 4`]);
-  });
-
-  it('NW2: with fewer than two horses running twice, slot 3 is flavor', () => {
-    const fields = noDoubleFields();
-    const item = newsFor(book, inputFor(5, null, { fields }))[2];
-    expect(item.kind).toBe('flavor');
-  });
-
-  it('NW2: yesterday\'s longest price names that day\'s longest winner, its race and odds from the record', () => {
-    const fields = drawnDay(ctx, 8);
-    const prev: PreviousDay = { records: [rec(1, 2, '5-2', fields), rec(2, 5, '26-1', fields), rec(3, 1, '9-2', fields), rec(4, 7, '12-1', fields)] };
-    const item = newsFor(book, inputFor(9, prev))[4];
-    expect(item).toMatchObject({ slot: 5, id: 'fact:longest', kind: 'fact', headline: "Yesterday's longest price" });
-    expect(item.body.join(' ')).toBe(`${nameOf(fields[1].horseIds[4])} won race 2 at 26-1.`);
-  });
-
-  it('NW2: the longest compares odds as numbers (9-1 is longer than 26-5... and 10-1 is longer than 9-2) and a tie keeps the earlier race', () => {
-    expect(compareOdds('10-1', '9-2')).toBeGreaterThan(0);
-    expect(compareOdds('9-2', '5-1')).toBeLessThan(0);
-    expect(compareOdds('4-1', '8-2')).toBe(0);
-    const fields = drawnDay(ctx, 8);
-    const prev: PreviousDay = { records: [rec(2, 1, '4-1', fields), rec(5, 3, '4-1', fields), rec(7, 2, '3-1', fields)] };
-    expect(newsFor(book, inputFor(9, prev))[4].body.join(' ')).toContain('won race 2 at 4-1');
-  });
-
-  it('NW2: the longest price is the longest winner of the day, not only one the player bet on', () => {
-    const fields = drawnDay(ctx, 8);
-    const prev: PreviousDay = { records: [rec(1, 1, '2-1', fields), rec(2, 2, '3-1', fields)] };
-    expect(newsFor(book, inputFor(9, prev))[4].body.join(' ')).toContain('won race 2 at 3-1');
-  });
-
-  it('NW2: with no previous day, slot 5 is flavor', () => {
-    expect(newsFor(book, inputFor(9, null))[4].kind).toBe('flavor');
-    expect(newsFor(book, inputFor(9, { records: [] }))[4].kind).toBe('flavor');
-  });
-
-  it('NW2: the previous day changes slot 5 and no other slot\'s text', () => {
-    const fields = drawnDay(ctx, 8);
-    const prev: PreviousDay = { records: [rec(2, 5, '26-1', fields)] };
-    const without = newsFor(book, inputFor(9, null));
-    const withPrev = newsFor(book, inputFor(9, prev));
-    for (const i of [0, 1, 2, 3]) expect(withPrev[i]).toEqual(without[i]);
-    expect(withPrev[4]).not.toEqual(without[4]);
-  });
-
-  it('NW2: a fact being absent does not change the flavor in the other slots', () => {
-    const noDouble = noDoubleFields();
-    const a = newsFor(book, inputFor(5));
-    const b = newsFor(book, inputFor(5, null, { fields: noDouble }));
-    expect(b[0]).toEqual(a[0]);
-    expect(b[3]).toEqual(a[3]);
-  });
-});
-
-describe('NW4: five items every day, none repeated, fallbacks as in section 4', () => {
-  const seeds = Array.from({ length: 120 }, (_v, s) => s * 37);
-  const fields = drawnDay(ctx, 8);
-  const prevs: (PreviousDay | null)[] = [null, { records: [rec(2, 5, '26-1', fields)] }];
-
-  it('NW4: five items, slots 1 to 5, no repeated id or headline, bodies within 2 lines of 30', () => {
-    for (const seed of seeds) for (const prev of prevs) {
-      const items = newsFor(book, inputFor(seed, prev));
-      expect(items.map((i) => i.slot)).toEqual([1, 2, 3, 4, 5]);
-      expect(new Set(items.map((i) => i.id)).size).toBe(5);
-      expect(new Set(items.map((i) => i.headline)).size).toBe(5);
-      for (const i of items) {
-        expect(i.headline.length).toBeLessThanOrEqual(30);
-        expect(i.body.length).toBeGreaterThanOrEqual(1);
-        expect(i.body.length).toBeLessThanOrEqual(2);
-        for (const l of i.body) expect(l.length).toBeLessThanOrEqual(30);
-      }
-      expect(items[0].kind).toBe('flavor');
-      expect(items[1].id).toBe('fact:card');
-      expect(items[3].kind).toBe('flavor');
-    }
-  });
-
-  it('NW4: the worst case, all four flavor slots, still gives five distinct items from the pool', () => {
-    const noDouble = noDoubleFields();
+  it('NU1: the wording is the pair picked by createStream(seed, "news", "day"), one draw an item in the order taken', () => {
+    const fields = Array.from({ length: 5 }, () => K7_FIELD);
     for (const seed of seeds) {
-      const items = newsFor(book, inputFor(seed, null, { fields: noDouble }));
-      expect(items.filter((i) => i.kind === 'flavor')).toHaveLength(4);
-      expect(new Set(items.map((i) => i.id)).size).toBe(5);
+      const rng = createStream(seed, 'news', 'day');
+      const pairs = book.news.kinds.value.K7.pairs;
+      const used = new Set<number>();
+      const expected = Array.from({ length: 5 }, () => {
+        const fresh = pairs.map((_p, k) => k).filter((k) => !used.has(k));
+        const pool = fresh.length > 0 ? fresh : pairs.map((_p, k) => k);
+        const k = pool[rng.int(0, pool.length - 1)];
+        used.add(k);
+        return k;
+      });
+      const got = newsOf(fields, seed).map((i) => pairs.findIndex((p) => i.headline.endsWith(p.headline)));
+      expect(got).toEqual(expected);
     }
   });
 
-  it('NW4: every flavor item gets its turn as the lead over many days', () => {
-    const leads = new Set(seeds.map((s) => newsFor(book, inputFor(s))[0].id));
-    expect(leads.size).toBe(book.news.flavor.value.length);
-  });
-});
-
-describe('NW5: the news never shows the estimate, a price for today, or a stat ranking', () => {
-  it('NW5: with no previous day, no item prints a price, a "$", or a stat word', () => {
-    for (let seed = 0; seed < 60; seed++) {
-      const text = newsFor(book, inputFor(seed)).flatMap((i) => [i.headline, ...i.body]).join(' ');
-      expect(text, `seed ${seed}`).not.toMatch(/\d+-\d+/);
-      expect(text).not.toContain('$');
-      expect(text).not.toMatch(/speed|stamina|kick|estimate|odds|chance|favorite|best|fastest/i);
-    }
-  });
-
-  it('NW5: flavor never names a horse', () => {
-    const names = ctx.stable.map((h) => h.name.toLowerCase());
-    for (const f of book.news.flavor.value) for (const n of names) expect(`${f.headline} ${f.body}`.toLowerCase(), n).not.toContain(n);
-  });
-
-  it('NW5: the only price in the news is the previous day\'s, from its record', () => {
-    const fields = drawnDay(ctx, 8);
-    const items = newsFor(book, inputFor(9, { records: [rec(2, 5, '26-1', fields)] }));
-    const priced = items.filter((i) => /\d+-\d+/.test(i.body.join(' ')));
-    expect(priced.map((i) => i.id)).toEqual(['fact:longest']);
+  it('NU1: the news changes with the day seed (it is not one fixed page)', () => {
+    const pages = new Set(Array.from({ length: 40 }, (_v, s) => JSON.stringify(newsFor(book, { daySeed: s, fields: drawnDay(ctx, s), stable: ctx.stable }))));
+    expect(pages.size).toBeGreaterThan(30);
   });
 });

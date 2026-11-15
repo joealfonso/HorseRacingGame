@@ -2,7 +2,7 @@ import type { Book } from '../data/bookSchema';
 import { fillHoles } from '../data/bookText';
 import { programConditionsLine, programPlaceLine } from '../data/cardWords';
 import type { CardLook, RaceDay } from '../data/raceDaySchema';
-import { bookPages, runningFoot, type BookPage, type CoverFields, type RacePageState } from '../bet/bookPage';
+import { bookPages, frontCount, paceWords, runningFoot, type BookPage, type CoverFields, type RacePageState } from '../bet/bookPage';
 import type { DayContext, DrawnRace } from '../bet/day';
 import type { NewsItem } from '../bet/news';
 import { raceOfLine } from './betCopy';
@@ -205,12 +205,14 @@ export function racePageScreen(input: RacePageInput): BookScreen {
   const range = drawn.input.tuning.statRange.value;
   const races = ctx.races.length;
 
+  // Header line 4 names the pace (the field's front-runner count) while the bias is fair (book-useful.md section 6).
+  const conditions = programConditionsLine(race, copy.card, copy.program.bias, paceWords(book, frontCount(drawn.styles)));
   const texts: PageText[] = [{ text: raceOfLine(copy, drawn.race, races), x: P.header.x, y: P.header.y, color: INK }];
   if (page.right !== '') texts.push({ text: page.right, x: rightAlignedX(page.right, P.lastX), y: P.header.y, color: INK });
   texts.push(
     { text: race.name, x: P.header.x, y: P.header.y + P.header.dy, color: SECOND_INK },
     { text: programPlaceLine(race, copy.card), x: P.header.x, y: P.header.y + 2 * P.header.dy, color: INK },
-    { text: programConditionsLine(race, copy.card, copy.program.bias), x: P.header.x, y: P.header.y + 3 * P.header.dy, color: INK },
+    { text: conditions, x: P.header.x, y: P.header.y + 3 * P.header.dy, color: INK },
   );
   const h = copy.program.heads;
   texts.push(
@@ -241,7 +243,7 @@ export function racePageScreen(input: RacePageInput): BookScreen {
     kickHead: h.kick, kick: focused.stats.kick, oddsHead: h.odds, odds: focusedOdds,
   });
   const aria = [
-    raceOfLine(copy, drawn.race, races), race.name, ...(page.right === '' ? [] : [page.right]),
+    raceOfLine(copy, drawn.race, races), race.name, conditions, ...(page.right === '' ? [] : [page.right]),
     entryLine, ...(footer === '' ? [] : [footer]),
   ].map(sentence).join(' ');
   return { paper: PAPER, rects, texts, images: [], entries, cursor, aria };

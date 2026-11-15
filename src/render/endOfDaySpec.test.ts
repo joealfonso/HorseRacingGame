@@ -360,7 +360,7 @@ describe('BE1, the day\'s card: one row per race run with the right box, odds an
 describe('CV1: the day pair on this page equals the cover\'s for the same day seed', () => {
   it('the same label and the same "#seed" for several seeds', () => {
     for (const seed of [0, 1, DAY_SEED, 99999, 4294967295]) {
-      const news = newsFor(book, { daySeed: seed, fields: drawnOf(), stable: ctx.stable, races: ctx.races, cardCopy: rd.copy.card, previous: null });
+      const news = newsFor(book, { daySeed: seed, fields: drawnOf(), stable: ctx.stable });
       const cover = coverFor(book, { daySeed: seed, trackName: TRACK, raceCount: 8, news });
       const day: DayState = { ...dayOf({}), daySeed: seed };
       const s = screenOf(day);

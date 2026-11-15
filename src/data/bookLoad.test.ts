@@ -11,7 +11,7 @@ import { wrapWords } from './template';
 import { DataError } from './validate';
 import { DISPLAY_CHARS } from '../render/fontLayout';
 
-// The book's data loader: NW3, the data half of CV1 (as amended in spec 18: 19 characters in the
+// The book's data loader: NU4 (book-useful.md, replacing NW3), the data half of CV1 (as amended in spec 18: 19 characters in the
 // display font) and the copy limits of spec section 13. Each fails at load with the file and the field.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -21,7 +21,6 @@ const base = (book: Raw, races: Raw = dayJson.races): BookInput => ({
   bannedWords: [...bettingJson.copy.bannedWords, ...hubJson.copy.bannedWords],
   races,
   horseNames: stableJson.horses.map((h) => h.name),
-  oddsLabels: bettingJson.odds.steps.value.map((s) => s.label),
   fieldSize: 8,
   cardCopy: raceDayJson.copy.card,
 });
@@ -32,6 +31,8 @@ const failure = (edit: (b: Raw) => void, races?: Raw): DataError => {
   throw new Error('expected validateBook to throw');
 };
 const paths = (e: DataError): string[] => e.issues.map((i) => i.path);
+
+const pairAt = (kind: keyof typeof bookJson.news.kinds.value, i: number) => `news.kinds.value.${kind}.pairs[${i}]`;
 
 describe('the shipped book.json', () => {
   it('loads', () => {
@@ -50,100 +51,136 @@ describe('the shipped book.json', () => {
     walk(bookJson, 'book');
   });
 
-  it('holds the spec\'s copy word for word', () => {
+  it('holds the spec\'s copy word for word (book-useful.md sections 2, 3.5, 6 and 8)', () => {
     const b = loadBook();
     expect(b.cover.title.value).toBe('Race Day Program');
     expect(b.cover.races.value).toBe('{n} races today');
     expect(b.news.title.value).toBe('Rail Talk');
-    expect(b.news.subtitle.value).toBe('Gossip, facts and peanuts.');
-    expect(b.news.facts.value).toEqual({
-      card: { headline: "Today's card", body: '{n} races, all {distance} on {going} {surface}.', bodyMixed: '{n} races today. First up: the {race1Name}.' },
-      double: { headline: 'Running in two races today', line: '{name}, races {a}, {b}' },
-      longest: { headline: "Yesterday's longest price", body: '{name} won race {r} at {odds}.' },
-    });
+    expect(b.news.subtitle.value).toBe('Pace, class and peanuts.');
+    expect(b.news.prefix.value).toBe('Race {r}:');
+    expect(b.news.count.value).toEqual({ 5: 'Five', 6: 'Six', 7: 'Seven' });
+    expect(b.racePage.pace.value).toEqual({ none: 'none up front', some: '{k} up front' });
     expect([b.racePage.toWindow.value, b.racePage.winner.value, b.racePage.later.value]).toEqual(['Enter: to window', 'Winner: #{n}', 'Prices later']);
     expect([b.foot.prev.value, b.foot.next.value, b.foot.close.value]).toEqual(['< {page}', '{page} >', 'Esc: close']);
     expect(b.foot.pages.value).toEqual({ cover: 'Cover', news: 'News', race: 'Race {r}' });
   });
 
-  it('has the eleven flavor items of the spec and not the cut one', () => {
-    const f = loadBook().news.flavor.value;
-    expect(f).toHaveLength(11);
-    expect(f.map((x) => x.headline)).not.toContain('Lemonade tested, lemony');
-    expect(JSON.stringify(bookJson.news.flavor.value).toLowerCase()).not.toContain('lemon');
+  it('has the kinds, priority and thresholds of the spec as amended by 13 (crowded lead at five, no inside draw)', () => {
+    const b = loadBook().news;
+    expect(b.priority.value).toEqual(['K1', 'K2', 'K3', 'K4', 'K5', 'K6', 'K7']);
+    expect(b.slots.value).toBe(5);
+    expect(b.kinds.value.K1.frontRankMax).toBe(4);
+    expect([b.kinds.value.K2.leadMin, b.kinds.value.K2.gapMin]).toEqual([26, 9]);
+    expect([b.kinds.value.K3.frontsMin, b.kinds.value.K3.closerRankMax]).toEqual([5, 4]);
+    expect([b.kinds.value.K4.diffMin, b.kinds.value.K4.rankMax]).toEqual([6, 3]);
+    expect(b.kinds.value.K5.stalkerRankMax).toBe(4);
+    expect([b.kinds.value.K6.frontRankMax, b.kinds.value.K6.frontsMin, b.kinds.value.K6.widePosts]).toEqual([3, 2, 2]);
+    expect(b.kinds.value.K7.cap).toBeNull();
+    for (const k of ['K1', 'K2', 'K3', 'K4', 'K5', 'K6'] as const) expect(b.kinds.value[k].cap, k).toBe(2);
   });
 
-  it('wraps each flavor body to the lines the spec prints', () => {
+  it('keeps the old news out: no flavor list, no card, two-starts or longest-price facts, and no inside-draw pairs', () => {
+    const text = JSON.stringify(bookJson.news);
+    expect(bookJson.news).not.toHaveProperty('flavor');
+    expect(bookJson.news).not.toHaveProperty('facts');
+    for (const gone of ["Today's card", 'Running in two races', "Yesterday's longest", 'Bugler finds a 13th note', 'Lemonade', 'drawn on the inside', 'a handy draw', 'inside and quick']) {
+      expect(text, gone).not.toContain(gone);
+    }
+  });
+
+  it('wraps each pair, with the 18-character name, to the lines the spec prints', () => {
+    // Section 3.5's samples, as they wrap with "Mint Julep Lawsuit".
     const spec: Record<string, string[]> = {
-      'Bugler finds a 13th note': ['He is saving it for a special', 'occasion. Today is not it.'],
-      'Biggest hat in the stand': ["The regular's hat now has its", 'own seat. Nobody argued.'],
-      'Pigeons hold the good seats': ['Ushers asked nicely. The', 'pigeons have declined.'],
-      'Lost and found': ['Lost: one lucky sock, left.', 'Not as lucky as advertised.'],
-      'Tote board gets a polish': ['All bulbs polished but two.', 'Nobody can reach those.'],
-      'Peanut shells set a record': ['Section C reports ankle deep.', 'Knee deep by the last race.'],
-      'Parking update': ['Lot B is full. Lot C is a cow', 'pasture. The cows are fine.'],
-      "The bugler's car, explained": ['His car horn plays the call to', 'the post. On purpose.'],
-      'Snack cart adds napkins': ['Fewer sticky programs', 'reported. A proud day for all.'],
-      "Regular's cushion returns": ['Same cushion, thirty seasons.', 'Still plump. Still hers.'],
-      'Pretzel situation resolved': ['The dropped pretzel was found.', 'A pigeon got there first.'],
+      'K1:one wants the lead': ['Only Mint Julep Lawsuit wants', 'the lead. The bugler approves.'],
+      'K1:nobody to argue with': ['Mint Julep Lawsuit is the lone', 'speed. Better than its bars.'],
+      'K1:a lead for one': ['No rival for the lead. Mint', 'Julep Lawsuit likes that.'],
+      'K2:a class above': ['No one here is close to Mint', 'Julep Lawsuit on paper.'],
+      'K2:best by a lot': ['Mint Julep Lawsuit has the', 'most in the bars, by a lot.'],
+      'K3:{k} want the lead': ['Closers like a busy front.', 'Mint Julep Lawsuit tops them.'],
+      'K3:a crowd up front': ['A busy lead helps closers. Top', 'one here: Mint Julep Lawsuit.'],
+      'K3:traffic up front': ['The snack cart says closers.', 'Top closer: Mint Julep Lawsuit'],
+      'K4:an easier crowd': ['Mint Julep Lawsuit runs twice.', 'Race 6 is the easier field.'],
+      'K4:softer company': ['Two starts for Mint Julep', 'Lawsuit. Race 6 is kinder.'],
+      'K4:kinder rivals': ['Race 6 is the easier of Mint', "Julep Lawsuit's two."],
+      'K5:nobody wants the lead': ['Stalkers set the pace, and', 'Mint Julep Lawsuit tops them.'],
+      'K5:no speed at all': ['No early speed suits stalkers.', 'Top one: Mint Julep Lawsuit.'],
+      'K5:who goes first?': ['Someone has to go first. Top', 'stalker: Mint Julep Lawsuit.'],
+      'K6:drawn wide': ['Post 8 for Mint Julep Lawsuit.', 'A long way round for speed.'],
+      'K6:a long way round': ['Mint Julep Lawsuit drew wide,', 'post 8. Speed minds it a bit.'],
+      'K6:parked out wide': ['Mint Julep Lawsuit starts from', 'post 8. A long trip for speed.'],
+      'K7:tops on the numbers': ['On paper, Mint Julep Lawsuit.', 'Paper has been wrong before.'],
+      'K7:best sum here': ['Sum the bars and Mint Julep', 'Lawsuit comes out on top.'],
     };
-    for (const f of loadBook().news.flavor.value) expect(wrapWords(f.body, 30), f.headline).toEqual(spec[f.headline]);
+    let seen = 0;
+    for (const [kind, k] of Object.entries(loadBook().news.kinds.value)) {
+      for (const p of k.pairs) {
+        const lines = spec[`${kind}:${p.headline}`];
+        expect(lines, `${kind}:${p.headline} is in the spec`).toBeDefined();
+        const body = p.body.replace('{name}', 'Mint Julep Lawsuit').replace('{post}', '8').replace('{soft}', '6');
+        expect(wrapWords(body, 30), `${kind}:${p.headline}`).toEqual(lines);
+        seen++;
+      }
+    }
+    expect(seen).toBe(Object.keys(spec).length);
   });
 
-  it('NW3: the longest fill, "Mint Julep Lawsuit, races 2, 6", is 30 characters and fits', () => {
-    const line = fillHoles(loadBook().news.facts.value.double.line, { name: 'Mint Julep Lawsuit', a: 2, b: 6 });
-    expect(line).toBe('Mint Julep Lawsuit, races 2, 6');
-    expect(line.length).toBe(30);
+  it('every stable name fits every shipped pair in 2 lines of 30 (the two spec pairs that need a third line for some names are left out)', () => {
+    const left = ['add up the bars', 'most in the bars'];
+    for (const k of Object.values(loadBook().news.kinds.value)) for (const p of k.pairs) expect(left).not.toContain(p.headline);
   });
 });
 
-describe('NW3: headlines', () => {
-  it('a flavor headline over 30 characters fails, naming the file and field', () => {
-    const e = failure((b) => { b.news.flavor.value[2].headline = 'A headline that runs over thirty'; });
+describe('NU4: pairs checked at load, with the key', () => {
+  it('a headline that is over 22 characters (30 with "Race 5: ") fails, naming the file and field; 22 passes', () => {
+    const e = failure((b) => { b.news.kinds.value.K1.pairs[0].headline = 'x'.repeat(23); });
     expect(e.file).toBe('src/data/book.json');
-    expect(paths(e)).toContain('news.flavor.value[2].headline');
-    expect(e.message).toContain('src/data/book.json: news.flavor.value[2].headline');
+    expect(paths(e)).toContain(pairAt('K1', 0) + '.headline');
+    expect(e.message).toContain(`src/data/book.json: ${pairAt('K1', 0)}.headline`);
+    const ok = structuredClone(bookJson) as Raw;
+    ok.news.kinds.value.K1.pairs[0].headline = 'x'.repeat(22);
+    expect(() => validateBook(base(ok))).not.toThrow();
   });
 
-  it('a fact headline over 30 characters fails', () => {
-    expect(paths(failure((b) => { b.news.facts.value.longest.headline = 'Yesterday\'s very longest price of all'; }))).toContain('news.facts.value.longest.headline');
-  });
-
-  it('exactly 30 characters passes', () => {
-    const book = structuredClone(bookJson) as Raw;
-    book.news.flavor.value[0].headline = 'x'.repeat(30);
-    expect(() => validateBook(base(book))).not.toThrow();
-  });
-});
-
-describe('NW3: fact templates filled with every horse, odds label and race number', () => {
-  it('a longest-price template that needs a third line for the longest name fails', () => {
-    const e = failure((b) => { b.news.facts.value.longest.body = '{name} won race {r} at {odds} and the whole crowd cheered for ages.'; });
-    expect(paths(e)).toContain('news.facts.value.longest.body');
+  it('a body that needs a third line for some stable name fails, naming the pair', () => {
+    const e = failure((b) => { b.news.kinds.value.K2.pairs[0].body = 'Add up the bars. {name} comes out well ahead.'; });
+    expect(paths(e)).toContain(pairAt('K2', 0) + '.body');
     expect(e.issues[0].message).toMatch(/needs more than 2 lines of 30/);
   });
 
-  it('a card template too long for 2 lines of 30 fails', () => {
-    expect(paths(failure((b) => { b.news.facts.value.card.body = '{n} races, all {distance} on {going} {surface}, every single one of them today.'; }))).toContain('news.facts.value.card.body');
+  it('the two spec pairs left out do fail the check (so the spec\'s own rule keeps them out)', () => {
+    expect(paths(failure((b) => { b.news.kinds.value.K2.pairs.push({ headline: 'add up the bars', body: 'Add up the bars. {name} comes out well ahead.' }); }))).toContain(pairAt('K2', 2) + '.body');
+    expect(paths(failure((b) => { b.news.kinds.value.K7.pairs.push({ headline: 'most in the bars', body: 'Add the three bars: {name} is top here.' }); }))).toContain(pairAt('K7', 2) + '.body');
   });
 
-  it('a mixed-card template is filled with every race name', () => {
-    const e = failure(() => {}, dayJson.races.map((r, i) => (i === 3 ? { ...r, name: 'The Extremely Long Name Of The Race' } : r)));
-    expect(paths(e)).toContain('news.facts.value.card.bodyMixed');
+  it('an unknown hole fails, and so does a hole a kind does not have', () => {
+    expect(paths(failure((b) => { b.news.kinds.value.K1.pairs[0].body = '{name} won {lap}.'; }))).toContain(pairAt('K1', 0) + '.body');
+    // {soft} belongs to the easier-crowd pairs, {post} to the draw's, {k} to the crowded lead's headline.
+    expect(paths(failure((b) => { b.news.kinds.value.K1.pairs[0].body = '{name} in race {soft}.'; }))).toContain(pairAt('K1', 0) + '.body');
+    expect(paths(failure((b) => { b.news.kinds.value.K2.pairs[0].headline = '{k} ahead'; }))).toContain(pairAt('K2', 0) + '.headline');
+    expect(paths(failure((b) => { b.news.kinds.value.K3.pairs[0].body = '{k} want it, says {name}.'; }))).toContain(pairAt('K3', 0) + '.body');
   });
 
-  it('a two-starts line over 30 characters fails', () => {
-    const e = failure((b) => { b.news.facts.value.double.line = '{name}, in races {a} and {b}'; });
-    expect(paths(e)).toContain('news.facts.value.double.line');
+  it('a count with no word fails: five, six and seven front-runners can have a closer', () => {
+    expect(paths(failure((b) => { delete b.news.count.value['6']; }))).toContain('news.count.value.6');
   });
 
-  it('an unknown hole fails', () => {
-    expect(paths(failure((b) => { b.news.facts.value.longest.body = '{name} won {lap} at {odds}.'; }))).toContain('news.facts.value.longest.body');
+  it('every kind is in the priority list once', () => {
+    expect(paths(failure((b) => { b.news.priority.value = ['K1', 'K2', 'K3', 'K4', 'K5', 'K6']; }))).toContain('news.priority.value');
+    expect(paths(failure((b) => { b.news.priority.value = ['K1', 'K1', 'K2', 'K3', 'K4', 'K5', 'K6', 'K7']; }))).toContain('news.priority.value[1]');
+  });
+
+  it('a repeated headline within a kind fails', () => {
+    expect(paths(failure((b) => { b.news.kinds.value.K1.pairs[1].headline = b.news.kinds.value.K1.pairs[0].headline; }))).toContain(pairAt('K1', 1) + '.headline');
+  });
+
+  it('a news title or subtitle over its width fails; the subtitle is the spec\'s 24 characters', () => {
+    expect(loadBook().news.subtitle.value.length).toBe(24);
+    expect(paths(failure((b) => { b.news.subtitle.value = 'Pace, class, peanuts, and more.'; }))).toContain('news.subtitle.value');
   });
 });
 
-describe('NW3: banned words, whole words, case-insensitive', () => {
-  const flavorBody = (text: string) => failure((b) => { b.news.flavor.value[1].body = text; });
+describe('NU4: banned words, whole words, case-insensitive', () => {
+  const pairBody = (text: string) => failure((b) => { b.news.kinds.value.K1.pairs[1].body = text; });
 
   it.each([
     ['Injury', 'The injury report is blank.'],
@@ -156,27 +193,50 @@ describe('NW3: banned words, whole words, case-insensitive', () => {
     ['vet', 'The vet had a sandwich.'],
     ['buy', 'Come buy a napkin.'],
     ['cash out', 'Cash out at the cart.'],
-  ])('"%s" in a flavor body fails', (word, text) => {
-    const e = flavorBody(text);
-    expect(paths(e)).toContain('news.flavor.value[1].body');
+    // book-useful.md section 2: words that hint at something measured false, or at a certainty.
+    ['tired', 'The leaders look TIRED.'],
+    ['tire', 'They may tire late.'],
+    ['fade', 'Leaders fade late.'],
+    ['fresh', 'A fresh horse today.'],
+    ['rested', 'Rested and ready.'],
+    ['due', 'A win is due.'],
+    ['streak', 'On a streak.'],
+    ['in form', 'In form at last.'],
+    ['stayer', 'A real stayer.'],
+    ['goes long', 'Goes long all day.'],
+    ['distance', 'Loves the distance.'],
+    ['wire to wire', 'Wire to wire again.'],
+    ["can't lose", "Can't lose today."],
+    ['guaranteed', 'A guaranteed win.'],
+    ['cinch', 'A cinch for it.'],
+    ['banker', 'The banker here.'],
+    ['best bet', 'The best bet today.'],
+    ['value', 'Good value today.'],
+    ['overlay', 'An overlay at the window.'],
+    ['odds-on', 'Odds-on to win.'],
+    ['percent', 'Ten percent better.'],
+  ])('"%s" in a pair body fails', (word, text) => {
+    const e = pairBody(text);
+    expect(paths(e)).toContain(pairAt('K1', 1) + '.body');
     expect(e.message).toContain(`banned word "${word.toLowerCase()}"`);
   });
 
   it('a banned word inside a longer word is not a hit', () => {
     const book = structuredClone(bookJson) as Raw;
-    book.news.flavor.value[1].body = 'The picket fence is tipsy. Vets and lockers.';
+    book.news.kinds.value.K1.pairs[1].body = 'The picket fence is tipsy. Vets and lockers.';
     expect(() => validateBook(base(book))).not.toThrow();
   });
 
-  it('a banned word in a headline, the title or a fact template fails', () => {
-    expect(paths(failure((b) => { b.news.flavor.value[0].headline = 'Bugler is hurt'; }))).toContain('news.flavor.value[0].headline');
+  it('a banned word in a headline, the title, the subtitle or the prefix fails', () => {
+    expect(paths(failure((b) => { b.news.kinds.value.K1.pairs[0].headline = 'a sure thing'; }))).toContain(pairAt('K1', 0) + '.headline');
     expect(paths(failure((b) => { b.news.title.value = 'Rail Tip'; }))).toContain('news.title.value');
-    expect(paths(failure((b) => { b.news.facts.value.longest.body = '{name} won race {r} at {odds}, a sure thing.'; }))).toContain('news.facts.value.longest.body');
+    expect(paths(failure((b) => { b.news.subtitle.value = 'Pace and value.'; }))).toContain('news.subtitle.value');
   });
 
-  it('"Official" and "$" fail anywhere in the book', () => {
-    expect(paths(failure((b) => { b.news.flavor.value[1].body = 'The Official hat is here.'; }))).toContain('news.flavor.value[1].body');
-    expect(paths(failure((b) => { b.news.flavor.value[1].body = 'Hats cost $5 today.'; }))).toContain('news.flavor.value[1].body');
+  it('"Official", "$" and "%" fail anywhere in the book', () => {
+    expect(paths(pairBody('The Official hat is here.'))).toContain(pairAt('K1', 1) + '.body');
+    expect(paths(pairBody('Hats cost $5 today.'))).toContain(pairAt('K1', 1) + '.body');
+    expect(paths(pairBody('Up 5% today.'))).toContain(pairAt('K1', 1) + '.body');
     expect(paths(failure((b) => { b.racePage.later.value = 'Prices $ later'; }))).toContain('racePage.later.value');
   });
 
@@ -188,31 +248,20 @@ describe('NW3: banned words, whole words, case-insensitive', () => {
   });
 });
 
-describe('NW3: a flavor item with a fill fails', () => {
-  it('in the body', () => {
-    const e = failure((b) => { b.news.flavor.value[4].body = 'Gravy was {name} today.'; });
-    expect(paths(e)).toContain('news.flavor.value[4].body');
-    expect(e.message).toContain('a flavor item has none');
+describe('NU10 (data half): the pace phrase fits header line 4', () => {
+  it('every race of the day, with every front-runner count, fits 30 characters, and the phrases fit 13', () => {
+    for (const phrase of [loadBook().racePage.pace.value.none, fillHoles(loadBook().racePage.pace.value.some, { k: 8 })]) expect(phrase.length).toBeLessThanOrEqual(13);
+    const e = failure((b) => { b.racePage.pace.value.some = '{k} horses up front at the start'; });
+    expect(paths(e)).toContain('racePage.pace.value.some');
   });
 
-  it('in the headline', () => {
-    expect(paths(failure((b) => { b.news.flavor.value[4].headline = 'Race {r} news'; }))).toContain('news.flavor.value[4].headline');
+  it('a pace phrase that makes line 4 over 30 for a race of the day fails', () => {
+    const e = failure(() => {}, dayJson.races.map((r) => ({ ...r, surface: 'synthetic', going: 'yielding' })));
+    expect(paths(e)).toContain('racePage.pace.value');
   });
 
-  it('a flavor body over 2 lines of 30 fails', () => {
-    expect(paths(failure((b) => { b.news.flavor.value[4].body = 'The tote board got a very thorough polish from the whole grounds crew today.'; }))).toContain('news.flavor.value[4].body');
-  });
-});
-
-describe('news slots', () => {
-  it('slot 1 must be flavor, there are five, and flavor must cover the slots that fall back to it', () => {
-    expect(paths(failure((b) => { b.news.slots.value[0] = { source: 'card', fallback: null }; }))).toContain('news.slots.value[0].source');
-    expect(paths(failure((b) => { b.news.slots.value.pop(); }))).toContain('news.slots.value');
-    expect(paths(failure((b) => { b.news.flavor.value = b.news.flavor.value.slice(0, 3); }))).toContain('news.flavor.value');
-  });
-
-  it('a repeated headline fails', () => {
-    expect(paths(failure((b) => { b.news.flavor.value[3].headline = b.news.flavor.value[2].headline; }))).toContain('news.flavor.value[3].headline');
+  it('an unknown hole in the pace phrase fails', () => {
+    expect(paths(failure((b) => { b.racePage.pace.value.some = '{n} up front'; }))).toContain('racePage.pace.value.some');
   });
 });
 

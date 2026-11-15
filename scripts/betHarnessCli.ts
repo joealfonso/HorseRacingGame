@@ -15,9 +15,11 @@ import { dayContext, drawnDay, goToPost, newDay, programFor, settle, type DayCon
 import { runEstimate, winnerPosts, winsByPost, type Estimate } from '../src/bet/estimate';
 import { crowdFor, pricesWith } from '../src/bet/market';
 import { offeredAmounts } from '../src/bet/money';
+import { newsFor } from '../src/bet/news';
 import { oddsStepIndex } from '../src/bet/payout';
 import { BET_STREAM_NAMES, MAX_SEED, estimateSeedsOf, raceSeedOf } from '../src/bet/streams';
 import { loadBetting, type BettingData } from '../src/data/bettingLoad';
+import { loadBook } from '../src/data/bookLoad';
 import { loadData } from '../src/data/load';
 import type { GameData } from '../src/data/schema';
 import { createStream } from '../src/sim/rng';
@@ -267,6 +269,12 @@ function measure(ctx: DayContext, harness: Harness, days: DaySims[], runs: numbe
     if (!blind.has(name)) blind.set(name, tally());
     return blind.get(name)!;
   };
+  // The news (docs/specs/book-useful.md section 4, ruling 13.6): bet the horse each printed item names.
+  const book = loadBook();
+  const newsKinds = new Map<string, string>([
+    ['K1', 'lone speed'], ['K2', 'class above'], ['K3', 'crowded lead'], ['K4', 'easier crowd'], ['K5', 'no speed'], ['K6', 'drawn wide'], ['K7', 'top on the numbers'],
+  ]);
+  const newsAll = tally();
   const horses = new Map<string, { starts: number; wins: number; holdSum: number; stepSum: number; t: Tally }>();
   const favSteps: number[] = [];
   let races = 0, favRealWins = 0, favExpWins = 0, favShare = 0, shortFav = 0, longshot = 0, flat = 0;
@@ -280,6 +288,7 @@ function measure(ctx: DayContext, harness: Harness, days: DaySims[], runs: numbe
   for (const day of days) {
     let favNet = 0, valueNet = 0, valueBets = 0;
     const raceInfo: Array<{ crowd: number[]; winner: number }> = [];
+    const news = newsFor(book, { daySeed: day.daySeed, fields: day.races.map((x) => ({ race: x.race, horseIds: x.horseIds })), stable: ctx.stable });
     for (const r of day.races) {
       races++;
       const styles = r.horseIds.map((id) => byId.get(id)!.style);
@@ -336,6 +345,11 @@ function measure(ctx: DayContext, harness: Harness, days: DaySims[], runs: numbe
       for (const k of ['speed', 'stamina', 'kick'] as const) bet(blindRule(`highest ${k}`), firstMax(field.map((h) => h.stats[k])));
       bet(blindRule('post 1'), 0);
       bet(blindRule('longest name (control)'), firstMax(field.map((h) => h.name.length)));
+      const item = news.find((n) => n.race === r.race);
+      if (item !== undefined) {
+        bet(blindRule(`news ${item.kind}: ${newsKinds.get(item.kind)}`), item.post - 1);
+        bet(newsAll, item.post - 1);
+      }
 
       r.horseIds.forEach((id, i) => {
         const h = horses.get(id) ?? { starts: 0, wins: 0, holdSum: 0, stepSum: 0, t: tally() };
@@ -430,10 +444,14 @@ function measure(ctx: DayContext, harness: Harness, days: DaySims[], runs: numbe
   out.push('');
   out.push(`Blind rules: no rule a reader can follow without the estimate may return above ${b.blindRuleReturnPerDollarMax} (expected).`);
   out.push('  rule                        bets  winners   expected (SE)      realized (SE)');
-  for (const [name, t] of blind) {
+  for (const [name, t] of [...blind].sort(([x], [y]) => Number(x.startsWith('news ')) - Number(y.startsWith('news ')) || (x.startsWith('news ') ? (x < y ? -1 : 1) : 0))) {
     out.push(row(name, t));
     check(`blind rule: ${name}`, `at most ${b.blindRuleReturnPerDollarMax}`, sgn(expRet(t)), expRet(t) <= b.blindRuleReturnPerDollarMax);
   }
+  out.push(row('news: every horse it names', newsAll));
+  check('blind rule: news: every horse it names', `at most ${b.blindRuleReturnPerDollarMax}`, sgn(expRet(newsAll)), expRet(newsAll) <= b.blindRuleReturnPerDollarMax);
+  out.push(`  The printed news, every horse it names, against random (every horse in every race), same days: expected ${sgn(expRet(newsAll))} against ${sgn(expRet(bettors.random))} per $1; realized ${sgn(realRet(newsAll))} against ${sgn(realRet(bettors.random))}.`);
+  check('the printed news beats random', `expected return above random's ${sgn(expRet(bettors.random))}`, sgn(expRet(newsAll)), expRet(newsAll) > expRet(bettors.random));
 
   out.push('');
   out.push('What a player feels');

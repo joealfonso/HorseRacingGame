@@ -90,9 +90,9 @@
       "note": "docs/specs/book-and-window.md section 13, book.news.title."
     },
     "subtitle": {
-      "value": "Gossip, facts and peanuts.",
+      "value": "Pace, class and peanuts.",
       "status": "starting guess",
-      "note": "docs/specs/book-and-window.md section 13, book.news.subtitle."
+      "note": "docs/specs/book-useful.md section 2 and 8, book.news.subtitle."
     },
     "layout": {
       "value": {
@@ -119,99 +119,164 @@
       "note": "docs/specs/book-and-window.md section 4 wireframe: headline at +0, body at +10 and +20, next item at +36."
     },
     "slots": {
-      "value": [
-        {
-          "source": "flavor",
-          "fallback": null
-        },
-        {
-          "source": "card",
-          "fallback": null
-        },
-        {
-          "source": "double",
-          "fallback": "flavor"
-        },
-        {
-          "source": "flavor",
-          "fallback": null
-        },
-        {
-          "source": "longest",
-          "fallback": "flavor"
-        }
-      ],
+      "value": 5,
       "status": "starting guess",
-      "note": "docs/specs/book-and-window.md section 4, slots table."
+      "note": "docs/specs/book-useful.md section 3.4: five items a day, filled by priority."
     },
-    "facts": {
+    "prefix": {
+      "value": "Race {r}:",
+      "status": "starting guess",
+      "note": "docs/specs/book-useful.md section 8, book.news.prefix. For the easier-crowd item {r} is the softer race."
+    },
+    "count": {
       "value": {
-        "card": {
-          "headline": "Today's card",
-          "body": "{n} races, all {distance} on {going} {surface}.",
-          "bodyMixed": "{n} races today. First up: the {race1Name}."
+        "5": "Five",
+        "6": "Six",
+        "7": "Seven"
+      },
+      "status": "starting guess",
+      "note": "docs/specs/book-useful.md section 3.5, {k}: fronts as a word. The spec lists Four to Seven; crowded lead fires at five or more (13.1), so Four is not here. Eight front-runners leave no closer to name, so no word for eight is needed."
+    },
+    "kinds": {
+      "value": {
+        "K1": {
+          "cap": 2,
+          "frontRankMax": 4,
+          "pairs": [
+            {
+              "headline": "one wants the lead",
+              "body": "Only {name} wants the lead. The bugler approves."
+            },
+            {
+              "headline": "nobody to argue with",
+              "body": "{name} is the lone speed. Better than its bars."
+            },
+            {
+              "headline": "a lead for one",
+              "body": "No rival for the lead. {name} likes that."
+            }
+          ]
         },
-        "double": {
-          "headline": "Running in two races today",
-          "line": "{name}, races {a}, {b}"
+        "K2": {
+          "cap": 2,
+          "leadMin": 26,
+          "gapMin": 9,
+          "pairs": [
+            {
+              "headline": "a class above",
+              "body": "No one here is close to {name} on paper."
+            },
+            {
+              "headline": "best by a lot",
+              "body": "{name} has the most in the bars, by a lot."
+            }
+          ]
         },
-        "longest": {
-          "headline": "Yesterday's longest price",
-          "body": "{name} won race {r} at {odds}."
+        "K3": {
+          "cap": 2,
+          "frontsMin": 5,
+          "closerRankMax": 4,
+          "pairs": [
+            {
+              "headline": "{k} want the lead",
+              "body": "Closers like a busy front. {name} tops them."
+            },
+            {
+              "headline": "a crowd up front",
+              "body": "A busy lead helps closers. Top one here: {name}."
+            },
+            {
+              "headline": "traffic up front",
+              "body": "The snack cart says closers. Top closer: {name}"
+            }
+          ]
+        },
+        "K4": {
+          "cap": 2,
+          "diffMin": 6,
+          "rankMax": 3,
+          "pairs": [
+            {
+              "headline": "an easier crowd",
+              "body": "{name} runs twice. Race {soft} is the easier field."
+            },
+            {
+              "headline": "softer company",
+              "body": "Two starts for {name}. Race {soft} is kinder."
+            },
+            {
+              "headline": "kinder rivals",
+              "body": "Race {soft} is the easier of {name}'s two."
+            }
+          ]
+        },
+        "K5": {
+          "cap": 2,
+          "stalkerRankMax": 4,
+          "pairs": [
+            {
+              "headline": "nobody wants the lead",
+              "body": "Stalkers set the pace, and {name} tops them."
+            },
+            {
+              "headline": "no speed at all",
+              "body": "No early speed suits stalkers. Top one: {name}."
+            },
+            {
+              "headline": "who goes first?",
+              "body": "Someone has to go first. Top stalker: {name}."
+            }
+          ]
+        },
+        "K6": {
+          "cap": 2,
+          "frontRankMax": 3,
+          "frontsMin": 2,
+          "widePosts": 2,
+          "pairs": [
+            {
+              "headline": "drawn wide",
+              "body": "Post {post} for {name}. A long way round for speed."
+            },
+            {
+              "headline": "a long way round",
+              "body": "{name} drew wide, post {post}. Speed minds it a bit."
+            },
+            {
+              "headline": "parked out wide",
+              "body": "{name} starts from post {post}. A long trip for speed."
+            }
+          ]
+        },
+        "K7": {
+          "cap": null,
+          "pairs": [
+            {
+              "headline": "tops on the numbers",
+              "body": "On paper, {name}. Paper has been wrong before."
+            },
+            {
+              "headline": "best sum here",
+              "body": "Sum the bars and {name} comes out on top."
+            }
+          ]
         }
       },
       "status": "starting guess",
-      "note": "docs/specs/book-and-window.md section 4, facts 13 to 15."
+      "note": "docs/specs/book-useful.md sections 3.2 and 3.5, with the 13 rulings: crowded lead at five or more (13.1), K6 inside dropped and wide kept (13.3). Thresholds are starting guesses from docs/specs/book-signals.md; the wording pairs are the spec's, word for word. Two spec pairs are left out because they need a third line for some stable names: K2 \"add up the bars\" (Biscuit Emergency, Medium Everything) and K7 \"most in the bars\" (Unsolicited Advice). The spec's own loader rule fails them."
     },
-    "flavor": {
+    "priority": {
       "value": [
-        {
-          "headline": "Bugler finds a 13th note",
-          "body": "He is saving it for a special occasion. Today is not it."
-        },
-        {
-          "headline": "Biggest hat in the stand",
-          "body": "The regular's hat now has its own seat. Nobody argued."
-        },
-        {
-          "headline": "Pigeons hold the good seats",
-          "body": "Ushers asked nicely. The pigeons have declined."
-        },
-        {
-          "headline": "Lost and found",
-          "body": "Lost: one lucky sock, left. Not as lucky as advertised."
-        },
-        {
-          "headline": "Tote board gets a polish",
-          "body": "All bulbs polished but two. Nobody can reach those."
-        },
-        {
-          "headline": "Peanut shells set a record",
-          "body": "Section C reports ankle deep. Knee deep by the last race."
-        },
-        {
-          "headline": "Parking update",
-          "body": "Lot B is full. Lot C is a cow pasture. The cows are fine."
-        },
-        {
-          "headline": "The bugler's car, explained",
-          "body": "His car horn plays the call to the post. On purpose."
-        },
-        {
-          "headline": "Snack cart adds napkins",
-          "body": "Fewer sticky programs reported. A proud day for all."
-        },
-        {
-          "headline": "Regular's cushion returns",
-          "body": "Same cushion, thirty seasons. Still plump. Still hers."
-        },
-        {
-          "headline": "Pretzel situation resolved",
-          "body": "The dropped pretzel was found. A pigeon got there first."
-        }
+        "K1",
+        "K2",
+        "K3",
+        "K4",
+        "K5",
+        "K6",
+        "K7"
       ],
       "status": "starting guess",
-      "note": "docs/specs/book-and-window.md section 4, flavor samples 1, 2 and 4 to 12. Sample 3 (Lemonade tested, lemony) is cut, 2026-11-14, art-director 18.4. Joseph reads the lines at NW6 and cuts or rewrites in data."
+      "note": "docs/specs/book-useful.md section 3.4 step 2, without the K3 four-front slot and K6 inside (13.1, 13.3)."
     },
     "bannedWords": {
       "value": [
@@ -230,17 +295,44 @@
         "pick",
         "lock",
         "sure thing",
-        "official"
+        "official",
+        "due",
+        "tired",
+        "tire",
+        "tires",
+        "tiring",
+        "fade",
+        "fades",
+        "fresh",
+        "rested",
+        "bounce",
+        "streak",
+        "in form",
+        "on form",
+        "stayer",
+        "goes long",
+        "distance",
+        "wire to wire",
+        "can't lose",
+        "guaranteed",
+        "cinch",
+        "banker",
+        "best bet",
+        "value",
+        "overlay",
+        "odds-on",
+        "percent"
       ],
       "status": "starting guess",
-      "note": "docs/specs/book-and-window.md section 4 (news list) and section 13 (no \"Official\"). Added to betting.json's and hub.json's lists."
+      "note": "docs/specs/book-and-window.md section 4 (news list) and section 13 (no \"Official\"). Added to betting.json's and hub.json's lists. Section 2 of docs/specs/book-useful.md adds the words that hint at something measured false or at a certainty."
     },
     "bannedChars": {
       "value": [
-        "$"
+        "$",
+        "%"
       ],
       "status": "starting guess",
-      "note": "docs/specs/book-and-window.md section 13: no \"$\" outside money figures, and the book prints none."
+      "note": "docs/specs/book-and-window.md section 13: no \"$\" outside money figures, and the book prints none. \"%\": docs/specs/book-useful.md section 2."
     }
   },
   "racePage": {
@@ -258,6 +350,14 @@
       "value": "Prices later",
       "status": "starting guess",
       "note": "docs/specs/book-and-window.md section 13, book.race.later."
+    },
+    "pace": {
+      "value": {
+        "none": "none up front",
+        "some": "{k} up front"
+      },
+      "status": "starting guess",
+      "note": "docs/specs/book-useful.md section 6 and 8, book.race.pace. Replaces \"playing fair\" in header line 4 while the bias is fair; at most 13 characters."
     },
     "ariaEntry": {
       "value": "#{n} {name}, {style}, {speedHead} {speed}, {staminaHead} {stamina}, {kickHead} {kick}, {oddsHead} {odds}",
