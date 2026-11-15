@@ -1412,3 +1412,155 @@ describe('24: the day opens on the track', () => {
     betPlaced(r, 3, 1, 10000);
   });
 });
+
+// Section 24 again, from the spec's side: what the first Read of a day does when it comes late, at the
+// last race, after paging back, and what "opened today" survives. Written after the engineer's
+// describe above, and not repeating it.
+describe('24 (second pass): the cover once a day, wherever the day is, and what the flag survives', () => {
+  /** The day after `n` races, all passed: race n + 1 is next. */
+  const after = (n: number): DayState => { let st = dayWith(10000); for (let i = 1; i <= n; i++) st = settled(programOf(i), st, null, 1); return st; };
+  const track = (day: DayState, opened = false) => new Rig('hub', { bet: { ...bet, bookOpened: opened }, day, art, held: [] });
+  const focus = (r: Rig) => (r.data as { focus?: string }).focus;
+  const isCover = (r: Rig) => r.texts.includes('Race Day Program');
+
+  it('the flag survives a race that was only watched: Read, Esc, Just watch, the result, then Read opens race 2\'s page, not the cover', () => {
+    const r = track(day0).press('Enter');
+    expect(isCover(r)).toBe(true);
+    r.press('Escape').press('ArrowUp').press('Enter'); // Read -> Watch (wraps), go to the post
+    expect(r.at).toBe('race');
+    const d = r.data as { bet: { day: BetDay; state: DayState } };
+    expect(d.bet.day.bookOpened).toBe(true);
+    const state = settle(ctx, d.bet.state, fakeResult(programOf(1), 2));
+    const next = new Rig('result', resultData(d.bet.day, state)).press('Enter').press('Enter');
+    expect(next.at).toBe('book');
+    expect(isCover(next)).toBe(false);
+    expect(next.texts).toContain('Race 2 of 8');
+  });
+
+  it('the flag survives a trip to the window: Read, the cover, the first race page, the window and back out, then Read opens race 1\'s page', () => {
+    const r = track(day0).press('Enter').press('ArrowRight').press('ArrowRight'); // cover, news, race 1
+    expect(r.texts).toContain('Race 1 of 8');
+    r.press('Enter'); // the window with the ticket open
+    expect(r.at).toBe('window');
+    expect((r.data as { bet: BetDay }).bet.bookOpened).toBe(true);
+    r.press('Escape').press('Escape'); // back to choosing, then to the track
+    expect(r.at).toBe('hub');
+    expect((r.data as { bet: BetDay }).bet.bookOpened).toBe(true);
+    r.press('ArrowUp').press('Enter'); // back from the window the track is on Bet: Up to Read
+    expect(r.at).toBe('book');
+    expect(isCover(r)).toBe(false);
+    expect(r.texts).toContain('Race 1 of 8');
+  });
+
+  it('opening the book and closing it at once still counts as opened: the next Read is race r\'s page', () => {
+    const r = track(day0).press('Enter').press('Escape').press('Enter');
+    expect(isCover(r)).toBe(false);
+    expect(r.texts).toContain('Race 1 of 8');
+  });
+
+  it('the flag is the day\'s, kept in the session and never saved: a reload is a fresh day, and the error screen carries nothing', () => {
+    s = stub([1]);
+    s.e.failure = () => 'the odds worker stopped';
+    const r = new Rig('hub', { bet: { ...bet, estimates: s.e, bookOpened: true }, day: day0, art, held: [] });
+    r.tick(0.1);
+    expect(r.at).toBe('error');
+    expect(Object.keys(r.data)).not.toContain('bet'); // nothing of the day goes with the error screen
+    const fresh = startDay(ctx, betting, rdAll, stub().e, DAY_SEED, hub);
+    expect(fresh.bet.bookOpened).toBe(false);
+    for (const f of ['src/scenes/BookScene.ts', 'src/scenes/betDay.ts', 'src/scenes/HubScene.ts', 'src/scenes/EndOfDayScene.ts', 'src/scenes/WindowScene.ts']) {
+      expect(readFileSync(new URL(`../../${f}`, import.meta.url), 'utf8'), f).not.toMatch(/localStorage|sessionStorage|indexedDB|document\.cookie/);
+    }
+  });
+
+  it('the first Read of a day that comes at race 4: the cover, then the news, then race 4\'s page; Right goes to race 1', () => {
+    const r = track(after(3)).press('Enter');
+    expect(isCover(r)).toBe(true);
+    r.press('Enter');
+    expect(r.texts).toContain('Rail Talk');
+    r.press('Enter');
+    expect(r.texts).toContain('Race 4 of 8');
+    expect(track(after(3)).press('Enter').press('Enter').press('ArrowRight').texts).toContain('Race 1 of 8');
+    expect(track(after(3)).press('Enter').press('Enter').click(...FOOT_NEXT).texts).toContain('Race 1 of 8');
+  });
+
+  it('the first Read at race 2 then a bet is two more presses than a later read: 7 from the result against 5', () => {
+    const first = new Rig('result', resultData({ ...bet, bookOpened: false }, mid())).run(['Enter', 'Enter', 'Enter', 'Enter', 'Digit3', 'Enter', 'Enter']).tick(1);
+    expect(first.presses).toBe(7);
+    betPlaced(first, 3, 2, mid().bankrollCents);
+    const later = afterRace1().run(['Enter', 'Enter', 'Digit3', 'Enter', 'Enter']).tick(1);
+    expect(later.presses).toBe(5);
+    betPlaced(later, 3, 2, mid().bankrollCents);
+  });
+
+  it('at the last race: the first Read\'s Enter on the news turns to race 8, which has no next item; Right on the news is still race 1', () => {
+    const r = track(after(7)).press('Enter').press('Enter');
+    expect(r.texts).toContain('Rail Talk');
+    r.press('Enter');
+    expect(r.texts).toContain('Race 8 of 8');
+    expect(r.texts.filter((t) => t.endsWith(' >'))).toEqual([]); // no "Race 9 >"
+    expect(r.texts).toContain('< Race 7');
+    r.press('ArrowRight');
+    expect(r.texts).toContain('Race 8 of 8');
+    r.press('Escape');
+    expect(r.at).toBe('hub');
+    expect(focus(r)).toBe('back');
+    expect(track(after(7)).press('Enter').press('Enter').press('ArrowRight').texts).toContain('Race 1 of 8');
+  });
+
+  it('at the last race, a later Read opens race 8\'s page with the cursor on post 1, and Enter on an entry goes to the window', () => {
+    const r = track(after(7), true).press('Enter');
+    expect(r.texts).toContain('Race 8 of 8');
+    expect(r.aria).toContain('#1 ');
+    r.press('Digit5').press('Enter');
+    expect(r.at).toBe('window');
+    expect(r.aria).toContain('#5 ');
+  });
+
+  it('a book opened at the track and paged all the way back to the cover: Esc goes to Read; Read again opens race r\'s page; the cover\'s Enter and the news\' Enter lead to race r', () => {
+    const r = track(after(3), true).press('Enter');
+    expect(r.texts).toContain('Race 4 of 8');
+    for (let i = 0; i < 5; i++) r.press('ArrowLeft');
+    expect(isCover(r)).toBe(true);
+    r.press('ArrowLeft'); // the front of the book: nothing before the cover
+    expect(isCover(r)).toBe(true);
+    r.press('Enter').press('Enter');
+    expect(r.texts).toContain('Race 4 of 8'); // the news' Enter is race r, not race 1
+    for (let i = 0; i < 5; i++) r.press('ArrowLeft');
+    r.press('Escape');
+    expect(r.at).toBe('hub');
+    expect(focus(r)).toBe('arrival');
+    expect(r.aria.endsWith('Read Race 4.')).toBe(true);
+    r.press('Enter');
+    expect(isCover(r)).toBe(false);
+    expect(r.texts).toContain('Race 4 of 8');
+  });
+
+  it('Esc goes by the page for every way in, including one that came from the window: back on a race page is Bet, back on the news is Read', () => {
+    for (const [pages, want, aria] of [[0, 'back', 'Bet Race 1.'], [1, 'arrival', 'Read Race 1.'], [2, 'arrival', 'Read Race 1.']] as const) {
+      const r = track(day0, true).press('Enter'); // race 1's page
+      for (let i = 0; i < pages; i++) r.press('ArrowLeft');
+      r.press('Escape');
+      expect(focus(r)).toBe(want);
+      expect(r.aria.endsWith(aria)).toBe(true);
+    }
+  });
+
+  it('with race r\'s prices still pending the news\' Enter lands on its page, which shows the pending line and goes nowhere on Enter', () => {
+    s = stub([2]);
+    const st = { ...bet, estimates: s.e };
+    const r = new Rig('hub', { bet: st, day: mid(), art, held: [] }).press('Enter').press('Enter').press('Enter');
+    expect(r.texts).toContain('Race 2 of 8');
+    expect(r.texts).toContain('The crowd is still betting.');
+    r.press('Enter');
+    expect(r.at).toBe('book');
+  });
+
+  it('boot hands the track the day with no focus given, so it arrives on Read; the day\'s first race has nothing behind the first page', () => {
+    const r = track(day0);
+    expect(focus(r)).toBeUndefined();
+    expect(r.aria.endsWith('Read Race 1.')).toBe(true);
+    r.press('Enter').press('Enter').press('Enter'); // cover, news, race 1
+    expect(r.texts).toContain('Race 1 of 8');
+    expect(r.texts).toContain('< News');
+  });
+});

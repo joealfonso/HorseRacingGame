@@ -106,7 +106,8 @@ The page is computed once per day from the day seed and is the same every time i
 ### 3.5 Wording
 
 - Headline: `Race {r}: {headline}`, at most 30 characters, so a headline from data is at most 22.
-- Body: one template per wording, wrapped to two lines of 30, as today. The loader fills every body with the longest stable name (18: "Mint Julep Lawsuit", "Parking Lot Pigeon"), every race number and post, and fails with the key if a third line is needed.
+- Body: one template per wording, wrapped to two lines of 30, as today. The loader fills every body with every one of the 40 stable names (8 to 18 characters), every race number and post, and fails with the key if a third line is needed. A short name can break the wrap as easily as a long one, because it changes where line 1 ends.
+- **Writing a body that wraps for every name** (added 2026-11-15, after two pairs failed at load). Use one of two shapes. (A) The name first, then a tail of at most 30 characters: the whole name always fits on line 1, so line 2 is part of the tail. (B) A lead of at most 30 characters, then the name, then a tail, where the 18-character name plus the tail is at most 30: the lead always fits on line 1, so line 2 is at most the name and the tail. A body in neither shape must be checked by hand against all 40 names.
 - **Which wording:** one draw on the `news` stream per printed item picks the headline and body pair (they are written as pairs). A pair already used that day is skipped. No other stream is drawn.
 - Fills: `{name}`, `{r}`, `{k}` (fronts as a word: "Four", "Five", "Six", "Seven", from data), `{post}`, `{soft}` (the softer race).
 
@@ -119,8 +120,11 @@ Sample pairs, as they wrap with the longest name, so the voice can be judged:
 
 **K2 Class above**
 1. **Race {r}: a class above** / No one here is close to Mint / Julep Lawsuit on paper.
-2. **Race {r}: add up the bars** / Add up the bars. Mint Julep / Lawsuit comes out well ahead.
+2. **Race {r}: add up the bars** / `Add up the bars. Well ahead: {name}.` (shape B: lead 26) / Add up the bars. Well ahead: / Mint Julep Lawsuit. *Reworded 2026-11-15: "Add up the bars. {name} comes out well ahead." needed a third line for Biscuit Emergency and Medium Everything.*
 3. **Race {r}: best by a lot** / Mint Julep Lawsuit has the / most in the bars, by a lot.
+4. **Race {r}: a cut above** / `The regular added it twice: {name}, by plenty.` (B: lead 27, name and tail 30) / The regular added it twice: / Mint Julep Lawsuit, by plenty.
+5. **Race {r}: class of the race** / `{name} is the class here. Ask anyone.` (A: tail 30) / Mint Julep Lawsuit is the / class here. Ask anyone.
+6. **Race {r}: nobody near on paper** / `Even the pigeons see it: {name}, clear.` (B: lead 24, name and tail 26) / Even the pigeons see it: Mint / Julep Lawsuit, clear.
 
 **K3 Crowded lead**
 1. **Race {r}: {k} want the lead** / Closers like a busy front. / Mint Julep Lawsuit tops them.
@@ -131,6 +135,9 @@ Sample pairs, as they wrap with the longest name, so the voice can be judged:
 1. **Race {soft}: an easier crowd** / Mint Julep Lawsuit runs twice. / Race 6 is the easier field.
 2. **Race {soft}: softer company** / Two starts for Mint Julep / Lawsuit. Race 6 is kinder.
 3. **Race {soft}: kinder rivals** / Race 6 is the easier of Mint / Julep Lawsuit's two.
+4. **Race {soft}: the kinder of two** / `{name}: two races. This one's softer.` (A: tail 29) / Mint Julep Lawsuit: two races. / This one's softer.
+5. **Race {soft}: a gentler bunch** / `{name} runs two. Fewer bigwigs here.` (A: tail 28) / Mint Julep Lawsuit runs two. / Fewer bigwigs here.
+6. **Race {soft}: lighter company** / `{name} has the lighter field of two.` (A: tail 29) / Mint Julep Lawsuit has the / lighter field of two.
 
 **K5 No speed**
 1. **Race {r}: nobody wants the lead** / Stalkers set the pace, and / Mint Julep Lawsuit tops them.
@@ -146,10 +153,15 @@ Sample pairs, as they wrap with the longest name, so the voice can be judged:
 1. **Race {r}: drawn wide** / Post 8 for Mint Julep Lawsuit. / A long way round for speed.
 2. **Race {r}: a long way round** / Mint Julep Lawsuit drew wide, / post 8. Speed minds it a bit.
 3. **Race {r}: parked out wide** / Mint Julep Lawsuit starts from / post 8. A long trip for speed.
+4. **Race {r}: outside looking in** / `{name}, post {post}: a bit of extra ground.` (A: tail 30) / Mint Julep Lawsuit, post 8: a / bit of extra ground.
+5. **Race {r}: far from the rail** / `{name} is in post {post}. Costs a little.` (A: tail 28) / Mint Julep Lawsuit is in post / 8. Costs a little.
+6. **Race {r}: the outside seats** / `{name}: post {post}, small cost, nice view.` (A: tail 29) / Mint Julep Lawsuit: post 8, / small cost, nice view.
+
+Every K6 wide line says the draw costs the horse a little and nothing more. None says to avoid it: a front-runner drawn wide still wins about 22 percent (section 13, ruling 3).
 
 **K7 Top on the numbers**
 1. **Race {r}: tops on the numbers** / On paper, Mint Julep Lawsuit. / Paper has been wrong before.
-2. **Race {r}: most in the bars** / Add the three bars: Mint Julep / Lawsuit is top here.
+2. **Race {r}: most in the bars** / `Add the three bars. Top here: {name}.` (B: lead 29) / Add the three bars. Top here: / Mint Julep Lawsuit. *Reworded 2026-11-15: "Add the three bars: {name} is top here." needed a third line for Unsolicited Advice.*
 3. **Race {r}: best sum here** / Sum the bars and Mint Julep / Lawsuit comes out on top.
 
 Voice rules for writers adding pairs: the hint is in the first clause, the joke is a person or a thing at the track, never the horse. Hedges are fine ("Paper has been wrong before"). Certainty words are not. A K3 line is about closers and never says the leaders will tire. A K4 line is about the field and never about the horse being fresh or busy. K6 lines say "a bit", "small" or "handy": the effect is small and the copy says so.
@@ -369,3 +381,54 @@ Made by the main session on the playtester's numbers ("News kinds (2026-11-15)" 
 5. **K1, K2, K4 and K5 stand as specified.** K5 passes on the true chance (38 percent) and has too few real races to say more (102 in 500 days).
 6. **Harness checks:** one blind rule per kind, "bet the horse the news names" (K1, K2, K3, K4, K5, K7), and one for every horse the printed news names. Each must return below zero per dollar, as every blind rule must. The whole news must also beat picking at random. Measured today: the printed news returns -0.143 per dollar against random's -0.196 on the same days.
 7. **The blurbs in section 5 are not applied yet.** Joseph approved the current blurbs line by line, and the rewrite trades some of their humor for plain class words. They wait for his read.
+
+## 14. Blurbs, a second pass (2026-11-15)
+
+Written by the designer after ruling 13.7. This gives Joseph a second column to choose from for the 36 blurbs section 5 changed. The four it kept (s15, s19, s32, s37) are not repeated.
+
+**The rule for this column.** The joke comes first and carries the truth. Where the stat bars beside the blurb already show a horse's class, the blurb does not have to say it with a label. It only has to never contradict it. So section 5.1's "top tier must read as a contender" becomes "must not read as weak", and the bottom tier still has to read, kindly, as rarely winning, because a joke about a 1 percent horse that says nothing about winning reads as a promise. Everything else in 5.1 holds: true, kind, never at the horse's expense, no banned or false-hint word, at most 28 characters.
+
+Where a currently approved blurb already passes that rule, this column gives it back unchanged ("original"), since Joseph has already approved it. "As section 5" means section 5's line already puts the joke first.
+
+| id | name | section 5 | second pass | chars | truth carried in the joke |
+|---|---|---|---|---|---|
+| s01 | Hold My Oats | Top class. Fastest of all. | Fastest here. Then a snack. | 27 | speed 94 is the stable's top, so it is the fastest in any field |
+| s02 | Paddock Gossip | Best in the barn. Tells all. | Knows all. Beats most. | 22 | the best horse in the stable (47.6 percent), told as gossip |
+| s03 | Sock In The Dryer | Top class. Late, still warm. | Turns up late, still warm. (original) | 26 | closer; the bars show the class |
+| s04 | Ten Items Or Less | Fast and good. Express only. | Express lane, no exceptions. (original) | 28 | front, speed 92 |
+| s05 | Legally A Horse | Papers say good horse. True. | as section 5 | | |
+| s06 | Burgoo Weather | Long simmer. Good stew, too. | Low heat, long simmer. (original) | 22 | closer, stamina 88 |
+| s07 | Goat Is In Charge | Goat said go. Goat is good. | as section 5 | | |
+| s08 | Smoke Alarm Chirp | Best kick in the barn. BEEP. | Loudest BEEP in the barn. | 25 | kick 88, the stable's best. Drops the original's late-closer read |
+| s09 | Long Story Longer | Top class. Lots more to say. | Has a lot more to say. (original) | 22 | closer, stamina 92 (the stable's best) |
+| s10 | Biscuit Emergency | Fast, classy, buffet-bound. | Leaves early for the buffet. (original) | 28 | front |
+| s11 | Circling Back | Big kick. Will follow up. | Will follow up, firmly. | 22 | kick 85 in "firmly". Still a little closer-like for a stalker, a judgement call |
+| s12 | Lost The Remote | Found late, now and then. | as section 5 | | |
+| s13 | Derby Hat Budget | Quick off. Hat is midsize. | as section 5 | | |
+| s14 | Ran Out Of Names | Almost Steve. Wins at times. | as section 5 | | |
+| s16 | Running Joke | Quick. Starts before you do. | Starts before you're ready. (original) | 27 | front |
+| s17 | Take A Number | Waits its turn. Kicks a bit. | as section 5 | | |
+| s18 | Hay Is For Horses | Eats well. Wins some days. | as section 5 | | |
+| s20 | Polite Applause | Mostly claps for the winner. | as section 5 | | |
+| s21 | Late Checkout | One more hour. Decent kick. | Asks for one more hour. (original) | 23 | closer |
+| s22 | Porch Light On | Quick, and better than fair. | Porch light on, out front. | 25 | front. Fixes the original's backwards "waits for you" read |
+| s23 | Bring A Sweater | Rarely first. Always cozy. | as section 5 | | |
+| s24 | Left On Read | Typing... then a fair kick. | as section 5 | | |
+| s25 | Mayor Of Turn Two | Fast early. Mayor, not king. | as section 5 | | |
+| s26 | Mint Julep Lawsuit | Litigious. Mid-pack, mostly. | as section 5 | | |
+| s27 | Unexpected Banjo | Joins late. Good lungs, too. | Joins in on the last verse. (original) | 27 | closer |
+| s28 | Reply All | Replies fast. Results vary. | as section 5 | | |
+| s29 | Understudy | Knows the lines. Seldom on. | as section 5 | | |
+| s30 | Decaf By Mistake | Wakes up late. Kicks hard. | Wakes up at the far turn. (original) | 25 | closer |
+| s31 | Parking Lot Pigeon | Early to crumbs. Few wins. | as section 5 | | |
+| s33 | Extra Long Receipt | Prints a lot. Wins a little. | as section 5 | | |
+| s34 | Unsolicited Advice | Early opinions. Rare wins. | as section 5 | | |
+| s35 | Medium Everything | Less than medium. Very kind. | as section 5 | | |
+| s36 | Saved It For Later | Saves it. Still saving it. | as section 5 | | |
+| s38 | Gravy Subpoena | Serves papers. Rarely a win. | as section 5 | | |
+| s39 | Mostly Legs | Lots of lungs, few wins. | The rest is mostly lungs. (original) | 25 | stamina 78, its best. Bottom tier, but it promises nothing |
+| s40 | Big Plans Monday | Plans big. Wins small. | as section 5 | | |
+
+**Count:** 15 of the 36 get a second version: 10 are the approved originals given back (s03, s04, s06, s09, s10, s16, s21, s27, s30, s39) and 5 are new (s01, s02, s08, s11, s22). The other 21 already put the joke first and read as section 5. The originals that were false or misleading (s08's closer read, s12, s18, s22, s31, s33, s35, s36, s38 by book-signals Q8) are not offered back.
+
+**My recommendation:** take the second-pass column for the top and middle tiers, and section 5 for the bottom ten (s39 included). The bars already show the stronger horses' class, so the joke can do the work there. At the bottom, the bars do not stop a joke from reading as a promise, so the plain "few wins" has to stay.
