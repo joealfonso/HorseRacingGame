@@ -12,7 +12,8 @@ import {
 } from '../render/programScreen';
 import { PLACEHOLDER_TAG_AT, SLOT_IDS, showPlaceholderTag, standIns } from '../render/slotStatus';
 import { Art, type ArtInfo } from './art';
-import { betErrorLines, betRaceData, nextDay, passDay, programIfReady, raceDayFor, type BetDay } from './betDay';
+import { betErrorLines, betRaceData, passDay, programIfReady, raceDayFor, type BetDay } from './betDay';
+import type { EndOfDayData } from './EndOfDayScene';
 import type { HubData } from './HubScene';
 import { MenuKeys } from './menuKeys';
 import { PagePainter } from './paper';
@@ -65,11 +66,10 @@ export class ProgramScene extends Phaser.Scene {
     this.leaving = false;
     this.state = initialProgramState(data.post);
     this.art = new Art(this, data.art);
-    // Interim until the End of day page: a day that has ended starts the next one at the track (section 6).
+    // Never shown on an ended day: it goes to the End of day page (betting-screens.md section 6).
     if (data.day.ended !== null) {
       this.leaving = true;
-      const next = nextDay(data.bet, data.day);
-      this.scene.start('hub', { ...next, art: data.art, held: data.held } satisfies HubData);
+      this.scene.start('endOfDay', { bet: data.bet, day: data.day, art: data.art, held: data.held } satisfies EndOfDayData);
       return;
     }
     this.day = data.day;

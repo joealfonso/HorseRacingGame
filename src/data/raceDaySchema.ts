@@ -268,6 +268,24 @@ export const raceDaySchema = z.strictObject({
   pointer: z.strictObject({
     arrivalGuardSeconds: marked(z.number().min(0)),
   }),
+  // The End of day page's positions (betting-screens.md section 6, DESIGN "End of day, the back page"). Tops are
+  // cell tops in px; x values are the first column of a cell, except the `...LastX` values, which are the last
+  // column of a right-aligned text.
+  endOfDay: marked(z.strictObject({
+    titleTop: whole,
+    trackTop: whole,
+    rules: z.array(whole).length(2),
+    left: whole,
+    lastX: whole,
+    firstRowTop: whole,
+    rowPitch: whole,
+    lineTop: whole,
+    cardRuleTop: whole,
+    cardTop: whole,
+    cardPitch: whole,
+    card: z.strictObject({ raceX: whole, boxX: whole, boxSize: whole, boxDy: whole, numberDx: whole, numberDy: whole, oddsX: whole, passedX: whole, ticketLastX: whole }),
+    action: z.strictObject({ cursorX: whole, textX: whole, top: whole, box: z.strictObject({ x0: whole, y0: whole, x1: whole, y1: whole }) }),
+  })),
   // The Orders screen's paddock strip (spec 4.2): the 16x16 tile slot on each of its three
   // 16 px rows, top first, and whether odd tiles flip (the rail's posts pair every 32 px);
   // where the trainer and your horse stand; and the trainer's coffee idle (DESIGN Charm).
@@ -433,6 +451,25 @@ export const raceDaySchema = z.strictObject({
     }),
     hud: z.strictObject({ bet: text, watching: text, leads: text }),
     msg: z.strictObject({ won: text, lost: text }),
+    // The End of day page (betting-screens.md sections 6, 8 and 10). `line` is the day's line by outcome;
+    // `plus` and `minus` put the sign on the Change figure; `betsOf` is "5 of 8"; `card` is the day's card rows.
+    end: z.strictObject({
+      title: text,
+      line: z.strictObject({ up: text, even: text, down: text, none: text }),
+      started: text,
+      ended: text,
+      change: text,
+      bets: text,
+      betsOf: text,
+      winners: text,
+      best: text,
+      noWinner: text,
+      even: text,
+      plus: text,
+      minus: text,
+      newDay: text,
+      card: z.strictObject({ race: text, paid: text, lost: text, passed: text }),
+    }),
     orders: z.strictObject({
       allDefault: text,
       joiner: z.string().min(1),

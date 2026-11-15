@@ -13,7 +13,8 @@ import { cursorFrame } from '../render/pause';
 import { PLACEHOLDER_TAG_AT, SLOT_IDS, showPlaceholderTag, standIns } from '../render/slotStatus';
 import { Art, type ArtInfo } from './art';
 import { announce } from './ariaLive';
-import { betErrorLines, bookPriceRaces, newsOf, nextDay, postedPrices, raceDayFor, requestNextEstimates, type BetDay } from './betDay';
+import { betErrorLines, bookPriceRaces, newsOf, postedPrices, raceDayFor, requestNextEstimates, type BetDay } from './betDay';
+import type { EndOfDayData } from './EndOfDayScene';
 import type { HubData } from './HubScene';
 import { MenuKeys } from './menuKeys';
 import { PagePainter } from './paper';
@@ -65,11 +66,10 @@ export class BookScene extends Phaser.Scene {
     this.seconds = 0;
     this.leaving = false;
     this.art = new Art(this, data.art);
-    // Never opened on an ended day: New day goes to the next day's cover.
+    // Never opened on an ended day: it goes to the End of day page, whose New day opens the next cover.
     if (data.day.ended !== null) {
       this.leaving = true;
-      const next = nextDay(data.bet, data.day);
-      this.scene.start('book', { ...next, art: data.art, held: data.held, from: 'dayStart' } satisfies BookData);
+      this.scene.start('endOfDay', { bet: data.bet, day: data.day, art: data.art, held: data.held } satisfies EndOfDayData);
       return;
     }
     this.day = data.day;

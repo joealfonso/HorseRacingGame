@@ -12,9 +12,9 @@ import { SLOT_IDS } from '../render/slotStatus';
 import type { RaceResult } from '../sim/result';
 import { Art, type ArtInfo } from './art';
 import { firstSight } from './keyEvents';
-import { nextDay, type BetDay } from './betDay';
+import type { BetDay } from './betDay';
 import type { CardData } from './CardScene';
-import type { BookData } from './BookScene';
+import type { EndOfDayData } from './EndOfDayScene';
 import type { HubData } from './HubScene';
 import { PagePainter } from './paper';
 import { PointerInput } from './pointerInput';
@@ -124,19 +124,16 @@ export class ResultScene extends Phaser.Scene {
   /**
    * Next race: back to the card with your horse focused. The session is already on the next race.
    * Betting: the track before the next race (track-hub.md section 2); after the day's last
-   * race, or with the bank under the minimum bet, End of day. Interim until the End of day page
-   * (betting-screens.md section 6): End of day starts the next day seed with the starting
-   * bankroll, on that day's cover (book-and-window.md section 2).
+   * race, a day cut short, or with the bank under the minimum bet, the End of day page
+   * (betting-screens.md section 6), whose New day starts the next day.
    */
   private next(): void {
     if (this.leaving) return;
     this.leaving = true;
     const bet = this.data0.bet;
     if (bet) {
-      // After the day's last race (or broke): New day, on the next day's cover (BE3 as amended, FL1).
       if (bet.state.ended !== null) {
-        const data: BookData = { ...nextDay(bet.day, bet.state), art: this.data0.art, held: heldKeys(this.keys), from: 'dayStart' };
-        this.scene.start('book', data);
+        this.scene.start('endOfDay', { bet: bet.day, day: bet.state, art: this.data0.art, held: heldKeys(this.keys) } satisfies EndOfDayData);
         return;
       }
       const data: HubData = { bet: bet.day, day: bet.state, art: this.data0.art, held: heldKeys(this.keys) };

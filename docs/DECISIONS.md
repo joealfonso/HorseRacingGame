@@ -416,7 +416,14 @@ Kick is the remainder, so a stalker can wobble up to 8 from a third: p08 and p11
 
 **A pass while the odds are pending goes to the post at the end of the race.** BP6 lets Pass work before the odds are in, but `goToPost` and `settle` need the program, because the result shows the winner's $2 price. A pass stakes nothing, so the race scene waits for the estimate after the wire, then calls `goToPost` with no bet and settles. In practice the estimate (about 3 s) is long done before a race (about a minute) ends.
 
-**Interim End of day.** The End of day page (screens spec section 6) is the next step. Until then, after the last race or with the bankroll under $2, the result's action reads "End of day" and Enter starts the next day seed with the starting bankroll on the race 1 program. Marked in `src/scenes/betDay.ts` (`nextDay`) and `ResultScene.ts`.
+**Interim End of day.** The End of day page (screens spec section 6) is the next step. Until then, after the last race or with the bankroll under $2, the result's action reads "End of day" and Enter starts the next day seed with the starting bankroll on the race 1 program. Marked in `src/scenes/betDay.ts` (`nextDay`) and `ResultScene.ts`. Replaced by the End of day page (see "End of day page" below): the result now opens the page and its New day calls `nextDay`.
+
+**End of day page.** `src/render/endOfDayScreen.ts` (pure) and `src/scenes/EndOfDayScene.ts`. The figures are `daySummary`'s and the card rows are the day's records, so nothing is recomputed in render code. Choices a reader would not guess:
+- The words are `copy.end` and the positions `endOfDay` in `raceDay.json`, both new keys (a schema addition). Wherever the spec shows a pattern but lists no key, the pattern is a template: "5 of 8" is `betsOf`, the Change signs are `plus` and `minus`.
+- An ended day that reaches the track, the window, the book or the old program page goes to this page, not straight to the next day, so no path skips it. New day is the only way out, to the next day's cover with the day just ended kept as `previous`.
+- The day pair reuses the cover's `dayPair` and its data, so the two always match (CV1). The pair is Ink as DESIGN says, the title Maroon.
+- The page's aria-live text is the page's own words in reading order, joined with punctuation only (a card row reads "Race 1, #3, 5-2, Paid $10.00."). No joining words were written.
+- Outcome order: nothing bet beats everything (a day of passes is "Watched all eight for free."), then up, even, down by the change in cents.
 
 **Abandoning a race from the pause box opens its result.** BK4 settles an abandoned race as if watched. The pause item still reads "Back to card", but in the betting loop it goes to the result page, so the player sees what happened to the ticket. Going straight to the next program would change the bank with no explanation. Either way the settled bank shows without the wire crossing in playback, which UI3 does not allow for; Joseph's call.
 

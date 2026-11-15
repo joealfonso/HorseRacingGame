@@ -61,9 +61,8 @@ export function startDay(
 }
 
 /**
- * The day after this one: the next day seed, the starting bankroll, race 1.
- * Interim (betting-screens.md section 6 is the next step): until the End of day page is
- * built, the result's "End of day" leads straight here.
+ * The day after this one: the next day seed, the starting bankroll, race 1. The End of day
+ * page's "New day" calls it (betting-screens.md section 6).
  */
 export function nextDay(bet: BetDay, day: DayState): { bet: BetDay; day: DayState } {
   const seed = nextDaySeed(day.daySeed);

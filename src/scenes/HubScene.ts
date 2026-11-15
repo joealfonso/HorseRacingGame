@@ -9,8 +9,9 @@ import {
 import { PLACEHOLDER_TAG_AT, SLOT_IDS, showPlaceholderTag, standIns } from '../render/slotStatus';
 import { Art, type ArtInfo } from './art';
 import { announce } from './ariaLive';
-import { betErrorLines, betRaceData, nextDay, passDay, programIfReady, requestNextEstimates, type BetDay } from './betDay';
+import { betErrorLines, betRaceData, passDay, programIfReady, requestNextEstimates, type BetDay } from './betDay';
 import type { BookData } from './BookScene';
+import type { EndOfDayData } from './EndOfDayScene';
 import { MenuKeys } from './menuKeys';
 import { PagePainter } from './paper';
 import { PointerInput } from './pointerInput';
@@ -68,11 +69,10 @@ export class HubScene extends Phaser.Scene {
     this.corners = [];
     this.idle = idleClock(0);
     this.art = new Art(this, data.art);
-    // Never shown after the last race or broke (TH9): a day that has ended starts the next one on its cover (BE3 as amended).
+    // Never shown after the last race or broke (TH9): a day that has ended goes to the End of day page.
     if (data.day.ended !== null) {
       this.leaving = true;
-      const next = nextDay(data.bet, data.day);
-      this.scene.start('book', { ...next, art: data.art, held: data.held, from: 'dayStart' } satisfies BookData);
+      this.scene.start('endOfDay', { bet: data.bet, day: data.day, art: data.art, held: data.held } satisfies EndOfDayData);
       return;
     }
     this.day = data.day;

@@ -18,6 +18,7 @@ import { startDay } from './scenes/betDay';
 import { BookScene } from './scenes/BookScene';
 import { BootScene, type BootData } from './scenes/BootScene';
 import { CardScene } from './scenes/CardScene';
+import { EndOfDayScene } from './scenes/EndOfDayScene';
 import { ErrorScene } from './scenes/ErrorScene';
 import { Estimates } from './scenes/estimates';
 import { HubScene } from './scenes/HubScene';
@@ -114,6 +115,7 @@ async function start(): Promise<void> {
   game.scene.add('orders', OrdersScene);
   game.scene.add('race', RaceScene);
   game.scene.add('result', ResultScene);
+  game.scene.add('endOfDay', EndOfDayScene);
   game.scene.add('error', ErrorScene);
   game.scene.add('boot', BootScene, true, { ...boot, present });
 

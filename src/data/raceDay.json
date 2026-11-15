@@ -50,6 +50,25 @@
   "pointer": {
     "arrivalGuardSeconds": { "value": 0.5, "status": "starting guess", "note": "Track spec section 6: for this long after a screen arrives, mouse presses are ignored, so the second half of a double click cannot act on the next screen. Hover still moves focus." }
   },
+  "endOfDay": {
+    "value": {
+      "titleTop": 4,
+      "trackTop": 14,
+      "rules": [24, 104],
+      "left": 8,
+      "lastX": 247,
+      "firstRowTop": 32,
+      "rowPitch": 12,
+      "lineTop": 112,
+      "cardRuleTop": 124,
+      "cardTop": 128,
+      "cardPitch": 11,
+      "card": { "raceX": 8, "boxX": 64, "boxSize": 10, "boxDy": -1, "numberDx": 3, "numberDy": 1, "oddsX": 80, "passedX": 64, "ticketLastX": 247 },
+      "action": { "cursorX": 8, "textX": 20, "top": 220, "box": { "x0": 8, "y0": 216, "x1": 247, "y1": 231 } }
+    },
+    "status": "starting guess",
+    "note": "docs/specs/betting-screens.md section 6 and section 10, DESIGN.md Program pages, End of day, the back page. Rules y24 and y104 and the card's rule y124; the six figure rows at y32 + 12 * i; the card's rows at y128 + 11 * i. The action box is track-hub.md section 6's (x8-247, y216-231)."
+  },
   "program": {
     "entryBand": {
       "value": { "x0": 16, "x1": 250, "rows": 19, "leftSteps": [3, 2, 1, 0], "rightSteps": [0, 1, 2, 3] },
@@ -232,6 +251,23 @@
     },
     "hud": { "bet": "{amount} to win, {odds}", "watching": "Just watching", "leads": "Leads by {margin}" },
     "msg": { "won": "That ticket is good", "lost": "No luck this time" },
+    "end": {
+      "title": "That's the card",
+      "line": { "up": "Up on the day. Nicely read.", "even": "Square on the day. Not bad.", "down": "The horses had other ideas.", "none": "Watched all eight for free." },
+      "started": "Started with",
+      "ended": "Ended with",
+      "change": "Change",
+      "bets": "Bets made",
+      "betsOf": "{bets} of {races}",
+      "winners": "Winners hit",
+      "best": "Best price hit",
+      "noWinner": "None",
+      "even": "Even",
+      "plus": "+{amount}",
+      "minus": "-{amount}",
+      "newDay": "New day",
+      "card": { "race": "Race {r}", "paid": "Paid {total}", "lost": "Lost {amount}", "passed": "Passed" }
+    },
     "orders": {
       "allDefault": "Rider's call",
       "joiner": ", ",

@@ -12,8 +12,8 @@ import {
 } from '../render/windowScreen';
 import { Art, type ArtInfo } from './art';
 import { announce } from './ariaLive';
-import { betErrorLines, betRaceData, nextDay, programIfReady, requestNextEstimates, type BetDay, type ClerkCounts } from './betDay';
-import type { BookData } from './BookScene';
+import { betErrorLines, betRaceData, programIfReady, requestNextEstimates, type BetDay, type ClerkCounts } from './betDay';
+import type { EndOfDayData } from './EndOfDayScene';
 import type { HubData } from './HubScene';
 import { MenuKeys } from './menuKeys';
 import { PagePainter } from './paper';
@@ -68,10 +68,10 @@ export class WindowScene extends Phaser.Scene {
     this.beatSeconds = null;
     this.leaving = false;
     this.art = new Art(this, data.art);
+    // Never opened on an ended day: it goes to the End of day page.
     if (data.day.ended !== null) {
       this.leaving = true;
-      const next = nextDay(data.bet, data.day);
-      this.scene.start('book', { ...next, art: data.art, held: data.held, from: 'dayStart' } satisfies BookData);
+      this.scene.start('endOfDay', { bet: data.bet, day: data.day, art: data.art, held: data.held } satisfies EndOfDayData);
       return;
     }
     this.day = data.day;

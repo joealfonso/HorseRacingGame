@@ -113,8 +113,8 @@ function footTexts(book: Book, page: number, races: number): PageText[] {
   return out;
 }
 
-/** The day pair, "Day" in the main font and "#12345" in the small font on its rows 2-6, from `x`. */
-function dayPair(book: Book, label: string, number: string, x: number, y: number): PageText[] {
+/** The day pair, "Day" in the main font and "#12345" in the small font on its rows 2-6, from `x`. The End of day page sets the same pair. */
+export function dayPair(book: Book, label: string, number: string, x: number, y: number): PageText[] {
   const gap = book.cover.layout.value.dayNumberX - book.cover.layout.value.dayLabelX;
   return [
     { text: label, x, y, color: INK },
