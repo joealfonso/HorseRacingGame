@@ -223,10 +223,19 @@ describe('23.1 and 23.3: hover, and where Esc lands', () => {
     expect(bookClick(s, 'entry:6', race('window')).outcome).toEqual({ kind: 'window', post: 6 });
   });
 
-  it('Esc from the day-start book lands on Read from the cover or the news, on Bet from a race page; from the track, always Bet', () => {
-    expect(bookCloseFocus('dayStart', RACES, 0)).toBe('arrival');
-    expect(bookCloseFocus('dayStart', RACES, 1)).toBe('arrival');
-    for (let page = 2; page < RACES + 2; page++) expect(bookCloseFocus('dayStart', RACES, page)).toBe('back');
-    for (let page = 0; page < RACES + 2; page++) expect(bookCloseFocus('track', RACES, page)).toBe('back');
+  it('24.3: Enter, Space or Z on the news turns to race r\'s page; Right still turns one page, to race 1; on the cover Enter turns to the news', () => {
+    for (const r of [1, 4, 8]) {
+      const k: BookKeyContext = { races: RACES, nextRace: r, horses: 0, enter: 'none' };
+      for (const code of ['Enter', 'Space', 'KeyZ']) expect(bookKey({ page: 1, focus: 0 }, code, k).state, `${r} ${code}`).toEqual(bookAtRace(r));
+      expect(bookKey({ page: 1, focus: 0 }, 'ArrowRight', k).state).toEqual(bookAtRace(1));
+      expect(bookClick({ page: 1, focus: 0 }, 'next', k).state).toEqual(bookAtRace(1));
+      expect(bookKey(bookAtCover(), 'Enter', k).state.page).toBe(1);
+    }
+  });
+
+  it('Esc from the book lands by the page, however it was opened (24.4): Read from the cover or the news, Bet from a race page', () => {
+    expect(bookCloseFocus(RACES, 0)).toBe('arrival');
+    expect(bookCloseFocus(RACES, 1)).toBe('arrival');
+    for (let page = 2; page < RACES + 2; page++) expect(bookCloseFocus(RACES, page)).toBe('back');
   });
 });

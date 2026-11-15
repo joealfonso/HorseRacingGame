@@ -5,7 +5,7 @@ import { offeredAmounts } from '../bet/money';
 import { loadBook } from '../data/bookLoad';
 import { loadHub } from '../data/hubLoad';
 import { betting, ctx, DAY_SEED, dayWith, drawnOf, programOf, settled } from '../render/betKit';
-import { bookAtCover, bookAtRace, bookClick, bookKey, bookPointerTargets, pageAt, type BookKeyContext, type BookState, type BookTargetId } from '../render/bookScreen';
+import { bookAtCover, bookAtRace, bookClick, bookCloseFocus, bookKey, bookPointerTargets, pageAt, type BookKeyContext, type BookState, type BookTargetId } from '../render/bookScreen';
 import { arriveHub, hubClick, hubKey, hubPointerTargets, type HubState } from '../render/hubScreen';
 import { hitTest, pointerDown, pointerState, pointerUp, type PointerTarget } from '../render/pointer';
 import { lastBetDollars, type ProgramKeyContext } from '../render/programScreen';
@@ -34,7 +34,7 @@ const AFTER_RACE_1 = (): DayState => settled(programOf(1), dayWith(10000), null,
 type Screen =
   | { at: 'result' }
   | { at: 'hub'; state: HubState }
-  | { at: 'book'; state: BookState; from: 'dayStart' | 'track' }
+  | { at: 'book'; state: BookState }
   | { at: 'window'; state: WindowState }
   | { at: 'race'; ticket: { post: number; dollars: number } | null }
   | { at: 'endOfDay' };
@@ -42,10 +42,14 @@ type Screen =
 class Flow {
   presses = 0;
   trail: string[] = [];
-  constructor(public day: DayState = AFTER_RACE_1(), public screen: Screen = { at: 'result' }) {}
+  /**
+   * `bookOpened`: the book was opened earlier this day (24.2), so Read opens race r's page.
+   * The default flow is after race 1, with the book read before race 1.
+   */
+  constructor(public day: DayState = AFTER_RACE_1(), public screen: Screen = { at: 'result' }, public bookOpened = true) {}
 
-  /** The day's start: race 1, on the cover (FL1). */
-  static dayStart(): Flow { return new Flow(dayWith(10000), { at: 'book', state: bookAtCover(), from: 'dayStart' }); }
+  /** The day's start (24.1): race 1, at the track on Read, the book not yet opened today. */
+  static dayStart(): Flow { return new Flow(dayWith(10000), { at: 'hub', state: arriveHub(hub) }, false); }
 
   private get drawn() { return drawnOf()[this.day.nextRace - 1]; }
   private windowKeys(): ProgramKeyContext {
@@ -54,11 +58,11 @@ class Flow {
   private bookKeys(s: BookState): BookKeyContext {
     const races = ctx.races.length;
     const p = pageAt(races, s.page);
-    if (p.kind !== 'race') return { races, horses: 0, enter: 'none' };
+    if (p.kind !== 'race') return { races, nextRace: this.day.nextRace, horses: 0, enter: 'none' };
     const posted = new Map<number, string[]>();
     for (const r of [this.day.nextRace, this.day.nextRace + 1]) if (r <= races) posted.set(r, quote(ctx, programOf(r), null).odds);
     const page = racePageState(book, { page: p.race, nextRace: this.day.nextRace, fieldSize: drawnOf()[p.race - 1].horseIds.length, records: this.day.records, posted });
-    return { races, horses: drawnOf()[p.race - 1].horseIds.length, enter: page.enter };
+    return { races, nextRace: this.day.nextRace, horses: drawnOf()[p.race - 1].horseIds.length, enter: page.enter };
   }
   private toTrack(from: 'arrival' | 'back') { this.screen = { at: 'hub', state: arriveHub(hub, {}, from) }; }
   private goToPost(bet: { post: number; dollars: number } | null) {
@@ -79,7 +83,7 @@ class Flow {
     } else if (s.at === 'book') {
       const r = bookKey(s.state, code, this.bookKeys(s.state));
       this.screen = { ...s, state: r.state };
-      this.bookOutcome(r.outcome, s.from);
+      this.bookOutcome(r.outcome, r.state);
     } else if (s.at === 'window') {
       const r = windowKey(s.state, code, this.windowKeys());
       this.screen = { at: 'window', state: r.state };
@@ -111,7 +115,7 @@ class Flow {
       if (id !== null) {
         const r = bookClick(s.state, id, k);
         this.screen = { ...s, state: r.state };
-        this.bookOutcome(r.outcome, s.from);
+        this.bookOutcome(r.outcome, r.state);
       }
     } else if (s.at === 'window') {
       const k = this.windowKeys();
@@ -127,13 +131,17 @@ class Flow {
 
   private hubOutcome(o: ReturnType<typeof hubKey>['outcome']) {
     if (o === null || o.kind === 'look') return;
-    if (o.kind === 'book') this.screen = { at: 'book', state: bookAtRace(this.day.nextRace), from: 'track' };
+    if (o.kind === 'book') {
+      // 24.2: the day's first opening is on the cover, every later one at race r's page.
+      this.screen = { at: 'book', state: this.bookOpened ? bookAtRace(this.day.nextRace) : bookAtCover() };
+      this.bookOpened = true;
+    }
     else if (o.kind === 'window') this.screen = { at: 'window', state: initialWindowState(o.post) };
     else this.goToPost(null);
   }
-  private bookOutcome(o: ReturnType<typeof bookKey>['outcome'], from: 'dayStart' | 'track') {
+  private bookOutcome(o: ReturnType<typeof bookKey>['outcome'], at: BookState) {
     if (o === null) return;
-    if (o.kind === 'close') this.toTrack(from === 'dayStart' ? 'arrival' : 'back');
+    if (o.kind === 'close') this.toTrack(bookCloseFocus(ctx.races.length, at.page)); // 24.4: by the page
     else this.screen = { at: 'window', state: windowFromBook(o.post, this.windowKeys()) };
   }
   private windowOutcome(o: ReturnType<typeof windowKey>['outcome']) {
@@ -215,15 +223,15 @@ describe('FL5: by keys, each path reaches the next race with those presses and n
     noBet(f);
   });
 
-  it('day start, read race 1, bet: Enter (news), Enter (race 1), digit, Enter, Enter is 5 presses', () => {
-    const f = Flow.dayStart().run(['Enter', 'Enter', 'Digit3', 'Enter', 'Enter']);
-    expect(f.presses).toBe(5);
+  it('day start, first read then bet: Enter (Read, the cover), Enter (news), Enter (race 1), digit, Enter, Enter is 6 presses (24.5)', () => {
+    const f = Flow.dayStart().run(['Enter', 'Enter', 'Enter', 'Digit3', 'Enter', 'Enter']);
+    expect(f.presses).toBe(6);
     placedBet(f, 3, 1, 10000);
   });
 
-  it('day start, skip the book: Esc, digit, Enter, Enter is 4 presses', () => {
-    const f = Flow.dayStart().run(['Escape', 'Digit3', 'Enter', 'Enter']);
-    expect(f.presses).toBe(4);
+  it('day start, no reading: digit, Enter, Enter is 3 presses (24.5)', () => {
+    const f = Flow.dayStart().run(['Digit3', 'Enter', 'Enter']);
+    expect(f.presses).toBe(3);
     placedBet(f, 3, 1, 10000);
   });
 
@@ -282,15 +290,15 @@ describe('FL5: by clicks, the counts in section 2', () => {
     noBet(f);
   });
 
-  it('day start, read race 1, bet in 4: the cover, "Race 1 >", the #3 entry, "Enter: bet"', () => {
-    const f = Flow.dayStart().run([COVER_AT, NEXT_PAGE_AT, ENTRY3_AT, BET_AT]);
-    expect(f.presses).toBe(4);
+  it('day start, first read then bet in 5: Read, the cover, "Race 1 >", the #3 entry, "Enter: bet" (24.1, 24.2)', () => {
+    const f = Flow.dayStart().run([READ_AT, COVER_AT, NEXT_PAGE_AT, ENTRY3_AT, BET_AT]);
+    expect(f.presses).toBe(5);
     placedBet(f, 3, 1, 10000);
   });
 
-  it('day start, skip the book, bet in 4: "Esc: close", the windows, the #3 row, "Enter: bet"', () => {
-    const f = Flow.dayStart().run([CLOSE_AT, WINDOWS_AT, ROW3_AT, BET_AT]);
-    expect(f.presses).toBe(4);
+  it('day start, no reading, bet in 3: the windows, the #3 row, "Enter: bet" (24.1)', () => {
+    const f = Flow.dayStart().run([WINDOWS_AT, ROW3_AT, BET_AT]);
+    expect(f.presses).toBe(3);
     placedBet(f, 3, 1, 10000);
   });
 
@@ -325,7 +333,7 @@ describe('FL2: focus on return, and no money moves on the way (replaces TH5)', (
     expect(focusOf(new Flow().click(...RESULT_NEXT_AT))).toBe('read');
   });
 
-  it('FL1: boot and New day open a fresh day (no looks, clerk cycles reset) on its cover; Esc there goes to the track on Read', () => {
+  it('FL1 as amended by 24.6: boot and New day open a fresh day (no looks, clerk cycles reset, the book not opened) at the track on Read; its first Read opens the cover; Esc there goes back on Read', () => {
     vi.spyOn(console, 'info').mockImplementation(() => undefined);
     const stub = { get: () => null, request: () => undefined, failure: () => null } as unknown as Estimates;
     const { bet, day } = startDay(ctx, betting, shippedRaceDay, stub, DAY_SEED, hub);
@@ -335,11 +343,15 @@ describe('FL2: focus on return, and no money moves on the way (replaces TH5)', (
     expect(fresh.bet.looks).toEqual({});
     expect(fresh.bet.clerk).toEqual({ ticket: 0, punch: 0 });
     expect(fresh.day.nextRace).toBe(1);
+    expect(bet.bookOpened).toBe(false);
+    expect(nextDay({ ...bet, bookOpened: true }, day).bet.bookOpened).toBe(false);
     const f = Flow.dayStart();
+    expect(f.screen).toMatchObject({ at: 'hub', state: { focus: 'read' } });
+    f.key('Enter');
     expect(f.screen).toMatchObject({ at: 'book', state: { page: 0 } });
     f.key('Enter');
     expect(f.screen).toMatchObject({ at: 'book', state: { page: 1 } });
-    expect(focusOf(Flow.dayStart().key('Escape'))).toBe('read');
+    expect(focusOf(Flow.dayStart().key('Enter').key('Escape'))).toBe('read');
   });
 
   it('Esc from the book or the window returns to the track on Bet, whatever the track focus was, with the day untouched', () => {

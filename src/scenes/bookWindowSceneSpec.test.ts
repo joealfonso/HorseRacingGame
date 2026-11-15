@@ -218,9 +218,14 @@ beforeEach(() => {
 });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-/** A result page for race 1, then the mid-day state (race 2 is next). */
-const afterRace1 = () => new Rig('result', resultData(bet, mid()));
-const atCover = () => new Rig('book', { bet, day: day0, art, held: [], from: 'dayStart' });
+/**
+ * A result page for race 1, then the mid-day state (race 2 is next). The book was opened earlier
+ * in the day, so Read opens it at race r's page (book-and-window.md 24.2: only the day's first
+ * opening is on the cover).
+ */
+const afterRace1 = () => new Rig('result', resultData({ ...bet, bookOpened: true }, mid()));
+/** The book opened for the first time this day: on its cover (24.2). */
+const atCover = () => new Rig('book', { bet, day: day0, art, held: [] });
 const raceData = (r: Rig) => r.data as { ticket: { post: number }; bet: { state: DayState; drawn: DrawnRace } };
 
 const bankAfter = (r: Rig) => raceData(r).bet.state.bankrollCents;
@@ -252,7 +257,7 @@ const WIN_ROW3: [number, number] = [100, 138];
 const WIN_BET: [number, number] = [200, 210];
 const WIN_BACK: [number, number] = [200, 224];
 
-describe('FL1: Boot and New day open that day\'s cover; Enter shows the news; Esc goes to the track on Read', () => {
+describe('FL1 as amended by 24.6: the day\'s first Read opens the cover; Enter shows the news; Esc goes to the track on Read', () => {
   it('the book opened at day start shows the cover: the track name from day.json, the title, the day, the race count, the cover line', () => {
     const r = atCover();
     const t = r.texts;
@@ -286,7 +291,7 @@ describe('FL1: Boot and New day open that day\'s cover; Enter shows the news; Es
     expect((r.data as { day: DayState }).day).toEqual(day0);
   });
 
-  it('New day: the result after the day\'s last race goes to the NEXT day\'s cover, with that day\'s news and a fresh session', () => {
+  it('New day: the result after the day\'s last race goes to the NEXT day\'s track on Read, with a fresh session; its first Read opens that day\'s cover (24.1, 24.2)', () => {
     let state = dayWith(10000);
     for (let n = 1; n <= 8; n++) state = settled(programOf(n), state, n === 3 ? { post: 3, dollars: 2 } : null, n === 3 ? 3 : 5);
     expect(state.ended).toBe('lastRace');
@@ -294,43 +299,49 @@ describe('FL1: Boot and New day open that day\'s cover; Enter shows the news; Es
     const r = new Rig('result', resultData(dirty, state)).press('Enter');
     expect(r.at).toBe('endOfDay'); // the End of day page first (betting-screens.md section 6), then New day
     r.press('Enter');
-    expect(r.at).toBe('book');
-    const d = r.data as { day: DayState; bet: BetDay; from: string };
-    expect(d.from).toBe('dayStart');
+    expect(r.at).toBe('hub');
+    expect(r.aria.endsWith('Read Race 1.')).toBe(true);
+    const d = r.data as { day: DayState; bet: BetDay };
     expect(d.day.daySeed).toBe(DAY_SEED + 1);
     expect(d.day.nextRace).toBe(1);
     expect(d.day.bankrollCents).toBe(10000);
     expect(d.bet.looks).toEqual({});
     expect(d.bet.clerk).toEqual({ ticket: 0, punch: 0 });
+    expect(d.bet.bookOpened).toBe(false);
     expect(d.bet.previous).not.toBeNull();
+    r.press('Enter'); // Read
+    expect(r.at).toBe('book');
     expect(r.texts).toContain(`#${DAY_SEED + 1}`);
     expect(r.texts).toContain('Race Day Program');
     expect(r.texts).not.toContain('Rail Talk'); // the cover first, not the news
   });
 
-  it('New day by click goes to the cover as well', () => {
+  it('New day by click goes to the next day\'s track as well, and a click on Read opens its cover (24.1, 24.2)', () => {
     let state = dayWith(10000);
     for (let n = 1; n <= 8; n++) state = settled(programOf(n), state, null, 1);
     const r = new Rig('result', resultData(bet, state)).click(...RESULT_NEXT());
     expect(r.at).toBe('endOfDay');
     r.click(...NEW_DAY());
+    expect(r.at).toBe('hub');
+    r.click(...READ_ROW);
     expect(r.at).toBe('book');
     expect(r.texts).toContain(`#${DAY_SEED + 1}`);
+    expect(r.texts).toContain('Race Day Program');
   });
 
-  it('the broke day also ends on the next day\'s cover', () => {
+  it('the broke day also ends on the next day\'s track, focus on Read (24.1)', () => {
     const broke = settled(programOf(1), dayWith(300), { post: 3, dollars: 2 }, 1);
     expect(broke.ended).toBe('broke');
     const r = new Rig('result', resultData(bet, broke)).press('Enter');
     expect(r.at).toBe('endOfDay');
     r.press('Enter');
-    expect(r.at).toBe('book');
-    expect((r.data as { from: string }).from).toBe('dayStart');
+    expect(r.at).toBe('hub');
+    expect(r.aria.endsWith('Read Race 1.')).toBe(true);
   });
 
-  it('boot: main.ts hands the first scene the book, opened as day start (source check: the browser entry cannot run here)', () => {
+  it('boot: main.ts hands the first scene the track, with the day (source check: the browser entry cannot run here) (24.1)', () => {
     const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
-    expect(main).toMatch(/next:\s*\{\s*key:\s*'book',\s*data:\s*\{\s*\.\.\.day,\s*from:\s*'dayStart'\s*\}\s*\}/);
+    expect(main).toMatch(/next:\s*\{\s*key:\s*'hub',\s*data:\s*\{\s*\.\.\.day\s*\}\s*\}/);
     expect(main).toMatch(/game\.scene\.add\('book',\s*BookScene\)/);
     expect(main).toMatch(/game\.scene\.add\('window',\s*WindowScene\)/);
   });
@@ -670,7 +681,7 @@ describe('BB5 and FL6 through the scenes: reading changes nothing and asks for n
     for (const start of [1, 2, 5, 8]) {
       s = stub();
       const state = { ...dayWith(10000), nextRace: start };
-      const r = new Rig('book', { bet: { ...bet, estimates: s.e }, day: state, art, held: [], from: 'track' });
+      const r = new Rig('book', { bet: { ...bet, estimates: s.e, bookOpened: true }, day: state, art, held: [] });
       for (let i = 0; i < 12; i++) r.press('ArrowRight');
       for (let i = 0; i < 12; i++) r.press('ArrowLeft');
       for (let i = 0; i < 12; i++) r.press('ArrowRight');
@@ -836,7 +847,8 @@ describe('WI4 and BB4 through the scenes: pending prices, and where Enter does a
 
   it('BB4: from the book, Enter on entry k opens the window with the ticket open on k at the remembered amount', () => {
     const state = settled(programOf(1), dayWith(10000), { post: 2, dollars: offeredAmounts(10000, ctx.rules)[2] }, 5);
-    const r = new Rig('result', resultData(bet, state)).press('Enter').press('Enter').press('Digit6').press('Enter');
+    // The book was opened earlier in the day, so Read opens race r's page (24.2).
+    const r = new Rig('result', resultData({ ...bet, bookOpened: true }, state)).press('Enter').press('Enter').press('Digit6').press('Enter');
     expect(r.at).toBe('window');
     expect(r.texts).toContain('Enter: bet');
     expect(r.aria).toContain('#6 ');
@@ -905,7 +917,7 @@ describe('NW5 through the scenes: the news page does not change with the estimat
       const st = stub();
       st.e = { ...st.e, get: (d: DrawnRace) => stepEstimate(startEstimate(d.daySeed, d.race, runs, d.horseIds.length), d.input, runs) } as unknown as Estimates;
       const b = { ...bet, estimates: st.e };
-      const r = new Rig('book', { bet: b, day: day0, art, held: [], from: 'dayStart' }).press('Enter');
+      const r = new Rig('book', { bet: b, day: day0, art, held: [] }).press('Enter');
       return r.texts.join('|');
     };
     expect(pageOf(4)).toBe(pageOf(20));
@@ -1056,17 +1068,19 @@ describe('the End of day page: from the result, and New day to the cover', () =>
     expect(afterRace1().press('Enter').at).toBe('hub');
   });
 
-  it('Enter, Space and Z each are New day, to the next day seed\'s cover with the starting bankroll and the day just ended as previous', () => {
+  it('Enter, Space and Z each are New day, to the next day seed\'s track on Read with the starting bankroll and the day just ended as previous (24.1)', () => {
     for (const key of ['Enter', 'Space', 'KeyZ']) {
       const state = endedDay();
       const r = atEnd().press('Enter').press(key);
-      expect(r.at, key).toBe('book');
-      const d = r.data as { day: DayState; bet: BetDay; from: string };
-      expect(d.from).toBe('dayStart');
+      expect(r.at, key).toBe('hub');
+      expect(r.aria.endsWith('Read Race 1.'), key).toBe(true);
+      const d = r.data as { day: DayState; bet: BetDay };
       expect(d.day.daySeed).toBe(DAY_SEED + 1);
       expect(d.day.bankrollCents).toBe(10000);
       expect(d.day.nextRace).toBe(1);
       expect(d.bet.previous).toEqual({ records: state.records });
+      expect(d.bet.bookOpened).toBe(false);
+      r.press('Enter'); // Read: the day's first opening is on the cover (24.2)
       expect(r.texts).toContain('Race Day Program');
     }
   });
@@ -1088,7 +1102,7 @@ describe('the End of day page: from the result, and New day to the cover', () =>
     expect(r.at).toBe('endOfDay');
     r.scene.input.keyboard.emit('keyup', { code: 'Enter', repeat: false });
     r.press('Enter');
-    expect(r.at).toBe('book');
+    expect(r.at).toBe('hub'); // New day opens the next day's track (24.1)
   });
 
   it('a key handed over as held is ignored until it is released', () => {
@@ -1098,7 +1112,7 @@ describe('the End of day page: from the result, and New day to the cover', () =>
     expect(r.at).toBe('endOfDay');
     r.scene.input.keyboard.emit('keyup', { code: 'Enter', repeat: false });
     r.press('Enter');
-    expect(r.at).toBe('book');
+    expect(r.at).toBe('hub'); // New day opens the next day's track (24.1)
   });
 
   it('a click on "New day" is Enter, but not inside the arrival guard (the second half of a double click)', () => {
@@ -1107,7 +1121,7 @@ describe('the End of day page: from the result, and New day to the cover', () =>
     r.click(...NEW_DAY(), 0.1);
     expect(r.at).toBe('endOfDay');
     r.click(...NEW_DAY(), 0.6);
-    expect(r.at).toBe('book');
+    expect(r.at).toBe('hub'); // New day opens the next day's track (24.1)
   });
 
   it('a click outside the "New day" line does nothing', () => {
@@ -1117,7 +1131,7 @@ describe('the End of day page: from the result, and New day to the cover', () =>
 
   it('an ended day handed to the track, the window or the book goes to the page, never straight to the next day', () => {
     for (const key of ['hub', 'window', 'book'] as const) {
-      const extra = key === 'window' ? { post: 1, ticket: false } : key === 'book' ? { from: 'track' } : {};
+      const extra = key === 'window' ? { post: 1, ticket: false } : {};
       const r = new Rig(key, { bet, day: endedDay(), art, held: [], ...extra });
       expect(r.at, key).toBe('endOfDay');
     }
@@ -1168,13 +1182,14 @@ describe('the End of day page: BE3, the flow and what acts on it (second pass)',
     expect(r.texts).toContain(`#${DAY_SEED}`);
   });
 
-  it('New day by Enter, Space, Z, NumpadEnter and click: the next seed, the starting bankroll, race 1, the ended day kept as previous, on the cover', () => {
+  it('New day by Enter, Space, Z, NumpadEnter and click: the next seed, the starting bankroll, race 1, the ended day kept as previous, at the track on Read; the first Read opens the cover (24.1, 24.2)', () => {
     for (const how of ['Enter', 'Space', 'KeyZ', 'NumpadEnter', 'click'] as const) {
       const r = atPage();
       if (how === 'click') r.click(...NEW_DAY()); else r.press(how);
-      expect(r.at, how).toBe('book');
-      const d = r.data as { day: DayState; bet: BetDay; from: string };
-      expect(d.from).toBe('dayStart');
+      expect(r.at, how).toBe('hub');
+      expect(r.aria.endsWith('Read Race 1.'), how).toBe(true);
+      const d = r.data as { day: DayState; bet: BetDay };
+      expect(d.bet.bookOpened).toBe(false);
       expect(d.day.daySeed).toBe(DAY_SEED + 1);
       expect(d.day.bankrollCents).toBe(10000);
       expect(d.day.nextRace).toBe(1);
@@ -1183,6 +1198,8 @@ describe('the End of day page: BE3, the flow and what acts on it (second pass)',
       expect(d.bet.previous).toEqual({ records: endedDay().records });
       expect(d.bet.looks).toEqual({});
       expect(d.bet.clerk).toEqual({ ticket: 0, punch: 0 });
+      r.press('Enter'); // Read
+      expect(r.at, how).toBe('book');
       expect(r.texts, how).toContain('Race Day Program');
       expect(r.texts).toContain(`#${DAY_SEED + 1}`);
       expect(r.texts).not.toContain('Rail Talk');
@@ -1199,7 +1216,7 @@ describe('the End of day page: BE3, the flow and what acts on it (second pass)',
     const parse = (o: string) => { const [n, d] = o.split('-').map(Number); return n / d; };
     const top = s.records.reduce((b, r) => (parse(r.winnerOdds) > parse(b.winnerOdds) ? r : b));
     const name = ctx.stable.find((h) => h.id === top.horseIds[top.winnerPost - 1])!.name;
-    const r = atPage().press('Enter').press('Enter');
+    const r = atPage().press('Enter').press('Enter').press('Enter'); // New day (the track, 24.1), Read (the cover, 24.2), the news
     expect(r.texts).toContain('Rail Talk');
     expect(r.texts).toContain("Yesterday's longest price");
     expect(r.texts.join(' ')).toContain(name);
@@ -1225,7 +1242,7 @@ describe('the End of day page: BE3, the flow and what acts on it (second pass)',
     expect(r.at).toBe('endOfDay');
     keyboardOf(r).emit('keyup', { code: 'Enter', repeat: false });
     r.press('Enter');
-    expect(r.at).toBe('book');
+    expect(r.at).toBe('hub'); // New day opens the next day's track (24.1)
   });
 
   it('a held Space or Z from the result is held over the same way', () => {
@@ -1244,7 +1261,7 @@ describe('the End of day page: BE3, the flow and what acts on it (second pass)',
     r.click(...NEW_DAY(), 0.3);
     expect(r.at).toBe('endOfDay');
     r.click(...NEW_DAY(), 0.3);
-    expect(r.at).toBe('book');
+    expect(r.at).toBe('hub'); // New day opens the next day's track (24.1)
   });
 
   it('New day starts exactly one day, however many presses and clicks arrive in the same moment', () => {
@@ -1284,14 +1301,114 @@ describe('the End of day page: BE3, the flow and what acts on it (second pass)',
     expect(r.texts.filter((t) => /^Race \d$/.test(t))).toEqual(['Race 1']);
     expect(r.texts).not.toContain("Tapped out");
     r.press('Enter');
-    expect(r.at).toBe('book');
+    expect(r.at).toBe('hub'); // New day opens the next day's track (24.1)
     expect((r.data as { day: DayState }).day.bankrollCents).toBe(10000);
   });
 
   it('the page and the next cover agree on the day pair for the seed that follows: the cover prints the next seed', () => {
     const page = atPage();
     expect(page.texts).toContain(`#${DAY_SEED}`);
-    page.press('Enter');
+    page.press('Enter').press('Enter'); // New day (the track, 24.1), then Read (the cover, 24.2)
+    expect(page.at).toBe('book');
     expect(page.texts).toContain(`#${DAY_SEED + 1}`);
+  });
+});
+
+// ------------------------------------------------------------------ section 24: the day opens on the track
+describe('24: the day opens on the track', () => {
+  /** The day's start as boot hands it over (main.ts: the track with the day, no focus given). */
+  const atDayStart = (day: DayState = day0, b: BetDay = bet) => new Rig('hub', { bet: b, day, art, held: [] });
+  const focus = (r: Rig) => (r.data as { focus?: string }).focus;
+
+  it('24.1: boot opens the track for race 1 with the focus on Read, and the book not yet opened', () => {
+    const r = atDayStart();
+    expect(r.at).toBe('hub');
+    expect(r.aria.endsWith('Read Race 1.')).toBe(true);
+    expect((r.data as { bet: BetDay }).bet.bookOpened).toBe(false);
+    expect(r.texts).not.toContain('Race Day Program');
+  });
+
+  it('24.1: New day on the End of day page opens the next day\'s track on Read, not its cover', () => {
+    let state = dayWith(10000);
+    for (let n = 1; n <= 8; n++) state = settled(programOf(n), state, null, 1);
+    const r = new Rig('endOfDay', { bet: { ...bet, bookOpened: true }, day: state, art, held: [] }).press('Enter');
+    expect(r.at).toBe('hub');
+    expect(r.aria.endsWith('Read Race 1.')).toBe(true);
+    expect((r.data as { day: DayState }).day.daySeed).toBe(DAY_SEED + 1);
+  });
+
+  it('24.2: the first Read of the day opens the cover; a later Read opens race r\'s page', () => {
+    const r = atDayStart().press('Enter');
+    expect(r.at).toBe('book');
+    expect(r.texts).toContain('Race Day Program');
+    r.press('Escape'); // back to the track, on Read (the cover)
+    expect(r.at).toBe('hub');
+    r.press('Enter');
+    expect(r.at).toBe('book');
+    expect(r.texts).toContain('Race 1 of 8');
+    expect(r.texts).not.toContain('Race Day Program');
+  });
+
+  it('24.2: "opened today" goes with the day through the window and the race to the next race\'s track', () => {
+    const r = atDayStart().press('Enter').press('Escape').press('Digit3').press('Enter').press('Enter').tick(1);
+    expect(r.at).toBe('race');
+    expect((r.data as { bet: { day: BetDay } }).bet.day.bookOpened).toBe(true);
+  });
+
+  it('24.2: the flag resets on New day: a day that read its book ends, and the next day\'s first Read is on the cover again', () => {
+    let state = dayWith(10000);
+    for (let n = 1; n <= 8; n++) state = settled(programOf(n), state, null, 1);
+    const r = new Rig('result', resultData({ ...bet, bookOpened: true }, state)).press('Enter').press('Enter');
+    expect(r.at).toBe('hub');
+    expect((r.data as { bet: BetDay }).bet.bookOpened).toBe(false);
+    r.press('Enter');
+    expect(r.at).toBe('book');
+    expect(r.texts).toContain('Race Day Program');
+    expect(r.texts).toContain(`#${DAY_SEED + 1}`);
+  });
+
+  it.each([1, 4])('24.3: with race %i next, Enter on the news turns to race r\'s page; Right and "Race 1 >" turn to race 1', (next) => {
+    const day = { ...dayWith(10000), nextRace: next };
+    const enter = atDayStart(day).press('Enter').press('Enter');
+    expect(enter.texts).toContain('Rail Talk');
+    enter.press('Enter');
+    expect(enter.texts).toContain(`Race ${next} of 8`);
+    for (const code of ['Space', 'KeyZ']) expect(atDayStart(day).press('Enter').press('Enter').press(code).texts, code).toContain(`Race ${next} of 8`);
+    expect(atDayStart(day).press('Enter').press('Enter').press('ArrowRight').texts).toContain('Race 1 of 8');
+    expect(atDayStart(day).press('Enter').press('Enter').click(...FOOT_NEXT).texts).toContain('Race 1 of 8');
+  });
+
+  it('24.4: Esc and "Esc: close" go by the page on the first opening: cover or news to Read, a race page to Bet', () => {
+    for (const close of [(r: Rig) => r.press('Escape'), (r: Rig) => r.click(...FOOT_CLOSE)]) {
+      expect(focus(close(atDayStart().press('Enter')))).toBe('arrival');
+      expect(focus(close(atDayStart().press('Enter').press('Enter')))).toBe('arrival');
+      const race = close(atDayStart().press('Enter').press('Enter').press('Enter'));
+      expect(focus(race)).toBe('back');
+      expect(race.aria.endsWith('Bet Race 1.')).toBe(true);
+    }
+  });
+
+  it('24.4: and on a later opening at race r\'s page: Bet from it, Read once paged back to the news or the cover', () => {
+    const later = () => afterRace1().press('Enter').press('Enter'); // the book, at race 2's page
+    expect(later().texts).toContain('Race 2 of 8');
+    expect(focus(later().press('Escape'))).toBe('back');
+    expect(focus(later().press('ArrowLeft').press('ArrowLeft').press('Escape'))).toBe('arrival'); // the news
+    expect(focus(later().press('ArrowLeft').press('ArrowLeft').press('ArrowLeft').click(...FOOT_CLOSE))).toBe('arrival'); // the cover
+    const news = later().press('ArrowLeft').press('ArrowLeft').press('Escape');
+    expect(news.aria.endsWith('Read Race 2.')).toBe(true);
+  });
+
+  it('24.5: a bet by number key at the day\'s first race is 3 presses (the digit, Enter, Enter)', () => {
+    const r = atDayStart().run(['Digit3', 'Enter', 'Enter']);
+    r.tick(1);
+    expect(r.presses).toBe(3);
+    betPlaced(r, 3, 1, 10000);
+  });
+
+  it('24.5: the first read of the day, then a bet, is 6 presses (Read, cover, news, the digit, Enter, Enter)', () => {
+    const r = atDayStart().run(['Enter', 'Enter', 'Enter', 'Digit3', 'Enter', 'Enter']);
+    r.tick(1);
+    expect(r.presses).toBe(6);
+    betPlaced(r, 3, 1, 10000);
   });
 });

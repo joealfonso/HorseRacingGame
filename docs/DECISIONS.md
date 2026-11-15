@@ -485,7 +485,7 @@ Kick is the remainder, so a stalker can wobble up to 8 from a third: p08 and p11
 
 ## Book and window, step 3 (the screens and the flow)
 
-**The day opens on the cover, and Esc from it lands the track on Read; from the track's book, on Bet.** FL1 says Esc on the day's cover goes to the track on Read, FL2 says return from the book is Bet. `BookData.from` carries which book it is. The window always returns to Bet. (Amended in the fix round by spec 23.3: from a day-start race page it is Bet.)
+**Esc from the book lands the track by the page.** (Superseded by spec section 24, see "The day opens on the track" below: the day no longer opens on the cover, `BookData.from` is gone, and Esc goes to Read from the cover or the news and to Bet from a race page, however the book was opened.) The window always returns to Bet.
 
 **The door action is `window`, not `program`, and the track has two new outcomes.** Amendment 11 makes Windows open the window screen, so hub.json's door action and `HubOutcome` say `window`, and the Read row's outcome is `book`. The Read row is a box row with id `read` (`BOOK_ROW`) and no picture target; the focus on arrival, on return and from a lookable is data (`hub.json` `focus`).
 
@@ -512,3 +512,13 @@ Kick is the remainder, so a stalker can wobble up to 8 from a third: p08 and p11
 **The aria templates hold order and punctuation; code still ends each sentence.** `hub.json` `copy.window.aria` (row, ticket) and `book.json` `cover.aria` and `racePage.ariaEntry` are the joins. The `sentence` helper still adds a full stop where a part has none, as the track's aria-live always has.
 
 **The name check is in the hub loader, and its error names stable.json.** `nameChars` lives in hub.json and the names in stable.json, so `validateHub` takes the stable's names (the shipped ones by default) and throws a DataError for `src/data/stable.json` at `horses[i].name`, as the book loader does for day.json's track name.
+
+## The day opens on the track (spec section 24)
+
+**Boot and New day open the track on Read.** Joseph: "it should open with the place itself". `main.ts` and the End of day page's New day start the hub with the day and no focus given, so it arrives on Read. The cover's first look moved to the day's first Read.
+
+**"Opened today" is `BetDay.bookOpened`.** The book scene opens on the cover when it is false and at race r's page when it is true, and hands on the day with it set. It travels like the looks and the clerk counts (track, book, window, race, result) and `startDay` starts every day with it false, so New day resets it and nothing is saved.
+
+**Enter on the news goes to race r through `BookKeyContext.nextRace`.** Right and the foot's next item are unchanged (one page, to race 1). The field is optional and means race 1 when left out, which is the first race's page and so the old behavior for the day's first race; the book scene always sets it.
+
+**There is no day-start book mode.** `BookData.from` and the `from` argument of `bookCloseFocus` are removed rather than left unused: the close focus is the page's (cover or news to Read, a race page to Bet).

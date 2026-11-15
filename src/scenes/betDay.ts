@@ -45,6 +45,11 @@ export interface BetDay {
    * (section 7). Like looks: replaced, never changed in place, reset on New day, no RNG.
    */
   clerk: Readonly<ClerkCounts>;
+  /**
+   * The book has been opened this day (book-and-window.md 24.2): the first Read of a day opens
+   * it on the cover, every later one at race r's page. Reset on New day, never in storage.
+   */
+  bookOpened: boolean;
 }
 
 export interface ClerkCounts { ticket: number; punch: number }
@@ -55,7 +60,7 @@ export function startDay(
   book: Book = loadBook(), previous: PreviousDay | null = null,
 ): { bet: BetDay; day: DayState } {
   return {
-    bet: { ctx, betting, rd, drawn: drawnDay(ctx, daySeed), estimates, hub, looks: {}, book, previous, clerk: { ticket: 0, punch: 0 } },
+    bet: { ctx, betting, rd, drawn: drawnDay(ctx, daySeed), estimates, hub, looks: {}, book, previous, clerk: { ticket: 0, punch: 0 }, bookOpened: false },
     day: newDay(ctx, daySeed),
   };
 }

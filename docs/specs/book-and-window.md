@@ -971,3 +971,14 @@ Made by the main session on the code reviewer's flags. They amend sections 2 and
 6. **`aria-live` text:** the joining words live in data like other copy, and the ticket is read without its arrow glyphs ("$10 on #3. Enter: bet.").
 7. **The display font's glyph list** in `book.json` must equal the font layout's list, checked by a test, so the two cannot drift.
 8. **FL6, "no stream but `news` was drawn", read exactly:** reading may draw `news` (sub-key the day) and may re-derive the crowd's prices for races r and r + 1 on their own keyed `crowd` streams, which the track's board does too and which changes nothing. Any `fieldDraw`, `raceSeed` or `estimateSeeds` draw while reading is a failure. The spec tests check it this way.
+
+## 24. The day opens on the track (Joseph, 2026-11-14)
+
+Joseph, after playing the build: "it should open with the place itself and i can enter the book, or start betting or go somwhere else". This replaces decision 2 in section 1 ("The day opens on the cover"), the answer to question 1 in section 16, FL1, and the day-start rows of section 2. Rulings by the main session:
+
+1. **Boot and New day open the track** for race 1, with the focus on Read as on any arrival. New day on the End of day page opens the next day's track, not its cover.
+2. **The book opens on its cover the first time it is opened each day.** After that, Read opens it at race r's page, as before. Why: he asked for a book with a cover that opens to news and then races. With the day starting at the track, the first read of the day is when the cover and the news are new. After that the cover would cost two presses a race. "Opened" is kept in the day session, resets on New day, and is never saved.
+3. **Enter on the news turns to the next race's page (race r).** Right and the foot's next item still turn one page, to race 1. On the first race of the day the two are the same page. Why: a player who first opens the book before race 4 wants race 4, not three more page turns.
+4. **Esc from the book goes by the page, for every way in:** from the cover or the news the track's focus is Read, from a race page it is Bet. This replaces the second half of 23.3. There is no separate day-start book any more.
+5. **Counts.** Nothing changes for a player who does not read: a bet by number key at the day's first race is 3 presses (the digit, Enter, Enter). The first read of the day, then a bet, is 6 presses (Enter on Read, Enter on the cover, Enter on the news, the digit, Enter, Enter), one more than a later race's 5.
+6. **Criteria.** FL1 becomes: boot and New day open the track on Read; the first Read of the day opens the cover, Enter shows the news, Enter shows race r's page; a later Read opens race r's page; Esc follows ruling 4. FL5's "day start" paths follow ruling 5. BE3 as amended in section 11 becomes: New day starts the next day seed on that day's track. CV1's cover line and FL6 are unchanged.

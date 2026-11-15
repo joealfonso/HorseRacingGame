@@ -75,14 +75,14 @@ async function start(): Promise<void> {
     const daySeed = seed.seed ?? crypto.getRandomValues(new Uint32Array(1))[0];
     console.info(`Betting day: day seed ${daySeed}. Add ?seed=${daySeed} to the address to replay this day.`);
     const day = startDay(ctx, betting, rd, new Estimates(ctx.rules.runsPerRace), daySeed, loadHub(), loadBook());
-    // Race 1's estimate starts now, while the art loads; the cover and the news fill the wait (book-and-window.md section 2).
+    // Race 1's estimate starts now, while the art loads; the track's board shows dashes until it is in.
     day.bet.estimates.request(day.bet.drawn[0]);
     boot = {
       slots: rd.slots.slots,
       colors: colorMap(rd.palette),
       keys: rd.palette.keyColors,
-      // FL1: the day opens on its cover.
-      next: { key: 'book', data: { ...day, from: 'dayStart' } },
+      // 24.1: the day opens on the track, focus on Read.
+      next: { key: 'hub', data: { ...day } },
     };
   } catch (err) {
     console.error(err instanceof Error ? err.message : err);

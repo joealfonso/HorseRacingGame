@@ -209,7 +209,7 @@ export class HubScene extends Phaser.Scene {
     }
     const bet: BetDay = { ...this.data0.bet, looks: this.state.looks };
     const held = this.keys.down();
-    if (o.kind === 'book') return this.leave(() => this.scene.start('book', { bet, day: this.day, art: this.data0.art, held, from: 'track' } satisfies BookData));
+    if (o.kind === 'book') return this.leave(() => this.scene.start('book', { bet, day: this.day, art: this.data0.art, held } satisfies BookData));
     if (o.kind === 'window') return this.leave(() => this.scene.start('window', { bet, day: this.day, art: this.data0.art, held, post: o.post } satisfies WindowData));
     // The rail: no bet, with prices posted (a waiting rail comes here when they post).
     let day: DayState;

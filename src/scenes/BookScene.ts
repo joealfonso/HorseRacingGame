@@ -21,8 +21,9 @@ import { PagePainter } from './paper';
 import { PointerInput } from './pointerInput';
 import type { WindowData } from './WindowScene';
 
-// The book (docs/specs/book-and-window.md sections 2 to 6): the program you hold. At day
-// start it opens on the cover; from the track's Read row it opens at the next race's page.
+// The book (docs/specs/book-and-window.md sections 2 to 6 and 24): the program you hold,
+// opened from the track's Read row. The first time each day it opens on the cover, after that
+// at the next race's page.
 // Everything drawn comes from src/render/bookScreen.ts and src/bet/bookPage.ts, every price
 // from src/bet. This file places it, forwards keys and clicks, and acts on the outcome: close
 // (back to the track) or the window with the ticket open. Reading never changes the day,
@@ -34,12 +35,6 @@ export interface BookData {
   art: ArtInfo;
   /** Keys still down from the screen before, ignored until released (IN2). */
   held?: string[];
-  /**
-   * `dayStart`: boot or New day, on the cover; Esc from the cover or the news lands the track
-   * on Read (FL1), from a race page on Bet (23.3).
-   * `track`: from the Read row, at race r's page; Esc lands the track on Bet (FL2).
-   */
-  from: 'dayStart' | 'track';
 }
 
 export class BookScene extends Phaser.Scene {
@@ -66,14 +61,17 @@ export class BookScene extends Phaser.Scene {
     this.seconds = 0;
     this.leaving = false;
     this.art = new Art(this, data.art);
-    // Never opened on an ended day: it goes to the End of day page, whose New day opens the next cover.
+    // Never opened on an ended day: it goes to the End of day page, whose New day opens the next day's track.
     if (data.day.ended !== null) {
       this.leaving = true;
       this.scene.start('endOfDay', { bet: data.bet, day: data.day, art: data.art, held: data.held } satisfies EndOfDayData);
       return;
     }
     this.day = data.day;
-    this.state = data.from === 'dayStart' ? bookAtCover() : bookAtRace(data.day.nextRace);
+    // 24.2: the first opening of the day is on the cover, later ones at race r's page. The day
+    // this scene hands on remembers it was opened.
+    this.state = data.bet.bookOpened ? bookAtRace(data.day.nextRace) : bookAtCover();
+    if (!data.bet.bookOpened) this.data0 = { ...data, bet: { ...data.bet, bookOpened: true } };
     this.news = newsOf(data.bet, data.day.daySeed);
     // Race r's estimate first, then r + 1's (UI5), and never another (BB5).
     requestNextEstimates(data.bet, data.day);
@@ -150,7 +148,7 @@ export class BookScene extends Phaser.Scene {
     const bet = this.data0.bet;
     const p = pageAt(bet.ctx.races.length, this.state.page);
     const rs = this.raceState();
-    return { races: bet.ctx.races.length, horses: p.kind === 'race' ? bet.drawn[p.race - 1].horseIds.length : 0, enter: rs?.enter ?? 'none' };
+    return { races: bet.ctx.races.length, nextRace: this.day.nextRace, horses: p.kind === 'race' ? bet.drawn[p.race - 1].horseIds.length : 0, enter: rs?.enter ?? 'none' };
   }
 
   private screen(): BookScreen {
@@ -188,12 +186,12 @@ export class BookScene extends Phaser.Scene {
     this.redraw();
   }
 
-  /** Esc or "Esc: close": back to the track. Read from the day-start cover or news (FL1), Bet otherwise (FL2, 23.3). No money moves. */
+  /** Esc or "Esc: close": back to the track, by the page (24.4): Read from the cover or the news, Bet from a race page. No money moves. */
   private close(): void {
     if (this.leaving) return;
     this.leaving = true;
     const d = this.data0;
-    this.scene.start('hub', { bet: d.bet, day: this.day, art: d.art, held: this.keys.down(), focus: bookCloseFocus(d.from, d.bet.ctx.races.length, this.state.page) } satisfies HubData);
+    this.scene.start('hub', { bet: d.bet, day: this.day, art: d.art, held: this.keys.down(), focus: bookCloseFocus(d.bet.ctx.races.length, this.state.page) } satisfies HubData);
   }
 
   /** BB4: the window with the ticket open on that post at the remembered amount. */

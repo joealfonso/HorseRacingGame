@@ -30,7 +30,7 @@ export const BOOK_SLOT_IDS: readonly string[] = [
 /** The page you are on (an index into bookPages) and the entry cursor on a race page (0 is post 1). */
 export interface BookState { page: number; focus: number }
 
-/** Where the book opens: at day start on the cover; from the track at race r's page, cursor on post 1 (FL4, section 2). */
+/** Where the book opens: on the cover the first time each day, after that at race r's page, cursor on post 1 (FL4, 24.2). */
 export const bookAtCover = (): BookState => ({ page: 0, focus: 0 });
 export const bookAtRace = (race: number): BookState => ({ page: race + 1, focus: 0 });
 
@@ -42,6 +42,8 @@ export interface BookKeyContext {
   races: number;
   /** Horses in the field of the race page you are on (0 on the cover and the news). */
   horses: number;
+  /** The next race to run (DayState.nextRace): Enter on the news turns to its page (24.3). Omitted means race 1. */
+  nextRace?: number;
   /** What Enter on an entry does on this page (racePageState's `enter`). */
   enter: 'window' | 'none';
 }
@@ -54,8 +56,9 @@ const turn = (s: BookState, page: number, races: number): BookState =>
   (page < 0 || page > races + 1 ? s : { page, focus: 0 });
 
 /**
- * One key press, past the held-key guard (section 2, BB1, BB4). Cover and news: Enter, Space,
- * Z or Right turn forward, Left back (none on the cover), Esc closes. A race page: Up and Down
+ * One key press, past the held-key guard (section 2, BB1, BB4, 24.3). Cover and news: Right
+ * turns one page, Left back (none on the cover), Esc closes. Enter, Space or Z on the cover
+ * turns to the news, and on the news to race r's page (the next race), not always race 1. A race page: Up and Down
  * wrap through the posts, 1 to 8 jump, Left and Right turn (no wrap: Right on the last race
  * does nothing), Enter, Space or Z goes to the window only on race r's page with prices
  * posted, Esc closes.
@@ -67,7 +70,8 @@ export function bookKey(s: BookState, code: string, k: BookKeyContext): { state:
   if (code === 'ArrowLeft') return none(turn(s, s.page - 1, k.races));
   if (code === 'ArrowRight') return none(turn(s, s.page + 1, k.races));
   const kind = pageAt(k.races, s.page).kind;
-  if (kind !== 'race') return confirm ? none(turn(s, s.page + 1, k.races)) : none();
+  if (kind === 'cover') return confirm ? none(turn(s, s.page + 1, k.races)) : none();
+  if (kind === 'news') return confirm ? none(turn(s, bookAtRace(Math.min(Math.max(1, k.nextRace ?? 1), k.races)).page, k.races)) : none();
   const n = k.horses;
   if (n < 1) return none();
   if (code === 'ArrowUp') return none({ ...s, focus: (s.focus - 1 + n) % n });
@@ -288,12 +292,10 @@ export function bookHover(s: BookState, id: BookTargetId, k: BookKeyContext): Bo
 }
 
 /**
- * Where the track's focus lands when the book closes (FL1, FL2, 23.3). Opened from the track:
- * Bet. Opened at day start: Read from the cover or the news, Bet from a race page (you have
- * just read a race).
+ * Where the track's focus lands when the book closes, by the page, however it was opened
+ * (24.4): Read from the cover or the news, Bet from a race page (you have just read a race).
  */
-export function bookCloseFocus(from: 'dayStart' | 'track', races: number, page: number): 'arrival' | 'back' {
-  if (from === 'track') return 'back';
+export function bookCloseFocus(races: number, page: number): 'arrival' | 'back' {
   return pageAt(races, page).kind === 'race' ? 'back' : 'arrival';
 }
 
