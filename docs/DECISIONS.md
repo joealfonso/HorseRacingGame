@@ -485,7 +485,7 @@ Kick is the remainder, so a stalker can wobble up to 8 from a third: p08 and p11
 
 ## Book and window, step 3 (the screens and the flow)
 
-**Esc from the book lands the track by the page.** (Superseded by spec section 24, see "The day opens on the track" below: the day no longer opens on the cover, `BookData.from` is gone, and Esc goes to Read from the cover or the news and to Bet from a race page, however the book was opened.) The window always returns to Bet.
+**The day opens on the cover, and Esc from it lands the track on Read; from the track's book, on Bet.** FL1 says Esc on the day's cover goes to the track on Read, FL2 says return from the book is Bet. `BookData.from` carries which book it is. The window always returns to Bet. (Amended in the fix round by spec 23.3: from a day-start race page it is Bet.) Superseded 2026-11-14 by spec section 24: the day opens on the track, the book opens on its cover at the first read of the day, and Esc goes by the page. See "The day opens on the track" below.
 
 **The door action is `window`, not `program`, and the track has two new outcomes.** Amendment 11 makes Windows open the window screen, so hub.json's door action and `HubOutcome` say `window`, and the Read row's outcome is `book`. The Read row is a box row with id `read` (`BOOK_ROW`) and no picture target; the focus on arrival, on return and from a lookable is data (`hub.json` `focus`).
 
