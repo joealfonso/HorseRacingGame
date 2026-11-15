@@ -1131,3 +1131,167 @@ describe('the End of day page: from the result, and New day to the cover', () =>
     expect(H.made.filter((m) => m.draws > 0).map((m) => m.name)).toEqual([]);
   });
 });
+
+// BE3 and the flow, written again from the spec (betting-screens.md sections 2 and 6, BE3;
+// book-and-window.md section 11 and FL1), through the real scenes.
+describe('the End of day page: BE3, the flow and what acts on it (second pass)', () => {
+  const plan = (n: number) => (n === 2 ? { post: 3, dollars: 2 } : n === 5 ? { post: 6, dollars: 10 } : null);
+  const winnerOf = (n: number) => (n === 2 ? 3 : 1);
+  const endedDay = (): DayState => {
+    let state = dayWith(10000);
+    for (let n = 1; n <= 8; n++) state = settled(programOf(n), state, plan(n), winnerOf(n));
+    return state;
+  };
+  const atResult = () => new Rig('result', resultData(bet, endedDay()));
+  const atPage = () => new Rig('endOfDay', { bet, day: endedDay(), art, held: [] });
+  const keyboardOf = (r: Rig) => r.scene.input.keyboard;
+
+  it('the result after race 8 opens the page by Enter, Space, Z and by click, never the next cover', () => {
+    for (const how of ['Enter', 'Space', 'KeyZ', 'NumpadEnter', 'click'] as const) {
+      const r = atResult();
+      if (how === 'click') r.click(...RESULT_NEXT()); else r.press(how);
+      expect(r.at, how).toBe('endOfDay');
+      expect(r.texts, how).toContain("That's the card");
+    }
+  });
+
+  it('the page shows this day\'s record: the figures, and the day\'s card with the bets made', () => {
+    const r = atResult().press('Enter');
+    const s = endedDay();
+    const end = s.bankrollCents;
+    expect(r.texts).toContain('Started with');
+    expect(r.texts).toContain(`$${Math.floor(end / 100)}.${String(end % 100).padStart(2, '0')}`);
+    expect(r.texts).toContain('2 of 8');
+    expect(r.texts.filter((t) => /^Race \d$/.test(t))).toHaveLength(8);
+    expect(r.texts).toContain('Lost $10');
+    expect(r.texts.filter((t) => t === 'Passed')).toHaveLength(6);
+    expect(r.texts).toContain(`#${DAY_SEED}`);
+  });
+
+  it('New day by Enter, Space, Z, NumpadEnter and click: the next seed, the starting bankroll, race 1, the ended day kept as previous, on the cover', () => {
+    for (const how of ['Enter', 'Space', 'KeyZ', 'NumpadEnter', 'click'] as const) {
+      const r = atPage();
+      if (how === 'click') r.click(...NEW_DAY()); else r.press(how);
+      expect(r.at, how).toBe('book');
+      const d = r.data as { day: DayState; bet: BetDay; from: string };
+      expect(d.from).toBe('dayStart');
+      expect(d.day.daySeed).toBe(DAY_SEED + 1);
+      expect(d.day.bankrollCents).toBe(10000);
+      expect(d.day.nextRace).toBe(1);
+      expect(d.day.records).toEqual([]);
+      expect(d.day.open).toBeNull();
+      expect(d.bet.previous).toEqual({ records: endedDay().records });
+      expect(d.bet.looks).toEqual({});
+      expect(d.bet.clerk).toEqual({ ticket: 0, punch: 0 });
+      expect(r.texts, how).toContain('Race Day Program');
+      expect(r.texts).toContain(`#${DAY_SEED + 1}`);
+      expect(r.texts).not.toContain('Rail Talk');
+    }
+  });
+
+  it('the seed wraps after 4294967295 to 0', () => {
+    const r = new Rig('endOfDay', { bet, day: { ...endedDay(), daySeed: 4294967295 }, art, held: [] }).press('Enter');
+    expect((r.data as { day: DayState }).day.daySeed).toBe(0);
+  });
+
+  it('the ended day is kept for the news: the next day\'s news page names yesterday\'s longest winner from the record', () => {
+    const s = endedDay();
+    const parse = (o: string) => { const [n, d] = o.split('-').map(Number); return n / d; };
+    const top = s.records.reduce((b, r) => (parse(r.winnerOdds) > parse(b.winnerOdds) ? r : b));
+    const name = ctx.stable.find((h) => h.id === top.horseIds[top.winnerPost - 1])!.name;
+    const r = atPage().press('Enter').press('Enter');
+    expect(r.texts).toContain('Rail Talk');
+    expect(r.texts).toContain("Yesterday's longest price");
+    expect(r.texts.join(' ')).toContain(name);
+    expect(r.texts.join(' ')).toContain(top.winnerOdds);
+  });
+
+  it('nothing but New day acts: no other key and no click anywhere else moves the page', () => {
+    const r = atPage();
+    for (const code of ['Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Digit1', 'Digit8', 'KeyP', 'KeyA', 'Tab', 'Backspace', 'ShiftLeft']) r.press(code);
+    for (const [x, y] of [[0, 0], [128, 4], [100, 40], [100, 112], [100, 124], [100, 150], [100, 205], [100, 215], [100, 232], [255, 239], [7, 220], [248, 220]] as [number, number][]) r.click(x, y);
+    expect(r.at).toBe('endOfDay');
+    expect(r.scene.scene.start).not.toHaveBeenCalled();
+  });
+
+  it('a key held from the result neither skips the page nor starts the day: the key must come up and go down again', () => {
+    const r = atResult();
+    keyboardOf(r).emit('keydown', { code: 'Enter', repeat: false });
+    r.tick(0.016);
+    expect(r.at).toBe('endOfDay');
+    expect((r.data as { held: string[] }).held).toEqual(['Enter']);
+    for (let i = 0; i < 4; i++) keyboardOf(r).emit('keydown', { code: 'Enter', repeat: true });
+    r.tick(2);
+    expect(r.at).toBe('endOfDay');
+    keyboardOf(r).emit('keyup', { code: 'Enter', repeat: false });
+    r.press('Enter');
+    expect(r.at).toBe('book');
+  });
+
+  it('a held Space or Z from the result is held over the same way', () => {
+    for (const code of ['Space', 'KeyZ']) {
+      const r = new Rig('endOfDay', { bet, day: endedDay(), art, held: [code] });
+      for (let i = 0; i < 3; i++) keyboardOf(r).emit('keydown', { code, repeat: true });
+      r.tick(1);
+      expect(r.at, code).toBe('endOfDay');
+    }
+  });
+
+  it('a double click on the result cannot reach New day: the second half, inside the guard, does nothing; a click after it starts the day', () => {
+    const r = atResult().click(...RESULT_NEXT());
+    expect(r.at).toBe('endOfDay');
+    r.click(...NEW_DAY(), 0);
+    r.click(...NEW_DAY(), 0.3);
+    expect(r.at).toBe('endOfDay');
+    r.click(...NEW_DAY(), 0.3);
+    expect(r.at).toBe('book');
+  });
+
+  it('New day starts exactly one day, however many presses and clicks arrive in the same moment', () => {
+    const r = atPage();
+    const kb = keyboardOf(r);
+    const start = r.scene.scene.start;
+    for (const code of ['Enter', 'Space', 'KeyZ']) { kb.emit('keydown', { code, repeat: false }); kb.emit('keyup', { code, repeat: false }); }
+    const [x, y] = NEW_DAY();
+    for (let i = 0; i < 3; i++) { H.listeners.canvas.emit('pointerdown', { button: 0, clientX: x, clientY: y }); H.listeners.window.emit('pointerup', { button: 0, clientX: x, clientY: y }); }
+    r.tick(1);
+    expect(start).toHaveBeenCalledTimes(1);
+  });
+
+  it('showing the page changes nothing and draws no stream and no Math.random', () => {
+    const rand = vi.spyOn(Math, 'random');
+    for (let n = 1; n <= 8; n++) programOf(n);
+    const state = endedDay();
+    const before = JSON.stringify(state);
+    H.made.length = 0;
+    const r = new Rig('result', resultData(bet, state)).press('Enter');
+    r.tick(2);
+    expect(r.at).toBe('endOfDay');
+    expect((r.data as { day: DayState }).day).toBe(state);
+    expect(JSON.stringify(state)).toBe(before);
+    expect(rand).not.toHaveBeenCalled();
+    expect(H.made).toEqual([]);
+  });
+
+  it('only a settled-and-ended day opens the page: a mid-day result goes to the track', () => {
+    expect(afterRace1().press('Enter').at).toBe('hub');
+  });
+
+  it('a day cut short (under $2) also opens the page, with the one race run, and New day starts the next day', () => {
+    const broke = settled(programOf(1), dayWith(300), { post: 3, dollars: 2 }, 1);
+    const r = new Rig('result', resultData(bet, broke)).press('Enter');
+    expect(r.at).toBe('endOfDay');
+    expect(r.texts.filter((t) => /^Race \d$/.test(t))).toEqual(['Race 1']);
+    expect(r.texts).not.toContain("Tapped out");
+    r.press('Enter');
+    expect(r.at).toBe('book');
+    expect((r.data as { day: DayState }).day.bankrollCents).toBe(10000);
+  });
+
+  it('the page and the next cover agree on the day pair for the seed that follows: the cover prints the next seed', () => {
+    const page = atPage();
+    expect(page.texts).toContain(`#${DAY_SEED}`);
+    page.press('Enter');
+    expect(page.texts).toContain(`#${DAY_SEED + 1}`);
+  });
+});
