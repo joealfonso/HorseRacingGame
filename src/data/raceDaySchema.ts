@@ -255,12 +255,37 @@ export const raceDaySchema = z.strictObject({
     swipeHalfX1: marked(whole.min(0).max(255)),
     swipeFrame1Seconds: marked(positive),
     swipeFrame2Seconds: marked(positive),
+    // The betting program (docs/specs/betting-screens.md section 3): the bet's punch beat,
+    // the tick and the printed tote ticket held before the cut to the race.
+    punchSeconds: marked(positive),
   }),
   // Spec 5: a held arrow on the card or Orders repeats after repeatDelayMs, every repeatEveryMs.
   menus: z.strictObject({
     repeatDelayMs: marked(positive),
     repeatEveryMs: marked(positive),
   }),
+  // Track spec section 6: presses are ignored this long after a screen arrives (the mouse's IN2).
+  pointer: z.strictObject({
+    arrivalGuardSeconds: marked(z.number().min(0)),
+  }),
+  // The End of day page's positions (betting-screens.md section 6, DESIGN "End of day, the back page"). Tops are
+  // cell tops in px; x values are the first column of a cell, except the `...LastX` values, which are the last
+  // column of a right-aligned text.
+  endOfDay: marked(z.strictObject({
+    titleTop: whole,
+    trackTop: whole,
+    rules: z.array(whole).length(2),
+    left: whole,
+    lastX: whole,
+    firstRowTop: whole,
+    rowPitch: whole,
+    lineTop: whole,
+    cardRuleTop: whole,
+    cardTop: whole,
+    cardPitch: whole,
+    card: z.strictObject({ raceX: whole, boxX: whole, boxSize: whole, boxDy: whole, numberDx: whole, numberDy: whole, oddsX: whole, passedX: whole, ticketLastX: whole }),
+    action: z.strictObject({ cursorX: whole, textX: whole, top: whole, box: z.strictObject({ x0: whole, y0: whole, x1: whole, y1: whole }) }),
+  })),
   // The Orders screen's paddock strip (spec 4.2): the 16x16 tile slot on each of its three
   // 16 px rows, top first, and whether odd tiles flip (the rail's posts pair every 32 px);
   // where the trainer and your horse stand; and the trainer's coffee idle (DESIGN Charm).
@@ -396,6 +421,56 @@ export const raceDaySchema = z.strictObject({
       splits: text,
       seed: text,
       next: text,
+      // The betting result (betting-screens.md sections 5 and 8).
+      paid: text,
+      lost: text,
+      passed: text,
+      winPrice: text,
+      end: text,
+    }),
+    // The betting program page, its ticket, the race HUD's bet lines and the wire message
+    // (betting-screens.md sections 3, 4 and 8). The stamina head is "Stam." (section 10).
+    program: z.strictObject({
+      race: text,
+      bank: text,
+      pass: text,
+      passLine: text,
+      pending: text,
+      // "Esc: back" at the foot while choosing, right-aligned to x247 (docs/specs/track-hub.md section 3).
+      back: text,
+      heads: z.strictObject({ speed: text, stamina: text, kick: text, odds: text }),
+      // The short bias phrases on header line 4 (section 3).
+      bias: z.strictObject({ fair: text, inside: text, outside: text, speed: text, closers: text }),
+    }),
+    ticket: z.strictObject({
+      amount: text,
+      confirm: text,
+      pays: text,
+      // The printed tote ticket's two lines.
+      printed: z.tuple([text, text]),
+    }),
+    hud: z.strictObject({ bet: text, watching: text, leads: text }),
+    msg: z.strictObject({ won: text, lost: text }),
+    // The End of day page (betting-screens.md sections 6, 8 and 10). `line` is the day's line by outcome;
+    // `plus` and `minus` put the sign on the Change figure; `betsOf` is "5 of 8"; `card` is the day's card rows.
+    end: z.strictObject({
+      title: text,
+      line: z.strictObject({ up: text, even: text, down: text, none: text }),
+      started: text,
+      ended: text,
+      change: text,
+      bets: text,
+      betsOf: text,
+      winners: text,
+      best: text,
+      noWinner: text,
+      even: text,
+      plus: text,
+      minus: text,
+      newDay: text,
+      card: z.strictObject({ race: text, paid: text, lost: text, passed: text }),
+      // aria-live only (book-and-window.md 23.6): how the page's words are joined. Order and punctuation; the words are copy.
+      aria: z.strictObject({ figure: text, row: text, passedRow: text }),
     }),
     orders: z.strictObject({
       allDefault: text,

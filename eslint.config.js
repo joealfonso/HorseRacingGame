@@ -18,6 +18,17 @@ const PHASER_DYNAMIC_IMPORT = {
   message: 'src/sim/ must not import Phaser. Keep the sim headless.',
 };
 
+// src/bet/ may not reach the screens, and src/sim/ may not reach src/bet/ (betting spec DT3).
+const BET_IMPORT_BAN = {
+  patterns: [
+    ...PHASER_BAN.patterns,
+    { regex: '(^|/)(render|scenes)(/|$)', message: 'src/bet/ must not import from src/render/ or src/scenes/. Betting code stays headless.' },
+  ],
+};
+const SIM_IMPORT_BAN = {
+  patterns: [...PHASER_BAN.patterns, { regex: '(^|/)bet(/|$)', message: 'src/sim/ must not import the betting code.' }],
+};
+
 // The race-day screens read the result and never draw from the race's streams.
 const RNG_MESSAGE = 'src/render/ and src/scenes/ must not import the sim\'s random streams.';
 const RNG_BAN = {
@@ -46,7 +57,8 @@ export default tseslint.config(
   js.configs.recommended,
   tseslint.configs.recommended,
   {
-    files: ['src/sim/**'],
+    // The betting code (src/bet/) is under the same bans as the sim (betting spec DT3).
+    files: ['src/sim/**', 'src/bet/**'],
     rules: {
       'no-restricted-imports': ['error', PHASER_BAN],
       'no-restricted-syntax': ['error', PHASER_DYNAMIC_IMPORT],
@@ -55,8 +67,8 @@ export default tseslint.config(
   {
     // Tests are not part of a race and may time things or build inputs freely.
     // They still get the Phaser ban from the block above.
-    files: ['src/sim/**'],
-    ignores: ['src/sim/**/*.test.ts'],
+    files: ['src/sim/**', 'src/bet/**'],
+    ignores: ['src/sim/**/*.test.ts', 'src/bet/**/*.test.ts'],
     rules: {
       // Replaces the block above's options for this rule, so the Phaser selector is repeated.
       'no-restricted-syntax': [
@@ -72,6 +84,16 @@ export default tseslint.config(
         ...INEXACT_MATH.map((property) => ({ object: 'Math', property, message: INEXACT })),
       ],
     },
+  },
+  {
+    // The betting code reads the sim, never the screens. Replaces the Phaser-only options above.
+    files: ['src/bet/**'],
+    rules: { 'no-restricted-imports': ['error', BET_IMPORT_BAN] },
+  },
+  {
+    // The sim never reads the betting code.
+    files: ['src/sim/**'],
+    rules: { 'no-restricted-imports': ['error', SIM_IMPORT_BAN] },
   },
   {
     // The renderer never touches the sim's random streams (race-day spec RV9): stride

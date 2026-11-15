@@ -2,20 +2,31 @@ import Phaser from 'phaser';
 import { loadData } from './data/load';
 import palette from './data/palette.json';
 import { paletteSchema, type Slot } from './data/raceDaySchema';
-import { loadRaceDay } from './data/raceDayLoad';
+import { checkBettingCopy, checkProgramLines, loadRaceDay } from './data/raceDayLoad';
+import { loadBetting } from './data/bettingLoad';
+import { loadBook } from './data/bookLoad';
+import { loadHub } from './data/hubLoad';
+import { dayContext } from './bet/day';
 import { colorMap, type ColorMap } from './render/colors';
 import { bootErrorLines } from './render/format';
 import { renderSettings } from './render/renderSettings';
 import { integerScale } from './render/scale';
-import { newSession, parseSeedParam } from './render/session';
+import { parseSeedParam } from './render/session';
 import { ERROR_SCREEN_SLOT_IDS, SLOT_IDS } from './render/slotStatus';
 import type { ArtInfo } from './scenes/art';
+import { startDay } from './scenes/betDay';
+import { BookScene } from './scenes/BookScene';
 import { BootScene, type BootData } from './scenes/BootScene';
 import { CardScene } from './scenes/CardScene';
+import { EndOfDayScene } from './scenes/EndOfDayScene';
 import { ErrorScene } from './scenes/ErrorScene';
+import { Estimates } from './scenes/estimates';
+import { HubScene } from './scenes/HubScene';
 import { OrdersScene } from './scenes/OrdersScene';
+import { ProgramScene } from './scenes/ProgramScene';
 import { RaceScene } from './scenes/RaceScene';
 import { ResultScene } from './scenes/ResultScene';
+import { WindowScene } from './scenes/WindowScene';
 
 // The page background in index.html is the single letterbox color. Phaser takes
 // it from there so the two cannot drift apart.
@@ -55,15 +66,23 @@ async function start(): Promise<void> {
     if ('error' in seed) throw new Error(seed.error);
     const game = loadData();
     const rd = loadRaceDay(game);
-    // The first seed is drawn here, in app code, never inside src/sim/.
-    const firstSeed = seed.seed ?? crypto.getRandomValues(new Uint32Array(1))[0];
-    const session = newSession(firstSeed);
-    console.info(`Race day: first seed ${firstSeed}. Add ?seed=${firstSeed} to the address to replay this day.`);
+    const betting = loadBetting(game);
+    checkProgramLines(betting.races, rd.raceDay);
+    checkBettingCopy(rd.raceDay);
+    const ctx = dayContext(betting, game);
+    // The betting day (docs/specs/betting-screens.md): ?seed= is the day seed. Drawn here,
+    // in app code, never inside src/sim/ or src/bet/.
+    const daySeed = seed.seed ?? crypto.getRandomValues(new Uint32Array(1))[0];
+    console.info(`Betting day: day seed ${daySeed}. Add ?seed=${daySeed} to the address to replay this day.`);
+    const day = startDay(ctx, betting, rd, new Estimates(ctx.rules.runsPerRace), daySeed, loadHub(), loadBook());
+    // Race 1's estimate starts now, while the art loads; the track's board shows dashes until it is in.
+    day.bet.estimates.request(day.bet.drawn[0]);
     boot = {
       slots: rd.slots.slots,
       colors: colorMap(rd.palette),
       keys: rd.palette.keyColors,
-      next: { key: 'card', data: { game, rd, session } },
+      // 24.1: the day opens on the track, focus on Read.
+      next: { key: 'hub', data: { ...day } },
     };
   } catch (err) {
     console.error(err instanceof Error ? err.message : err);
@@ -86,10 +105,17 @@ async function start(): Promise<void> {
     // only to whole numbers.
     scale: { mode: Phaser.Scale.NONE, zoom: integerScale(window.innerWidth, window.innerHeight) },
   });
+  game.scene.add('book', BookScene);
+  game.scene.add('hub', HubScene);
+  game.scene.add('window', WindowScene);
+  // The program page left the loop: reading moved to the book and betting to the window. Kept, not deleted.
+  game.scene.add('program', ProgramScene);
+  // The Card and Orders screens left the loop for the betting program; kept, not deleted.
   game.scene.add('card', CardScene);
   game.scene.add('orders', OrdersScene);
   game.scene.add('race', RaceScene);
   game.scene.add('result', ResultScene);
+  game.scene.add('endOfDay', EndOfDayScene);
   game.scene.add('error', ErrorScene);
   game.scene.add('boot', BootScene, true, { ...boot, present });
 

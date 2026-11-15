@@ -1,0 +1,174 @@
+{
+  "picture": {
+    "value": { "x0": 0, "y0": 16, "x1": 255, "y1": 175 },
+    "status": "confirmed",
+    "note": "docs/specs/track-hub.md TH1: every focus box lies inside the picture, y16-175."
+  },
+  "targets": {
+    "value": [
+      { "id": "windows", "kind": "door", "action": "window", "hit": { "x0": 0, "y0": 96, "x1": 111, "y1": 175 }, "focus": { "x0": 4, "y0": 98, "x1": 107, "y1": 145 } },
+      { "id": "rail", "kind": "door", "action": "watch", "hit": { "x0": 160, "y0": 90, "x1": 255, "y1": 139 }, "focus": { "x0": 172, "y0": 104, "x1": 219, "y1": 135 } },
+      { "id": "regular", "kind": "lookable", "hit": { "x0": 0, "y0": 24, "x1": 111, "y1": 95 }, "focus": { "x0": 52, "y0": 44, "x1": 75, "y1": 75 }, "idle": "regular" },
+      { "id": "board", "kind": "lookable", "hit": { "x0": 124, "y0": 32, "x1": 251, "y1": 87 }, "focus": { "x0": 124, "y0": 32, "x1": 251, "y1": 71 }, "idle": null },
+      { "id": "fans", "kind": "lookable", "hit": { "x0": 112, "y0": 90, "x1": 159, "y1": 139 }, "focus": { "x0": 120, "y0": 104, "x1": 159, "y1": 135 }, "idle": "fanA" },
+      { "id": "bugler", "kind": "lookable", "hit": { "x0": 112, "y0": 140, "x1": 159, "y1": 175 }, "focus": { "x0": 124, "y0": 144, "x1": 147, "y1": 173 }, "idle": "bugler" },
+      { "id": "snackCart", "kind": "lookable", "hit": { "x0": 160, "y0": 140, "x1": 255, "y1": 175 }, "focus": { "x0": 180, "y0": 140, "x1": 235, "y1": 171 }, "idle": "vendor" }
+    ],
+    "status": "starting guess",
+    "note": "Spec section 4, Doors and lookables. Hit boxes tile the picture's interactive parts with no overlap. A lookable's idle is the person who plays it when looked at (DESIGN, Motion): fan A for the fans, none for the board."
+  },
+  "targetOrder": {
+    "value": ["regular", "windows", "board", "fans", "rail", "bugler", "snackCart"],
+    "status": "confirmed",
+    "note": "Spec section 2: Left and Right, picture order, left column top to bottom, then right column, fans before the rail."
+  },
+  "box": {
+    "value": {
+      "frame": { "x": 0, "y": 176, "tilesW": 32, "tilesH": 8 },
+      "cursorX": 8,
+      "textX": 20,
+      "chars": 28,
+      "voiceTops": [185, 194],
+      "doorRows": [
+        { "door": "read", "top": 206, "item": { "x0": 8, "y0": 205, "x1": 247, "y1": 213 } },
+        { "door": "windows", "top": 215, "item": { "x0": 8, "y0": 214, "x1": 247, "y1": 222 } },
+        { "door": "rail", "top": 224, "item": { "x0": 8, "y0": 223, "x1": 247, "y1": 231 } }
+      ]
+    },
+    "status": "confirmed",
+    "note": "Spec section 4, The box, amended by docs/specs/book-and-window.md section 8 and 18.1 item 7: voice rows at y185 and y194, three rows at y206, y215 and y224. Rows are pointer targets (section 10) that act as their door. The read row opens the book and has no picture target."
+  },
+  "focus": {
+    "value": { "arrival": "read", "back": "windows", "fromLookable": "read" },
+    "status": "confirmed",
+    "note": "docs/specs/book-and-window.md section 2 and FL1 to FL3: focus is Read on arrival from the Result and at day start, Bet on return from the book or the window; Up, Down and Esc on a lookable go to Read."
+  },
+  "statusBar": {
+    "value": { "raceX": 4, "bankLastX": 251, "top": 4, "fill": { "y0": 0, "y1": 14 }, "lineY": 15 },
+    "status": "confirmed",
+    "note": "Spec section 4, Status bar: Navy y0-14, Ash line y15, cell tops y4."
+  },
+  "sign": {
+    "value": { "plate": { "x0": 24, "y0": 100, "x1": 87, "y1": 111 }, "top": 102 },
+    "status": "confirmed",
+    "note": "DESIGN, Sign plate: the word centered on the plate, cell top y102."
+  },
+  "toteBoard": {
+    "value": {
+      "face": { "x0": 124, "y0": 32, "x1": 251, "y1": 71 },
+      "header": { "x": 132, "y": 36, "lastX": 247 },
+      "digitX": 132,
+      "priceX": 138,
+      "pitch": 30,
+      "perRow": 4,
+      "rowTops": [50, 60],
+      "priceChars": 4
+    },
+    "status": "confirmed",
+    "note": "DESIGN, The tote board: column j puts the post digit at x132 + 30j and the price left-aligned from x138 + 30j, up to 4 characters."
+  },
+  "cornerBobPx": {
+    "value": 1,
+    "status": "starting guess",
+    "note": "DESIGN, Focus corners: they bob 1 px outward on the cursor's loop and phase."
+  },
+  "idle": {
+    "value": {
+      "everySeconds": 4,
+      "stepSeconds": 0.25,
+      "steps": 4,
+      "order": ["regular", "clerk2", "fanA", "bugler", "clerk1", "vendor", "fanC", "clerk3", "fanB"]
+    },
+    "status": "starting guess",
+    "note": "DESIGN, Motion: every 4 s one person plays A, B, A, B at 0.25 s a step and ends on A. Fixed order, render only, no RNG."
+  },
+  "skyByRace": {
+    "value": [
+      { "fromRace": 1, "bands": [{ "color": "Sky", "y0": 16, "y1": 39 }, { "color": "Sky Pale", "y0": 40, "y1": 63 }] },
+      { "fromRace": 7, "bands": [{ "color": "Sky", "y0": 16, "y1": 23 }, { "color": "Sky Pale", "y0": 24, "y1": 39 }, { "color": "Dusk", "y0": 40, "y1": 63 }] },
+      { "fromRace": 8, "bands": [{ "color": "Sky", "y0": 16, "y1": 23 }, { "color": "Dusk", "y0": 24, "y1": 63 }] }
+    ],
+    "status": "starting guess",
+    "note": "DESIGN, Sky (with the sky by race): races 1-6 day, 7 late, 8 evening. Race r takes the last entry whose fromRace is r or less. Shared with the race view."
+  },
+  "copy": {
+    "state": {
+      "first": "First race of the day.",
+      "next": "Race {r} is up.",
+      "last": "Last race of the day.",
+      "toRail": "Off to the rail.",
+      "toRailSecond": "Post in a moment."
+    },
+    "flavor": [
+      "Gates open. Coffee's hot.",
+      "The pigeons found seats.",
+      "Sun's out. Hats are out.",
+      "Someone dropped a pretzel.",
+      "The breeze smells like hay.",
+      "Peanut shells, everywhere.",
+      "The shadows are stretching.",
+      "Make it a good one."
+    ],
+    "doors": {
+      "read": "Read Race {r}",
+      "windows": "Bet Race {r}",
+      "rail": "Just watch Race {r}"
+    },
+    "board": { "race": "Race {r}" },
+    "sign": { "windows": "Windows" },
+    "lookables": {
+      "regular": {
+        "name": "The regular",
+        "lines": ["Same seat for thirty years.", "My hat has its own fans.", "Brought a cushion. Genius.", "Here for the hats, honestly."]
+      },
+      "board": {
+        "name": "The tote board",
+        "lines": ["Two thousand bulbs. Two out.", "It hums a little B flat.", "Polished every morning."]
+      },
+      "fans": {
+        "name": "Fans at the rail",
+        "lines": ["Lucky socks. Both left feet.", "Best spot in the house.", "Nephew's at the snack cart.", "We cheer for all of them."]
+      },
+      "bugler": {
+        "name": "The bugler",
+        "lines": ["Twelve notes, every race.", "I practice in the car.", "Neighbors love it. Mostly.", "Never missed a call yet."]
+      },
+      "snackCart": {
+        "name": "The snack cart",
+        "lines": ["Hot peanuts! Mostly warm.", "Lemonade, lightly lemony.", "Mind the pigeons. Bold ones.", "Rain or shine. Mostly shine."]
+      }
+    },
+    "window": {
+      "choose": "Race {r}. Who do you like?",
+      "ticket": ["Pencil's sharp. Ready.", "Take your time. No rush.", "Ready when you are."],
+      "punch": ["There you go. Enjoy it.", "Fresh off the machine.", "Mind the peanut shells."],
+      "back": "Esc: back",
+      "aria": { "row": "#{n} {name}, {odds}", "ticket": "{amount} on #{n}" }
+    },
+    "bannedWords": ["cash", "buy"]
+  },
+  "window": {
+    "value": {
+      "booth": { "x": 0, "y": 16 },
+      "clerk": { "x": 112, "y": 34 },
+      "program": { "x": 176, "y": 72 },
+      "sign": { "plate": { "x0": 16, "y0": 28, "x1": 79, "y1": 39 }, "top": 30 },
+      "frame": { "x": 0, "y": 88, "tilesW": 32, "tilesH": 19 },
+      "clerkLine": { "x": 20, "top": 98 },
+      "rows": { "firstTop": 112, "pitch": 11, "cursorX": 8, "boxX": 20, "nameX": 36, "oddsLastX": 247, "hit": { "x0": 8, "x1": 247, "dy0": -1, "dy1": 9 } },
+      "line": { "y": 202, "x0": 8, "x1": 247 },
+      "ticket": {
+        "tops": [208, 220],
+        "cursorX": 8,
+        "textX": 20,
+        "lastX": 247,
+        "arrows": { "y0": 206, "y1": 217, "pad": 4 },
+        "bet": { "x0": 164, "y0": 206, "x1": 247, "y1": 217 },
+        "back": { "x0": 176, "y0": 218, "x1": 247, "y1": 229 }
+      },
+      "nameChars": 18
+    },
+    "status": "starting guess",
+    "note": "docs/specs/book-and-window.md sections 7 and 10, art-director 19.3: the booth picture at y16, the close-up clerk at x112-143, y34-81 over it (the counter's top row y80 is in the booth art), your program on the counter at x176-191, y72-79, the sign's word centered on its plate at cell top y30. The Navy box x0-255, y88-239; row i at cell top y112 + 11i, its pointer box y111 + 11i to y121 + 11i; the Ash line y202; ticket rows y208 and y220."
+  }
+}

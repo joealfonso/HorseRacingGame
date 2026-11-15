@@ -74,7 +74,9 @@ describe('no Yellow text on paper', () => {
 
 describe('the cursor and the marker recolor for paper, and only there', () => {
   it('the Card, Orders and Result scenes draw the cursor with the paper swap, and the Result its marker', () => {
-    for (const f of ['CardScene.ts', 'OrdersScene.ts', 'ResultScene.ts']) {
+    // ProgramScene.ts is added on purpose (B5): the betting program is a paper page, and DESIGN says it uses the paper cursor swap.
+    // BookScene.ts likewise (book-and-window.md amendment 21): the book's pages are the program's pages.
+    for (const f of ['BookScene.ts', 'CardScene.ts', 'EndOfDayScene.ts', 'OrdersScene.ts', 'ProgramScene.ts', 'ResultScene.ts']) {
       expect(scene(f), f).toMatch(/art\.swap\(SLOT_IDS\.cursor, PAPER_CURSOR_SWAPS\)/);
     }
     expect(scene('ResultScene.ts')).toMatch(/art\.swap\(SLOT_IDS\.markerYours, PAPER_MARKER_SWAPS\)/);
@@ -84,13 +86,16 @@ describe('the cursor and the marker recolor for paper, and only there', () => {
     const race = scene('RaceScene.ts');
     expect(race).toMatch(/this\.add\.image\(PAUSE_LAYOUT\.cursorX, PAUSE_LAYOUT\.items\[0\]\.y, SLOT_IDS\.cursor, '0'\)/);
     const users = readdirSync(sceneDir).filter((f) => f.endsWith('.ts') && /PAPER_(CURSOR|MARKER)_SWAPS/.test(scene(f))).sort();
-    expect(users).toEqual(['CardScene.ts', 'OrdersScene.ts', 'ResultScene.ts']);
+    // ProgramScene.ts is added on purpose (B5): the betting program page is paper and must use the swaps.
+    // BookScene.ts is added on purpose (book-and-window.md amendment 21): the book is paper too.
+    // EndOfDayScene.ts is added on purpose (DESIGN.md "End of day, the back page"): the back page is paper too.
+    expect(users).toEqual(['BookScene.ts', 'CardScene.ts', 'EndOfDayScene.ts', 'OrdersScene.ts', 'ProgramScene.ts', 'ResultScene.ts']);
     // The race's own marker on the track is not recolored either.
     expect(race).not.toMatch(/swap\(/);
   });
 
   it('every other screen that shows the horseshoe on a Navy fill draws the unswapped slot', () => {
-    for (const f of readdirSync(sceneDir).filter((x) => x.endsWith('.ts') && !['CardScene.ts', 'OrdersScene.ts', 'ResultScene.ts'].includes(x))) {
+    for (const f of readdirSync(sceneDir).filter((x) => x.endsWith('.ts') && !['BookScene.ts', 'CardScene.ts', 'EndOfDayScene.ts', 'OrdersScene.ts', 'ProgramScene.ts', 'ResultScene.ts'].includes(x))) {
       const src = scene(f);
       if (src.includes('SLOT_IDS.cursor')) expect(src, f).not.toMatch(/swap\(SLOT_IDS\.cursor/);
     }

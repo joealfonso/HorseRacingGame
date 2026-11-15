@@ -1,0 +1,481 @@
+{
+  "cover": {
+    "title": {
+      "value": "Race Day Program",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 13, book.cover.title."
+    },
+    "dayLabel": {
+      "value": "Day",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 3: the dateline's main-font word."
+    },
+    "dayNumber": {
+      "value": "#{seed}",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 3, question 7: the day seed, the same pair as the End of day page."
+    },
+    "races": {
+      "value": "{n} races today",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 13, book.cover.races."
+    },
+    "layout": {
+      "value": {
+        "masthead": {
+          "x0": 8,
+          "y0": 8,
+          "x1": 247,
+          "y1": 43
+        },
+        "keyline": {
+          "x0": 10,
+          "y0": 10,
+          "x1": 245,
+          "y1": 41
+        },
+        "nameTop": 14,
+        "titleTop": 31,
+        "datelineTop": 48,
+        "dayLabelX": 8,
+        "dayNumberX": 36,
+        "racesRight": 247,
+        "rules": {
+          "tops": [
+            58,
+            210
+          ],
+          "x0": 8,
+          "x1": 247
+        },
+        "picture": {
+          "x0": 8,
+          "y0": 62,
+          "x1": 247,
+          "y1": 189
+        },
+        "lineTop": 196
+      },
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md sections 3 and 18.2: name and title tops are the art-director's (y14, y31)."
+    },
+    "display": {
+      "value": {
+        "cellW": 12,
+        "glyphs": "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 &'.-",
+        "trackMaxChars": 19
+      },
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md 18.1 item 3, 18.2, 18.5 D: 41 glyphs, 12 px advance, 19 characters in x14-241. The track name is upper-cased by code."
+    },
+    "aria": {
+      "value": "{label} {number}",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md 23.6: the aria-live day pair, \"Day #12345\". Order and spacing only; the words are cover.dayLabel and cover.dayNumber."
+    },
+    "limits": {
+      "value": {
+        "title": 28,
+        "races": 16,
+        "line": 30
+      },
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 13."
+    }
+  },
+  "news": {
+    "title": {
+      "value": "Rail Talk",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 13, book.news.title."
+    },
+    "subtitle": {
+      "value": "Pace, class and peanuts.",
+      "status": "starting guess",
+      "note": "docs/specs/book-useful.md section 2 and 8, book.news.subtitle."
+    },
+    "layout": {
+      "value": {
+        "x": 8,
+        "titleTop": 4,
+        "subtitleTop": 14,
+        "ruleTops": [
+          24,
+          210
+        ],
+        "firstTop": 30,
+        "pitch": 36,
+        "bodyTops": [
+          10,
+          20
+        ],
+        "headlineChars": 30,
+        "lineChars": 30,
+        "bodyLines": 2,
+        "titleChars": 16,
+        "subtitleChars": 30
+      },
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 4 wireframe: headline at +0, body at +10 and +20, next item at +36."
+    },
+    "slots": {
+      "value": 5,
+      "status": "starting guess",
+      "note": "docs/specs/book-useful.md section 3.4: five items a day, filled by priority."
+    },
+    "prefix": {
+      "value": "Race {r}:",
+      "status": "starting guess",
+      "note": "docs/specs/book-useful.md section 8, book.news.prefix. For the easier-crowd item {r} is the softer race."
+    },
+    "count": {
+      "value": {
+        "5": "Five",
+        "6": "Six",
+        "7": "Seven"
+      },
+      "status": "starting guess",
+      "note": "docs/specs/book-useful.md section 3.5, {k}: fronts as a word. The spec lists Four to Seven; crowded lead fires at five or more (13.1), so Four is not here. Eight front-runners leave no closer to name, so no word for eight is needed."
+    },
+    "kinds": {
+      "value": {
+        "K1": {
+          "cap": 2,
+          "frontRankMax": 4,
+          "pairs": [
+            {
+              "headline": "one wants the lead",
+              "body": "Only {name} wants the lead. The bugler approves."
+            },
+            {
+              "headline": "nobody to argue with",
+              "body": "{name} is the lone speed. Better than its bars."
+            },
+            {
+              "headline": "a lead for one",
+              "body": "No rival for the lead. {name} likes that."
+            }
+          ]
+        },
+        "K2": {
+          "cap": 2,
+          "leadMin": 26,
+          "gapMin": 9,
+          "pairs": [
+            {
+              "headline": "a class above",
+              "body": "No one here is close to {name} on paper."
+            },
+            {
+              "headline": "add up the bars",
+              "body": "Add up the bars. Well ahead: {name}."
+            },
+            {
+              "headline": "best by a lot",
+              "body": "{name} has the most in the bars, by a lot."
+            },
+            {
+              "headline": "a cut above",
+              "body": "The regular added it twice: {name}, by plenty."
+            },
+            {
+              "headline": "class of the race",
+              "body": "{name} is the class here. Ask anyone."
+            },
+            {
+              "headline": "nobody near on paper",
+              "body": "Even the pigeons see it: {name}, clear."
+            }
+          ]
+        },
+        "K3": {
+          "cap": 2,
+          "frontsMin": 5,
+          "closerRankMax": 4,
+          "pairs": [
+            {
+              "headline": "{k} want the lead",
+              "body": "Closers like a busy front. {name} tops them."
+            },
+            {
+              "headline": "a crowd up front",
+              "body": "A busy lead helps closers. Top one here: {name}."
+            },
+            {
+              "headline": "traffic up front",
+              "body": "The snack cart says closers. Top closer: {name}"
+            }
+          ]
+        },
+        "K4": {
+          "cap": 2,
+          "diffMin": 6,
+          "rankMax": 3,
+          "pairs": [
+            {
+              "headline": "an easier crowd",
+              "body": "{name} runs twice. Race {soft} is the easier field."
+            },
+            {
+              "headline": "softer company",
+              "body": "Two starts for {name}. Race {soft} is kinder."
+            },
+            {
+              "headline": "kinder rivals",
+              "body": "Race {soft} is the easier of {name}'s two."
+            },
+            {
+              "headline": "the kinder of two",
+              "body": "{name}: two races. This one's softer."
+            },
+            {
+              "headline": "a gentler bunch",
+              "body": "{name} runs two. Fewer bigwigs here."
+            },
+            {
+              "headline": "lighter company",
+              "body": "{name} has the lighter field of two."
+            }
+          ]
+        },
+        "K5": {
+          "cap": 2,
+          "stalkerRankMax": 4,
+          "pairs": [
+            {
+              "headline": "nobody wants the lead",
+              "body": "Stalkers set the pace, and {name} tops them."
+            },
+            {
+              "headline": "no speed at all",
+              "body": "No early speed suits stalkers. Top one: {name}."
+            },
+            {
+              "headline": "who goes first?",
+              "body": "Someone has to go first. Top stalker: {name}."
+            }
+          ]
+        },
+        "K6": {
+          "cap": 2,
+          "frontRankMax": 3,
+          "frontsMin": 2,
+          "widePosts": 2,
+          "pairs": [
+            {
+              "headline": "drawn wide",
+              "body": "Post {post} for {name}. A long way round for speed."
+            },
+            {
+              "headline": "a long way round",
+              "body": "{name} drew wide, post {post}. Speed minds it a bit."
+            },
+            {
+              "headline": "parked out wide",
+              "body": "{name} starts from post {post}. A long trip for speed."
+            },
+            {
+              "headline": "outside looking in",
+              "body": "{name}, post {post}: a bit of extra ground."
+            },
+            {
+              "headline": "far from the rail",
+              "body": "{name} is in post {post}. Costs a little."
+            },
+            {
+              "headline": "the outside seats",
+              "body": "{name}: post {post}, small cost, nice view."
+            }
+          ]
+        },
+        "K7": {
+          "cap": null,
+          "pairs": [
+            {
+              "headline": "tops on the numbers",
+              "body": "On paper, {name}. Paper has been wrong before."
+            },
+            {
+              "headline": "most in the bars",
+              "body": "Add the three bars. Top here: {name}."
+            },
+            {
+              "headline": "best sum here",
+              "body": "Sum the bars and {name} comes out on top."
+            }
+          ]
+        }
+      },
+      "status": "starting guess",
+      "note": "docs/specs/book-useful.md sections 3.2 and 3.5, with the 13 rulings: crowded lead at five or more (13.1), K6 inside dropped and wide kept (13.3). Thresholds are starting guesses from docs/specs/book-signals.md; the wording pairs are the spec's, word for word, including the two reworded 2026-11-15 and pairs 4 to 6 of K2, K4 and K6 wide."
+    },
+    "priority": {
+      "value": [
+        "K1",
+        "K2",
+        "K3",
+        "K4",
+        "K5",
+        "K6",
+        "K7"
+      ],
+      "status": "starting guess",
+      "note": "docs/specs/book-useful.md section 3.4 step 2, without the K3 four-front slot and K6 inside (13.1, 13.3)."
+    },
+    "bannedWords": {
+      "value": [
+        "injury",
+        "injured",
+        "hurt",
+        "lame",
+        "limping",
+        "fell",
+        "fall",
+        "vet",
+        "scratched",
+        "ambulance",
+        "favorite",
+        "tip",
+        "pick",
+        "lock",
+        "sure thing",
+        "official",
+        "due",
+        "tired",
+        "tire",
+        "tires",
+        "tiring",
+        "fade",
+        "fades",
+        "fresh",
+        "rested",
+        "bounce",
+        "streak",
+        "in form",
+        "on form",
+        "stayer",
+        "goes long",
+        "distance",
+        "wire to wire",
+        "can't lose",
+        "guaranteed",
+        "cinch",
+        "banker",
+        "best bet",
+        "value",
+        "overlay",
+        "odds-on",
+        "percent"
+      ],
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 4 (news list) and section 13 (no \"Official\"). Added to betting.json's and hub.json's lists. Section 2 of docs/specs/book-useful.md adds the words that hint at something measured false or at a certainty."
+    },
+    "bannedChars": {
+      "value": [
+        "$",
+        "%"
+      ],
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 13: no \"$\" outside money figures, and the book prints none. \"%\": docs/specs/book-useful.md section 2."
+    }
+  },
+  "racePage": {
+    "toWindow": {
+      "value": "Enter: to window",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 13, book.race.toWindow."
+    },
+    "winner": {
+      "value": "Winner: #{n}",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 13, book.race.winner."
+    },
+    "later": {
+      "value": "Prices later",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 13, book.race.later."
+    },
+    "pace": {
+      "value": {
+        "none": "none up front",
+        "some": "{k} up front"
+      },
+      "status": "starting guess",
+      "note": "docs/specs/book-useful.md section 6 and 8, book.race.pace. Replaces \"playing fair\" in header line 4 while the bias is fair; at most 13 characters."
+    },
+    "ariaEntry": {
+      "value": "#{n} {name}, {style}, {speedHead} {speed}, {staminaHead} {stamina}, {kickHead} {kick}, {oddsHead} {odds}",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md sections 10 and 23.6: the focused entry as aria-live reads it. Punctuation and order only; the words are the program's (copy.card.styles, copy.program.heads)."
+    },
+    "rightChars": {
+      "value": 16,
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 13: header line 1's right slot, right-aligned to x247."
+    }
+  },
+  "foot": {
+    "prev": {
+      "value": "< {page}",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 6."
+    },
+    "next": {
+      "value": "{page} >",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 6."
+    },
+    "close": {
+      "value": "Esc: close",
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 6."
+    },
+    "pages": {
+      "value": {
+        "cover": "Cover",
+        "news": "News",
+        "race": "Race {r}"
+      },
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 6."
+    },
+    "pageChars": {
+      "value": 8,
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 6: at most 8 characters each (\"< Race 8\")."
+    },
+    "layout": {
+      "value": {
+        "top": 226,
+        "prevX": 8,
+        "nextRight": 247,
+        "closeText": {
+          "x0": 88,
+          "y0": 226,
+          "x1": 167,
+          "y1": 233
+        },
+        "prevTarget": {
+          "x0": 8,
+          "y0": 222,
+          "x1": 79,
+          "y1": 235
+        },
+        "closeTarget": {
+          "x0": 80,
+          "y0": 222,
+          "x1": 175,
+          "y1": 235
+        },
+        "nextTarget": {
+          "x0": 176,
+          "y0": 222,
+          "x1": 247,
+          "y1": 235
+        }
+      },
+      "status": "starting guess",
+      "note": "docs/specs/book-and-window.md section 6."
+    }
+  }
+}

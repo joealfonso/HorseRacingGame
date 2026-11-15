@@ -13,6 +13,8 @@
 //    frames differing only in the head and arm boxes; ground and rail tiles with no Ink, the
 //    rail rows 0-6 Turf and the fence wholly in rail rows 8-15
 //  - pencil tick exactly as DESIGN.md gives it
+//  - book and window: display font cells, the cover's two inks and plate border, the booth's
+//    8 colors per screen cell, the close-up clerk's colors and frames, the program's pixels
 //  - no stray files under public/assets
 //  - rebuilding gives byte-identical files
 import { createHash } from 'node:crypto';
@@ -20,6 +22,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { ASSET_ROOT, PALETTE, REPO, decodePng, slotPath } from './png.mjs';
+import { DISPLAY_CHARS } from './book.mjs';
 
 const KEYS = ['Ink', 'Ash', 'Slate'];
 // slot, frame w, frame h, frames, budget ('sprite' | 'tile' | 'font'), recolorable
@@ -63,6 +66,32 @@ const EXPECTED = [
   ['art.paddock.trainer', 16, 24, 2, 'sprite', false],
   ['art.paddock.ground', 16, 16, 1, 'tile', false],
   ['art.paddock.rail', 16, 16, 1, 'tile', false],
+  // The track (between races). 'person': up to 4 opaque colors a frame (DESIGN.md, People).
+  // 'still': parts of the still picture; the 8-colors-per-screen-cell rule is checked on the
+  // composed screen by scripts/art/hub_mock.mjs, since it depends on placement.
+  ['art.hub.stand.upper', 112, 72, 1, 'still', false],
+  ['art.hub.stand.facade', 112, 80, 1, 'still', false],
+  ['art.hub.sign.plate', 64, 12, 1, 'still', false],
+  ['art.hub.tote.board', 128, 56, 1, 'still', false],
+  ['art.hub.paddock.gate', 48, 36, 1, 'still', false],
+  ['art.hub.cart', 32, 24, 1, 'still', false],
+  ['art.hub.apron', 16, 16, 1, 'still', false],
+  ['art.hub.rail.program', 8, 7, 1, 'sprite', false],
+  ['art.ui.focus.corner', 8, 8, 2, 'sprite', false],
+  ['art.hub.regular', 16, 24, 2, 'person', false],
+  ['art.hub.clerk', 16, 24, 2, 'person', false],
+  ['art.hub.bettor.back', 16, 24, 1, 'person', false],
+  ['art.hub.fan.back', 16, 24, 2, 'person', false],
+  ['art.hub.bugler', 16, 24, 3, 'person', false],
+  ['art.hub.vendor', 16, 24, 2, 'person', false],
+  // The book and the window (docs/specs/book-and-window.md, 18 to 21). The font sheet is
+  // checked as one frame (Bone only); its cells, the cover's two inks and the booth's
+  // 8-colors-per-screen-cell rule are checked below.
+  ['font.ui.display', 192, 48, 1, 'font', false],
+  ['art.book.cover.art', 240, 128, 1, 'still', false],
+  ['art.window.booth', 256, 72, 1, 'still', false],
+  ['art.window.clerk', 32, 48, 2, 'person', false],
+  ['art.window.program', 16, 8, 1, 'sprite', false],
 ];
 // The 3x3 frame box sheet is 24x24, not a strip; its tiles are checked as one tile each.
 const SHEET_OVERRIDE = { 'art.ui.frame.box': [24, 24] };
@@ -129,6 +158,8 @@ for (const [slot, fw, fh, n, budget, recolor] of EXPECTED) {
     }
     const total = set.size + (transparent ? 1 : 0);
     if (budget === 'sprite' && set.size > 3) fail(`${slot} frame at x${cx}: ${set.size} opaque colors (${[...set]})`);
+    if (budget === 'person' && (set.size > 4 || !set.has('Ink'))) fail(`${slot} frame at x${cx}: ${set.size} opaque colors (${[...set]})`);
+    if (budget === 'still' && set.size > 8 && cw <= 16 && ch <= 16) fail(`${slot}: ${set.size} colors in a 16x16 part`);
     if (budget === 'tile' && total > 4) fail(`${slot} cell at ${cx},${cy}: ${total} colors with transparent`);
     if (budget === 'font' && (set.size !== 1 || !set.has('Bone'))) fail(`${slot}: font colors ${[...set]}`);
     if (recolor) for (const c of set) if (!KEYS.includes(c)) fail(`${slot}: ${c} is not a key color`);
@@ -295,6 +326,79 @@ for (const [slot, rows, key] of [
     const want = ch === '.' ? null : key[ch];
     if (img.name(x, y) !== want) fail(`${slot}: ${img.name(x, y)} at ${x},${y}, expected ${want}`);
   }));
+}
+
+// The book and the window.
+{
+  // Display font: the 41 glyphs of DISPLAY_CHARS in 12x16 cells, 16 a row. Each glyph inside
+  // columns 0-9 and rows 0-13 of its cell; every glyph but the space has ink; unused cells blank.
+  const img = images['font.ui.display'];
+  if (img) {
+    for (let i = 0; i < 48; i++) {
+      const cx = (i % 16) * 12;
+      const cy = Math.floor(i / 16) * 16;
+      let lit = 0;
+      for (let y = 0; y < 16; y++) for (let x = 0; x < 12; x++) {
+        if (img.name(cx + x, cy + y) === null) continue;
+        lit++;
+        if (i >= DISPLAY_CHARS.length || x > 9 || y > 13) fail(`font.ui.display: ink outside the glyph box in cell ${i} at ${x},${y}`);
+      }
+      if (i < DISPLAY_CHARS.length && DISPLAY_CHARS[i] !== ' ' && lit === 0) fail(`font.ui.display: glyph ${JSON.stringify(DISPLAY_CHARS[i])} is blank`);
+    }
+    if (DISPLAY_CHARS.length !== 41) fail(`font.ui.display: ${DISPLAY_CHARS.length} glyphs, expected 41`);
+  }
+  // Cover: Ink and Maroon only, paper transparent; the plate border's top line at py4 broken
+  // only where the crown crosses it (px24-47), the left line broken only by the brim (py14-18).
+  const cover = images['art.book.cover.art'];
+  if (cover) {
+    for (let y = 0; y < 128; y++) for (let x = 0; x < 240; x++) {
+      const c = cover.name(x, y);
+      if (c !== null && c !== 'Ink' && c !== 'Maroon') fail(`cover: ${c} at ${x},${y}`);
+    }
+    for (let x = 0; x < 240; x++) if ((x < 24 || x > 47) && cover.name(x, 4) !== 'Ink') fail(`cover: plate top line missing at ${x},4`);
+    for (let y = 0; y < 4; y++) for (let x = 0; x < 240; x++) if ((x < 24 || x > 47) && cover.name(x, y) !== null) fail(`cover: ink above the plate at ${x},${y}`);
+    for (let y = 4; y < 128; y++) if ((y <= 13 || y >= 19) && cover.name(0, y) !== 'Ink') fail(`cover: plate left line missing at 0,${y}`);
+  }
+  // Booth: fully opaque, and at most 8 colors in each 16x16 cell of the screen (it sits at
+  // y16, so its rows 0-15 are screen rows 16-31 and the cells line up).
+  const b = images['art.window.booth'];
+  if (b) {
+    for (let cy = 0; cy < 72; cy += 16) for (let cx = 0; cx < 256; cx += 16) {
+      const set = new Set();
+      for (let y = cy; y < Math.min(cy + 16, 72); y++) for (let x = cx; x < cx + 16; x++) {
+        const c = b.name(x, y);
+        if (c === null) fail(`booth: transparent at ${x},${y}`);
+        set.add(c);
+      }
+      if (set.size > 8) fail(`booth: screen cell x${cx} y${cy + 16} has ${set.size} colors`);
+    }
+  }
+  // Close-up clerk: Ink, Cocoa, Turf and Bone in each frame; rows 46-47 blank (the counter cuts
+  // him); the frames differ only in the stamp hand's box (x25-31, rows 32-37).
+  const ck = images['art.window.clerk'];
+  if (ck) {
+    for (let f = 0; f < 2; f++) {
+      const set = new Set();
+      for (let y = 0; y < 48; y++) for (let x = 0; x < 32; x++) {
+        const c = ck.name(f * 32 + x, y);
+        if (c === null) continue;
+        set.add(c);
+        if (y >= 46) fail(`window clerk frame ${f}: ink below the counter at ${x},${y}`);
+      }
+      if ([...set].sort().join() !== 'Bone,Cocoa,Ink,Turf') fail(`window clerk frame ${f}: colors ${[...set]}`);
+    }
+    for (let y = 0; y < 48; y++) for (let x = 0; x < 32; x++) {
+      if (ck.name(x, y) !== ck.name(32 + x, y) && !(x >= 25 && y >= 32 && y <= 37)) fail(`window clerk: frames differ at ${x},${y}, outside the stamp hand`);
+    }
+  }
+  // Program on the counter: Ink outline, Maroon band on inner rows 1-2, Parchment below.
+  const pg = images['art.window.program'];
+  if (pg) {
+    for (let y = 0; y < 8; y++) for (let x = 0; x < 16; x++) {
+      const want = x === 0 || x === 15 || y === 0 || y === 7 ? 'Ink' : y <= 2 ? 'Maroon' : 'Parchment';
+      if (pg.name(x, y) !== want) fail(`window program: ${pg.name(x, y)} at ${x},${y}, expected ${want}`);
+    }
+  }
 }
 
 // 3. No stray files.

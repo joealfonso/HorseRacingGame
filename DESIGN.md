@@ -10,11 +10,33 @@
 4. The race view shows silks from pattern and colors only. Freehand pixels in the 16x16 editor show in menus and results, not on the race sprite (see Silks).
 5. The 42-color palette below.
 
+Amended 2026-11-14 by art-director for the book and the window (spec docs/specs/book-and-window.md, Joseph: "the book should have a cover with a design, it should open to news and then races. clicking the window should bring up the betting ui"). Added: the cover and the news page to the program's pages, the cover's rules (two inks, the masthead, the picture), a display font for the masthead only, the window close-up, the tote ticket's place at the window. Changed: Maroon gets a fourth use on paper (the cover). The highlighter band is not drawn in the book, and the pencil tick also marks a run race's page. A dog-ear was proposed and rejected. No approved rule was loosened.
+
+Amended 2026-11-13 by art-director after the track mock. Changed under The track: the sky bands run to y63 (was y55), the rail rows follow the reused tiles (dirt from y96, near bar y118-120), the tote board's prices sit left-aligned right after their post digit (was right-aligned to the slot's end, which paired each price with the next post), the blank balcony band gets bunting and a shaded recess, the regular is drawn seated with a 14 px hat, the bettor moves 4 px left, and your spot at the rail gets a program draped over the bar (was empty). No approved rule was changed.
+
+Amended 2026-11-13 by art-director for the track screen (spec docs/specs/track-hub.md). Joseph: "make the betting like going to the track. have an 8 bit layout where you can navigate by using a menu or clicking around", then "8 or 16 bit. that general pixel style". Added the Track section, a 4 px focus corner, and the sky by race, which the race view follows too so the day never jumps between screens. On his second line, three approved lines are loosened:
+- Vision: "A warm Kentucky morning on an NES cartridge" now reads "on an old cartridge, 8-bit at heart and never past 16".
+- Screen and pixel grid: "A background tile uses at most 4 colors" now holds for scrolling scenes (the race view, and later the farm world). A still picture (the track) uses at most 8 colors in each 16x16 cell of the screen, and its parts may be drawn as whole images, not tiles.
+- People: "A person is one sprite with 3 opaque colors" now allows 4. The fourth is a second flat material (a hat, a prop), never a shade. Every 3-color person already drawn stays valid.
+Why: he asked for the general retro pixel look, not NES counts. On a still picture the 4-color tile limit costs bookkeeping where materials meet at tile edges, not looks, and people at 3 colors had to wear Ink hats. So I loosened the counts and kept every rule that makes the look. Unchanged whatever happens: the 42-color palette with nothing added, the 1x grid and integer scaling, no gradients and no alpha, two tones per material, the outline rules, horses and silks, the race view's tiles, the UI and fonts, the motion cap, and every banned look, including high-color modern indie pixel and casino looks.
+
 Amended 2026-11-12 by art-director after Joseph's note on charm: added the charm goal, the Charm section, the placeholder race rule, one Do not line and one banned look. No approved rule was removed or loosened.
 
 Amended 2026-11-12 by art-director with the M1 race-day answers below: edits to (guess) items and additions only. No approved rule was removed or loosened. Two answers touch approved lines (4 and 6) and are left for Joseph.
 
 Amended 2026-11-12 by art-director after the first art review (P0 batch). Changed: the stand-in saddlecloth box (7x9, so every number has fill above and below), the stand-in leg rule (legs at least as long as the barrel is deep, not longer, because the 32x24 frame cannot hold both), the edge marker (8x9, so it keeps a full Ink outline and gets a center row for its tip), the gate's end posts and outline spelled out, a stroke rule for the main font, the intake checklist file paths (slot path under public/assets/, scripts in scripts/art/), and the saddlecloth and furlong pole sources. One approved-era rule was loosened, the leg rule, and only for the P0 stand-in; the Horses line "long legs" is unchanged.
+
+Amended 2026-11-13 by art-director after the betting mock, which Joseph approved to build. Changed under Program pages, Betting additions:
+- Column heads now start at their columns, with "Stamina" printed as "Stam.".
+- The tote ticket's torn edge is now an irregular fixed pattern at y209, and the slip covers the y210 rule.
+- Money up on paper is now Turf, not Pine.
+- The End of day page now lists the day's card, race by race.
+The approved money rule is unchanged except for the color on paper, as stated in the betting amendment below.
+
+Amended 2026-11-13 by art-director for the betting screens (Joseph: "let's start with a simple game of betting on horses and save the rest").
+- Added under Program pages: the betting additions (the band's new meaning, the odds column, the printed tote ticket, money colors on paper, the End of day page, play money in the look), the tick's new place and meaning, the End of day rules, and 40 px stat bars for the betting program.
+- Added one banned look: casino and real-money looks.
+- Narrowed one approved rule: "Money up is Emerald" now reads "Pine on Parchment pages", because Emerald is too faint on paper. The plus and minus signs and Emerald on Navy are unchanged.
 
 Amended 2026-11-13 by art-director after the program pages mock, which Joseph approved to build. Changed in Program pages: Maroon is now the program's second ink, for titles, the style column and the Result's margin column (was the race name only); the highlighter band's extent rule and numbers per page (Card and Orders x16-250, Result row x5-250, no band on the trip heading); the paper cursor is the horseshoe in Gold and Auburn (was Yellow, with Gold as the fallback); staples dropped. No approved rule was changed.
 
@@ -50,7 +72,7 @@ Answers to section 12 of docs/specs/m1-race-day.md. Where this list and the spec
 
 ## Vision
 
-A warm Kentucky morning on an NES cartridge: big calm shapes, a small honest palette, and horses drawn like the athletes they are.
+A warm Kentucky morning on an old cartridge, 8-bit at heart and never past 16: big calm shapes, a small honest palette, and horses drawn like the athletes they are.
 
 Charm is a goal, not a garnish. Joseph, 2026-11-12: "8-bit type graphics remember. it should be charming". The horses stay athletes, so the charm comes from the world around them, the ceremony of race day, and the people and words (see Charm).
 
@@ -60,8 +82,9 @@ Charm is a goal, not a garnish. Joseph, 2026-11-12: "8-bit type graphics remembe
 - Phaser runs with `pixelArt: true` and `roundPixels: true`. The canvas is scaled with `image-rendering: pixelated`.
 - Tiles are 16x16. A screen is 16 by 15 tiles.
 - Characters are 16x24 (people) or 16x16 (small animals: barn cat, goat, dog). Horses have their own sizes below.
-- A sprite, or one layer of a layered sprite, uses at most 4 colors including transparent, so 3 opaque colors.
-- A background tile uses at most 4 colors.
+- A sprite, or one layer of a layered sprite, uses at most 4 colors including transparent, so 3 opaque colors. People are the exception: 4 opaque colors (see Overworld and menus). (Loosened 2026-11-13 on "8 or 16 bit. that general pixel style".)
+- A background tile in a scrolling scene (the race view, later the farm world) uses at most 4 colors.
+- A still picture (a screen that never scrolls, today only the track) uses at most 8 colors in each 16x16 cell of the screen grid (x and y multiples of 16), counting everything drawn in that cell except sprites and text. Its parts may be drawn as whole images, not tiles. Every material still gets two tones, so 8 means up to four materials meeting in a cell, never a longer ramp. (Loosened 2026-11-13 from "A background tile uses at most 4 colors", on the same line.)
 - Every pixel lands on the 1x grid. No sub-pixel positions, no smooth motion between pixels. Positions are rounded once from the camera value, so all layers round together and nothing shimmers.
 - No rotation and no non-integer scaling of any sprite. Horizontal flip is allowed.
 - No smooth gradients, no alpha blending, no translucent overlays. Alpha is 0 or 255.
@@ -105,7 +128,7 @@ No color outside this table goes in the build. Adding one is a DESIGN.md change.
 | S1 | Sky | #5E9FE6 | day sky, water, light blue silks |
 | S2 | Dusk | #EC9060 | evening sky band |
 | R0 | Red | #D8302C | silks, warnings, money down |
-| R1 | Maroon | #842234 | silks, barn trim |
+| R1 | Maroon | #842234 | silks, barn trim, the cover's masthead and picture |
 | R2 | Orange | #F2862A | silks |
 | R3 | Gold | #DEA630 | silks, trophies, roses accent |
 | R4 | Yellow | #F8DA3A | silks, cursor, your-horse marker |
@@ -301,15 +324,16 @@ Layout. The M1 pixel placement is in docs/specs/m1-race-day.md 4.3, and the desi
 ## Overworld and menus
 
 - Top-down 16x16 tile world. People are 16x24 with a slightly big head. That is where the humor lives.
-- A person is one sprite with 3 opaque colors: Ink (outline, hair, hat or dark clothes), a skin tone, and one clothing color. Each material is one flat tone. There is no slot for a shade, so where two parts of one color meet (an arm over a coat), a 1 px Ink line parts them. This is the one exception to "interior edges use the shade color", and it holds for people only. Shading for people waits for layered people, as with horses.
+- A person is one sprite with up to 4 opaque colors: Ink (outline, hair, hat or dark clothes), a skin tone, one clothing color, and a fourth for a second material, such as a hat, an apron or the prop that says what they do. (Was 3. Loosened 2026-11-13 on "8 or 16 bit. that general pixel style".) The fourth is never a shade. Each material is one flat tone. There is no slot for a shade, so where two parts of one color meet (an arm over a coat), a 1 px Ink line parts them. This is the one exception to "interior edges use the shade color", and it holds for people only. Shading for people waits for layered people, as with horses.
 - Faces are round and friendly. In profile, the face's front edge curves out and back over 4 to 5 rows, and the nose is a 1 px bump with the same edge 1 px behind it above and below. No hooked or pointed nose, no edge-line mouth that reads as the underside of a nose, no big moustache. Humor comes from props, poses and words, not from a caricatured face.
 - Scale beside race-size horses: a person stands 22 px (rows 2-23 of the 16x24 frame), so the shoulders land near the horse's withers and the big head rides above them.
+- A close-up (today only the window) draws its person fresh at 32x48, with the same four colors and face rule. Never scaled from a 16x24 sprite.
 - Kentucky plank fences are Ink or Bone. Barns use Ink, Bone, Maroon trim, Pine roofs. (guess)
 - Night (foaling at 2 a.m.) is a remap toward Navy, Coal and Slate.
 
 ## HUD, UI frame and font
 
-- Navy means speech and the world, and paper means print. Text boxes for speech and the world's HUD (the dialog box, the race HUD and announcer bar, the photo panel, the pause box) are built from 8x8 frame tiles: Bone outer line, Ash inner line, Navy fill. Corners are their own tiles. Pages a fan would read in print (the Card, the top of Orders, the Result) are Parchment pages with no frame tiles (see Program pages). (Narrowed 2026-11-13 from "Text boxes are built from 8x8 frame tiles", on Joseph's direction "It should all be like a real horse racing book".)
+- Navy means speech and the world, and paper means print. Text boxes for speech and the world's HUD (the dialog box, the race HUD and announcer bar, the photo panel, the pause box) are built from 8x8 frame tiles: Bone outer line, Ash inner line, Navy fill. Corners are their own tiles. Pages a fan would read in print (the Card, the top of Orders, the Result) are Parchment pages with no frame tiles (see Program pages). One printed object may lie on a Navy box: the tote ticket at the window, a thing handed over in the world, not a page. The box's frame lines stay whole around it. (Narrowed 2026-11-13 from "Text boxes are built from 8x8 frame tiles", on Joseph's direction "It should all be like a real horse racing book".)
 - Dialog box: full width, 3 lines of text, bottom of screen.
 - Announcer bar (race view): y0-15, Navy fill y0-14 and a 1 px Ash line at y15. It is a HUD strip, not a text box, so it has no frame tiles (16 px cannot hold frame tiles and a line of text). One line of Bone text, cell rows y4-11, from x4.
 - Cursor: a small Yellow horseshoe.
@@ -317,30 +341,170 @@ Layout. The M1 pixel placement is in docs/specs/m1-race-day.md 4.3, and the desi
 - When the small font shares a line with the main font, its glyph rows 0-4 sit on the main font's rows 2-6, so both share the baseline.
 - Main font (`font.ui.main`): original, drawn by the artist. Pixel bitmap, 8x8 cell, monospaced at 8 px advance, so numerals are tabular and odds and times line up. Glyphs: printable ASCII 32 to 126, all 95. Each glyph uses columns 0-6, column 7 is blank. Capitals and digits use rows 0-6. Descenders may use row 7. A bold cartridge cut: vertical stems 2 px, horizontal strokes 1 px, most capitals, digits and lowercase 6 px wide (columns 0-5), wide letters (M, W, m, w) up to 7. Drawn fresh, not traced from any game's font.
 - Small font (`font.ui.small`): original, drawn by the artist. 4x6 cell, monospaced at 4 px advance, each glyph 3x5 in columns 0-2 and rows 0-4. Glyphs: `0 1 2 3 4 5 6 7 8 9 : . / # -` and space, 16 in all. No letters. For saddlecloth numbers (strip, boxes, edge markers, the race sprite), splits, the seed, the mini map and the tote board.
+- Display font (`font.ui.display`): original, drawn by the artist, for the cover's masthead only. 12x16 cell, monospaced at 12 px advance, each glyph 10x14 in columns 0-9 and rows 0-13. Capitals only, code upper-cases. Glyphs: A-Z, 0-9, space, & ' . -, 41 in all. Stems and horizontal strokes 2 px, so the letters knock cleanly out of Maroon. Drawn fresh, not traced from any track's lettering or any game's font. It is BitmapText from data, never baked into an image, and it is drawn at 1x like everything else.
 - All text uses Phaser BitmapText. No system fonts, no anti-aliased canvas text.
 - No text baked into images, except the game logo. Signs, banners and the tote board take text from data, so it can change and is never gibberish.
-- Money up is Emerald with a plus sign, money down is Red with a minus sign. Color is never the only signal.
+- Money up is Emerald with a plus sign, money down is Red with a minus sign. Color is never the only signal. On Parchment pages money up is Turf instead of Emerald, because Emerald is too faint on paper (see Program pages, Betting additions).
 - A horse name is 18 characters max, which is 144px in the main font.
 
 ## Program pages
 
-The Card, the top of Orders (y0-143) and the Result are pages of one printed race program (Joseph, 2026-11-13: "It should all be like a real horse racing book"). Layout is the designer's (spec 4.1, 4.2, 4.6). These are the rules it is drawn by.
+The cover, the news page, the Card (the book's race pages), the top of Orders (y0-143), the Result and the End of day page are pages of one printed race program (Joseph, 2026-11-13: "It should all be like a real horse racing book"). Layout is the designer's (spec 4.1, 4.2, 4.6). These are the rules it is drawn by.
 
 - **Paper.** Full screen, flat Parchment, x0-255. No border, no texture, no shadow. The screen edge is the paper's edge, and the Ink letterbox around the canvas is the desk. On Orders the paper ends with a 1 px Ink line at y143, its bottom edge, and the paddock strip (the world) starts at y144. Layout keeps 8 px margins at the sides and 4 px at the top and bottom.
-- **Type.** Ink is the body color for both fonts. Maroon is the program's second ink, as on a real two-color program, and it has exactly three uses. First, titles: the race name, and the trip heading (your horse's name) on the Result. Second, the style column on the Card and on the Orders entry. Third, the margin column on the Result. Both columns are right-aligned to end at x247. A second ink is what sets a column apart when the name can run to 1 px of a word space from it (an 18-character name and "Stalker" leave 8 px). Alignment down all eight rows is the second cue, so color is not the only one. Never Yellow text on paper, which vanishes. "Yours" on paper is the highlighter band plus the pencil tick, and on the Result the arrow marker drawn in Ink.
-- **Rules.** 1 px Ink, full width x8-247, only where the layout gives them (Card y44, y56, y210; Orders y55; Result y103, y175). No rules between entries: the saddlecloth blocks and the 2 px gaps carry the rhythm. Column heads sit at y47 so the "p" descender in "Speed" clears the y56 rule.
+- **Type.** Ink is the body color for both fonts. Maroon is the program's second ink, as on a real two-color program, and it has exactly four uses. First, titles: the race name, and the trip heading (your horse's name) on the Result. Second, the style column on the Card and on the Orders entry. Third, the margin column on the Result. Fourth, the cover: the masthead block with its Parchment keyline and knock-out type, and the cover picture's second ink. News headlines are titles. Both columns are right-aligned to end at x247. A second ink is what sets a column apart when the name can run to 1 px of a word space from it (an 18-character name and "Stalker" leave 8 px). Alignment down all eight rows is the second cue, so color is not the only one. Never Yellow text on paper, which vanishes. "Yours" on paper is the highlighter band plus the pencil tick, and on the Result the arrow marker drawn in Ink.
+- **Rules.** 1 px Ink, full width x8-247, only where the layout gives them (Card y44, y56, y210; Orders y55; Result y103, y175; End of day y24, y104). No rules between entries: the saddlecloth blocks and the 2 px gaps carry the rhythm. Column heads sit at y47 so the "p" descender in "Speed" clears the y56 rule.
 - **Saddlecloth blocks on paper.** A 1 px Ink border, the saddlecloth fill inside, and the number in its number color (Jockeys and silks table), centered on its ink. Program blocks are 16x17 with the main font. Result boxes are 10x10 with the small font. The Ink border is what lets 2 (Bone) read on Parchment and 4 (Yellow) read on the Yellow band. 8 stays solid Pink with a number and is never a 2x2 checker, so it cannot be mistaken for a placeholder.
+- **Stat bars (betting program, 2026-11-13).** The track is 40 px, not 50, so the odds fit at the end of line 2: speed x50-89, stamina x108-147, kick x166-205. Same track, end stop and fill as below. The column heads start at their stat numbers (see Column heads under Betting additions). The shipped card draws 23 to 34 px (11 px apart, 33 px at 3x). The stable's wider spread draws more. The 50 px text below stays as the form these are built from.
 - **Stat bars.** Each is a 50 px track: a 1 px Ash line on the bar's middle row (+12) with a 1x3 Ash end stop at the track's last column (rows +11 to +13). The fill is solid Ink, 3 px tall (+11 to +13), from the track's first column, covering the track where it runs. Square ends, no cap, no gradient, no color for high or low. In grayscale it is three clear values: Ink fill, Ash track, Parchment paper. Example: a 28 px bar is 28 px of Ink and then 22 px of thin Ash to the stop. A 42 px bar leaves only 8 px of Ash. On screen at 3x the 14 px difference is 42 px, plain at a glance.
-- **Highlighter band.** Yellow, from 1 row above the marked line or entry to 1 row below. Top and bottom edges are straight. Both ends are cut like a chisel-tip highlighter stroke, slanting the same way, in four steps of 1 px. Rows split into four groups as evenly as possible, with extra rows going to the top groups. The left end's first Yellow column steps 3, 2, 1, 0 px in from the band's start, top group to bottom. The right end's last column steps 0, 1, 2, 3 px in from the band's end. The rule that sets the extent: no chisel step ever sits under text, a block, the cursor or the tick. The innermost end column lies clear of everything it marks. A highlighter stroke is a hand mark and may run into the margin. Code draws it from these numbers in data.
+- **Highlighter band.** Yellow, from 1 row above the marked line or entry to 1 row below. Top and bottom edges are straight. Both ends are cut like a chisel-tip highlighter stroke, slanting the same way, in four steps of 1 px. Rows split into four groups as evenly as possible, with extra rows going to the top groups. The left end's first Yellow column steps 3, 2, 1, 0 px in from the band's start, top group to bottom. The right end's last column steps 0, 1, 2, 3 px in from the band's end. The rule that sets the extent: no chisel step ever sits under text, a block, the cursor or the tick. The innermost end column lies clear of everything it marks. A highlighter stroke is a hand mark and may run into the margin. Code draws it from these numbers in data. It is not drawn in the book. At the window, the horse you are betting on is shown by the yours marker on its row.
   - Card entry and the Orders entry: x16-250, 19 rows. Left end first column x19 (rows 0-4), x18 (5-9), x17 (10-14), x16 (15-18). Right end last column x250, x249, x248, x247.
   - Result, your order row only: x5-250, 10 rows (the row's 8 plus 1 above and 1 below). Left x8 (rows 0-2), x7 (3-5), x6 (6-7), x5 (8-9). Right x250, x249, x248, x247. The Ink arrow marker at x8-14 sits on the band.
   - The Result's trip heading gets no band. It is your horse's section already, so a band there only repeats itself. It is a title, in Maroon. Ink text, small numbers, bars and Ink-bordered blocks all read on it. Yellow and Parchment are almost the same value in grayscale, so the band is the color signal and the tick is the shape signal.
 - **Swipe.** On a pick, the old band and tick go. Frame 1 is the band from x16 to x132, with a chisel end at the right. Frame 2 is the whole band with the tick. Frame 1 shows for 0.1 s, frame 2 holds for 0.25 s, then the cut. These are one-shots, not a loop. (Timings in data, guess.)
 - **Pencil tick (`art.ui.mark.pick`).** 8x8, Slate only, no outline: graphite, so it reads as a hand mark and not as print. A short stroke down to the right, then a long stroke up to the right, 2 px wide where it turns.
+  - Betting (2026-11-13): the tick means "bet placed this race". It sits in the entry's margin cell, x8-15, rows +5 to +12, on paper, left of the band. It shares that cell with the cursor but never at the same time. When the ticket opens, the cursor moves to the footer. The tick draws only on Enter, in the 0.6 s before the cut. If code ever finds both in one cell, the tick wins and the cursor is not drawn. In the book, the tick is also drawn, and kept, on a run race's page beside the horse you bet on.
+- **The cover (2026-11-14).** Parchment, Ink and Maroon only, nothing else, no dog-ear. A Maroon masthead block x8-247, y8-43 with a 1 px Parchment keyline (x10-245, y10-41), the track's name from data in the display font, knocked out, and "Race Day Program" in the main font under it. The picture (`art.book.cover.art`, 240x128) is a two-ink illustration: the regular seated in profile at the left, facing the race, her hat breaking the picture's top border and meeting its left edge, and three horses in the stretch past her shoulder. It is print, not the world, so the people scale does not hold on it, but it is drawn at 1x with nothing scaled. Where Ink lies over Maroon in the picture, a 1 px paper line parts them, as a two-ink knockout, so they read apart in grayscale. No text or number in the picture (plain saddlecloths), no price, "$", "Official", logo, tote board or real venue's shape. The cover is the same picture every day. The day changes in type only.
+  - The real asset must meet two readability fixes (settled 2026-11-14 from the mock; if either makes the silhouette worse, the asset is a REVISE, and it never goes back to a back view). Both follow the silhouette test: if the pose does not read at once, redraw it.
+  - Round head, room for the face. The head is 16 rows (py19-34, chin at py34), the neck py35-37, the shoulders start at py38, and the torso keeps its bottom. The curl hooks sit on the back third of the head only (about px27-36), behind a clean scalloped hairline. That leaves a plain paper face at least 11 px wide (about px37-47) with the eye at px44 and the nose bump at px48. Job: the face is where a person is read, and hatching over it reads as texture.
+  - Round back. The torso's top-back corner steps in by 3, 2 and 1 px over its first three rows, so the shoulder is a curve. The back edge is pushed out 1 px for torso rows 8 to 20, a slight stoop. Job: an older lady sitting forward to watch a finish, not a block on a bench. No other change to the torso, arm, lap, bench or shins.
+
+**Betting additions (2026-11-13).** Joseph: "let's start with a simple game of betting on horses and save the rest". The betting screens are drawn on these program pages (spec docs/specs/betting-screens.md).
+
+- **Highlighter band** now means "the horse you are betting on, this race", from the moment the ticket opens until the result. The look is unchanged. Esc removes it at once with no swipe back. On the Result it marks your order row only when you bet.
+- **Odds column.** Main font, Ink, right-aligned to x247 on the entry's second line. Its cell top is at +8, so the capitals sit on rows +8 to +14, on the small numbers' baseline. Maroon style word above it, Ink price below: two facts, not one block. The gap to the style word above is 1 px and to the next entry 4 px, so the price groups with its own horse. Head "Odds" in Ink, right-aligned to x247 at y47. No favorite treatment of any kind: no color, mark, weight, box or sort. The lowest price says it. A price not yet posted shows a single main-font "-" right-aligned to x247 (x240-247), the way a tote board shows an empty price. Prices change by cutting to the new figure, never by rolling digits.
+- **Column heads (betting program, settled from the mock).** Each head starts at its column's left edge: "Speed" x40-79, "Stam." x98-137, "Kick" x156-187, and "Odds" right-aligned to x247 (x216-247). All in the main font, Ink, at y47. "Stamina" is shortened to "Stam.", with a period, the way print abbreviates, because the 58 px stat pitch cannot hold a 56 px word and a gap. The gaps between heads are then 18, 18 and 28 px, more than two word spaces, so the heads read as four heads, not one sentence. Each stat number now sits under its head.
+- **Printed tote ticket.** For the 0.6 s bet beat, the footer becomes a slip, x8-247 by y209-235. It covers the y210 rule, which is not drawn while the slip shows.
+  - Torn top edge, irregular, from a fixed 24-column pattern. For each column x in 8-247, let o = the value at index (x - 8) mod 24 in 0,0,1,2,1,1,0,1,2,2,1,0,0,0,1,1,2,1,0,1,1,2,1,0. Ink at y209 + o, Parchment above it, Bone below it. Neighbouring columns differ by at most 1, so the edge is one unbroken jagged line. Both ends have o = 0, so the corners at x8 and x247 are square at y209.
+  - The left border (x8) and right border (x247) are Ink from y209 to y235. The bottom (y235) is Ink. The fill is Bone.
+  - Two lines in the main font, Ink: line 1 at x16, cell top y215; line 2 at x16, cell top y225.
+  - (Was: even 2 px teeth on y212-213 under the y210 rule. In the mock that read as a dotted double line.)
+  - No serial number, no barcode, no logo, no perforation dots.
+  - Job of the torn edge: the ticket was just torn off the tote machine. That is the beat's one touch.
+  - At the window (2026-11-14) it draws at the same pixels on the Navy box. Above the torn edge the box shows, not Parchment. Its rows y232-235 cover only the bottom frame tiles' Navy fill, so the frame lines stay whole.
+- **Bankroll.** Ink everywhere on paper. It changes by cutting to the new figure, never by counting up or down.
+- **Money colors on paper.** The End of day "Change" figure is the only colored money on paper. Up is Turf with a plus sign, down is Red with a minus sign, and even is the word "Even" in Ink. Turf replaces Emerald on paper because Emerald on Parchment is about 2.3 to 1 and too faint for a key figure. Pine was tried in the mock and read as nearly black beside the Ink rows. Turf is about 3.6 to 1, the same weight as Red (about 3.5 to 1), and reads plainly green, as Red reads plainly red. (Contrast computed by me from the hex values. Turf is chosen from the mock's evidence that Red at that weight reads clearly.) The sign is the second signal and carries it in grayscale. Navy screens keep Emerald. Turf and Red count as one more ink for one figure on one page, not a new body color.
+- **End of day, the back page.** Same paper, rules at y24 and y104.
+  - Title ("That's the card", the only title: Joseph dropped "Tapped out" on 2026-11-14) in Maroon, as a title, never Red.
+  - "Day" in the main font Ink and "#12345" in the small font Ink, right-aligned to x247 on the title's baseline.
+  - Labels at x8 and values right-aligned to x247, all main font Ink, except the Change figure above.
+  - The day's line in Ink at y112. The cursor on "New day" at y220.
+  - The day's card, as a program's back page lists it (settled from the mock: the empty half read as unfinished). Its job: the day's story, race by race, in print.
+    - A 1 px Ink rule at y124.
+    - One row per race actually run, cell tops at y128 + 11 * i (i = 0 to 7, last row y205).
+    - "Race {r}" at x8, main font Ink.
+    - Your horse's saddlecloth box, 10x10 with an Ink border and the small-font number (the Result's box), at x64-73, rows y-1 to y+8 of the row.
+    - Its odds at post from x80, main font Ink, at most 4 characters.
+    - The ticket, right-aligned to x247, main font Ink: "Paid $70.00" (at most "Paid $20,620.00", 15 characters, from x128) or "Lost $10".
+    - On a pass: no box, no odds, and "Passed" at x64 in Ink.
+    - All Ink: no Turf, no Red, no band, no tick, no total. Money color stays on the one Change figure.
+    - A day cut short lists only the races run, so it never shows races you were shut out of. (It cannot happen under the shipped betting values. The rules keep it as a guard.)
+  - No other mark: no stamp, no score graphic.
+- **Play money in the look.** No currency icon. The cartridge program look is the signal. No image of real money or gambling hardware anywhere: no banknotes, coins, chips, cards, cash registers, slot-machine reels or casino lights. No celebration effect tied to money: no coin shower, flash, sparkle or counting sound on a win. A win is shown by the race (the winner beat) and a plain paid line.
 - **Cursor.** On paper, the same `art.ui.cursor.horseshoe` pixels recolored by code: Yellow becomes Gold and Gold becomes Auburn, with the Ink outline kept. The mock showed Yellow on Parchment vanishing into a bare Ink arch. A Gold shoe with an Auburn shade reads as a brass shoe on paper. On Navy screens the cursor stays Yellow and Gold. (Settled from the mock, 2026-11-13.)
 - **Arrow marker on paper.** `art.ui.marker.yours` with Yellow and Gold swapped to Ink by code, so it prints solid Ink.
 - **No staples, no extra touch.** Staples were tried in the mock and dropped: at x2-3 beside the text they read as a stray mark or a text caret. The page's charm is the second ink, the highlighter band and tick, the blurb, and the brass cursor. The Ink letterbox already reads as the desk under the page. No coffee ring and no circled marks, which a fan reads as a tip.
 - **Nothing on a page animates** except the cursor bob and the swipe. No paper texture, fold line, drop shadow, rounded box or thin vector-looking line. Everything is whole pixels in the master palette, so the page reads as a cartridge's idea of print, not as a web form.
+
+## The track (between races)
+
+One still picture shown between races (Joseph, 2026-11-13: "make the betting like going to the track"). Layout, hit boxes and focus boxes are the designer's (docs/specs/track-hub.md section 4). These are the rules it is drawn by. All boxes at 1x, inclusive.
+
+**Composition.** We stand on the apron. Left, nearest: the grandstand, seats above and the betting windows below. Right: a still slice of the race view's own world, at the race view's own rows where it can be (infield y56-87, far rail, dirt, near rail), with the tote board standing in the infield, and the apron in front with the fans, the paddock gate and the snack cart. The right half reuses the race view's art, so the track and the race read as one place. Depth comes from overlap and from ground lines lower on the screen being nearer, never from scaling a sprite: back to front, sky, infield and board, track and rails, the fans (feet y131), the gate and cart (feet y167 to y169), and the stand on the left.
+
+**Scale.** People stand 22 px, as everywhere. A standing person's waist meets the window counter. Clerks sit on high stools, so their heads clear a bettor's.
+
+**Sky (with the sky by race).** No far hills on this screen: behind the board they would show only as 12 px and 4 px slivers. Sky bands fill y16-63, behind the stand and the board, so the infield tile's open rows (y56-63) show sky. (Was y16-55. The mock showed those rows need a fill.) The only sky you see is y16-23 across the screen, y24-31 above the board, and the gap x112-123. The bands change by race, by remap, never an overlay. The race view uses the same table on its own rows (y16-47), so race r's sky matches the track before it. The table lives in data (`skyByRace`).
+
+| races | Sky | Sky Pale | Dusk | what you see above the board (y24-31) |
+|---|---|---|---|---|
+| 1 to 6 | y16-39 | y40-63 | none | Sky |
+| 7 | y16-23 | y24-39 | y40-63 | Sky Pale |
+| 8 | y16-23 | none | y24-63 | Dusk |
+
+Accepted from the mock: the race 8 Dusk against the Pine roof and the Slate board frame.
+
+Job: how far through the card you are, at a glance. Only the sky changes. The ground keeps its day colors.
+
+**The stand, upper (x0-111, y24-95).**
+
+| rows | part | colors |
+|---|---|---|
+| y24-25 | roof edge, lit top | Turf |
+| y26-31 | roof edge | Pine |
+| y32-47 | shade under the roof, with the race view's crowd strip on it, tile tops at y32, the same flip rule and phase rule | Coal fill; crowd Bone, Sky, Tan |
+| y48-61 | front row seat backs. 1 px Slate seat dividers at x15, x31, x47, x79, x95, none behind the regular (she has two seats' room, for the hat) | Ash |
+| y62-63 | the front bench, which she sits on | Dirt Shade y62, Mud y63 |
+| y64-71 | under the bench | Slate |
+| y72-73 | balcony edge | Bone |
+| y74-83 | balcony front, with race-day bunting: a 1 px Slate cord on y74, and from it a pennant every 8 px (x4, x12 ... x100), each a 5 px wide, 5 row triangle (rows of 5, 3, 3, 1, 1 px, centered), colors in the repeating order Royal, Gold, Red, no two neighbors alike | Mist; Slate, Royal, Gold, Red |
+| y84-95 | the recessed wall under the balcony, in its shadow | Ash |
+
+No roof posts: the roof reads as an overhang on the shade. (Was Mist from y74 to y95. In the mock that band read blank. The bunting's job: it is race day. The Ash recess's job: the balcony overhangs the windows, so the trim and plate sit under it. Pennants are plain triangles, no emblem, per the flag rule.) The crowd's 3x6 figures beside the 22 px regular is a jump in scale on purpose: the crowd is texture in the deep shade under the roof, the regular sits in the sunlit front row. The Coal band is what makes that read as depth. The roof edge at y24 is the only edge the stand makes against the sky.
+
+**The stand, windows level (x0-111, y96-175).**
+
+| rows and columns | part | colors |
+|---|---|---|
+| y96-99 | trim band | Maroon |
+| wall: y100-115, between and beside the windows, y144-151 | painted wall. Ash on y144, the shadow under the counter lip | Mist |
+| x24-87, y100-111 | sign plate (below) | |
+| x8-31, x44-67, x80-103, y116-139 | three window openings. 1 px Maroon frame on the top and sides. Inside: a lamp-lit booth, Dirt on the two rows under the frame (y117-118, shadow of the lintel), Hay below | Maroon, Dirt, Hay |
+| x10-15 y134-139 and x82-87 y134-139 | a tote machine on the counter in windows 1 and 3: a 6x6 Slate box, Ash top row, a 2x2 Bone ticket tongue at its top center (y132-133). None in window 2, which the bettor stands at | Slate, Ash, Bone |
+| x4-107, y140-143 | the wood counter | Dirt Shade y140, Mud y141-143 |
+| y152 down | the ground line under the stand. Floor y152-175 is the apron tile | |
+
+The spec's "floor y156-175" is y152-175 here, so a standing bettor's waist meets the counter.
+
+**Sign plate (`art.hub.sign.plate`, x24-87, y100-111).** Turf on the top row (y100), Pine below. No border, no rivets, no bulbs. "Windows" in the main font, Bone, from data, cell top y102. Bone on Pine is the strongest contrast on the stand, so the word reads first on the left half.
+
+**The tote board (`art.hub.tote.board`, x124-251, y32-87).** Background art, so no outline.
+- Frame 2 px Slate (x124-125, x250-251, y32-33, y70-71), with the top row y32 in Ash, its lit edge.
+- Face x126-249, y34-69, Ink: the field of unlit bulbs.
+- Legs x140-147 and x228-235, y72-87, Slate with the right two columns Coal. The legs standing in the infield are what make it a tote board and not a sportsbook screen. Keep them.
+- Text from data, never baked in. Header "Race {r}" main font, Bone, from x132, cell top y36. Post digits small font, Orange. Odds small font, Bone. A pending price is a Bone "-". In grayscale Orange and Bone sit about 90 apart (my luma figures from the hex values).
+- Columns (settled from the mock, which showed right-aligned prices pairing with the next post: "5-2 2"). Column j (0 to 3): the post digit's cell at x132 + 30j, the price left-aligned from x138 + 30j, up to 4 characters (last glyph column x152 + 30j). Inside a pair the gap is 3 px (digit glyph x132-134, price from x138); between pairs it is at least 9 px. A pending "-" sits at x138 + 30j, right after its digit. The 3 px gap is three times the space inside a price, and the color change is the second cue, so "1 5-2" never reads "15-2". The block runs x132-242, 6 px from the face on the left and 7 on the right. (Was: digit at x130 + 30j, price right-aligned to x155 + 30j.) Each text color must come out exactly at its palette hex, as Ink and Maroon do on paper, never by tinting Bone.
+- No favorite treatment, no color by price, no blinking, no bulb chase, no dead-bulb gag in the art (the "two out" line is a joke in words only). Prices post by one cut.
+
+**The right half (x112-255).**
+- Sky to y55. The infield tile at y56-87, its landmark half placed so the flag's 8x8 frame lands at x115-122, y59-66, in the gap between the stand and the board, 1 px clear of the board. The stand covers the rest of that tile. Between the board's legs, the infield's repeating slice.
+- The far rail tile at y88-95, Bone bar y88-89 and its own Grass on y92-95, then fast dirt y96-117, then the near rail tile from y118, Bone bar y118-120, cut at y121. All reused as drawn. (Was dirt from y90 and a bar at y118-121. The mock followed the tiles, and the tiles win.)
+- Apron (`art.hub.apron`) from y122 down, and under the stand from y152: Ash, with a fixed sparse Slate fleck for concrete. No slab lines: they would cross faces.
+- Your spot at the rail (x176-215): no person, and one thing. A program draped over the rail bar saves the spot for you: an 8x7 sprite at x192-199, y115-121, Ink outline, Parchment pages (the program pages' own paper), a 1 px Ash fold line down its middle column, hanging 3 rows above the bar and over its front. Job: the spot is yours, saved, so the rail corners frame something. (Was "nothing goes in it". In the mock the corners framed bare dirt and read as a stray bracket.)
+
+**The paddock gate (`art.hub.paddock.gate`, x112-159, y140-175).**
+- A head-high hedge, x112-123 and x148-159, y148-169: Turf, with Pine on the lower and right sides.
+- A Bone gateway: posts x124-125 and x146-147, y144-169, Mist on each post's right column; a crossbar x124-147, y144-145, Mist on y145.
+- Through the gateway, x126-145, y146-169: the paddock, as on Orders, a Turf far band y146-159 and Grass y160-169. The band edge sits at y160, below the bugler's face.
+- The bugler stands in the gateway, frame x128-143, y146-169 (2 px above the spec's wireframe, so the focus corners clear his feet). If the gate becomes a door, it is already a doorway and nothing moves.
+
+**The snack cart (`art.hub.cart`, x184-215, y144-167).** Still-picture art, so no outline and up to 8 colors a cell. A Bone cart with Mist on its shaded side, a Red and Bone awning in 4 px stripes with a Maroon underside row, a Sky Pale glass jar of Hay lemonade, a Dirt Shade basket of peanuts, two Ink spoked wheels with Slate hubs on the ground line y167. No sign, no price, no register, no bell, no coins. Job of each part: the awning shades the vendor, the jar and basket are what the lines talk about, the wheels say it rolls.
+
+**People.** Each wears or holds one thing that says what they do. Faces round and friendly, by the face rule. Humor from props and poses, never a caricature.
+
+| who | frame | colors | look | idle (2 frames) |
+|---|---|---|---|---|
+| the regular | x56-71, y48-71, seated on the bench | Ink, Umber, Purple, Bone | An older lady in her own two-seat space. Seated, not standing: hips on the bench (frame rows 14-15, y62-63), the lap a horizontal Purple run of at least 5 px forward over the bench, shins straight down in front of it against the Slate (rows 16-22), shoes on row 23. The hat is the widest thing on her: brim 14 px (frame columns 1-14), 2 rows thick, crown 8 px wide (columns 4-11), rows as below, the 2x2 Bone flower on the crown's front. Brim at least 4 px wider than her shoulders on each side. (Settled from the mock, where she stood on the bench and the hat was no wider than her.) Rows, settled at intake 2026-11-14 so she has a body: crown Ink top on row 1 and Purple on row 2 (flower x10-11, rows 2-3); brim top outline row 3, brim Purple rows 4-5, Ink underside row 6; face rows 7-9; torso rows 10-13 (shoulders, the program hand, waist); lap row 14. The intake draft spent rows 1-11 on hat and head and left a 2-row torso, so at 3x she read as a head on a post. Purple dress, Bone curls under the brim, a Bone program in hand, sitting on a Bone cushion. The hat is the joke: it is the biggest hat in the stand, not a big head | fans herself with the program |
+| clerks (3, one art, skin recolored) | x16-31, x52-67, x88-103, frame y120-143, art in rows 2-19 so the counter cuts them at the waist | Ink, skin (Peach, Cocoa, Tan by window), Turf, Bone | Track staff: a Turf jacket, Bone collar, Ink hair, three-quarter view facing left, a Bone ticket in hand. Not a bank teller or a dealer: no vest and tie, no eyeshade or visor | stamps a ticket, the hand coming down on the counter |
+| the bettor | x36-51, y128-151, back to us, at window 2 | Ink, Tan, Auburn, Bone | An old-timer: Ink flat cap, Auburn jacket, a rolled Bone program in his back pocket, his right elbow on the counter at x48-51. Clerk 2 is up and to his right, and his hands on the counter from x52 stay in view. (Was x40-55, which covered clerk 2's hands in the mock.) | none, 1 frame |
+| fans (one art, 3 recolors) | A x124-139, B x140-155 (flipped), C x228-243, y108-131, backs to us | Ink, skin, jacket, Bone. A Tan and Royal, B Peach and Orange, C Cocoa and Emerald | Standing at the rail, a Bone program held up beside the head. The near rail crosses them at the shoulders (rows 10-13), never at the head | turns a page |
+| the bugler | x128-143, y146-169, in the gateway | Ink, Peach, Red, Gold | A scarlet coat with two Gold buttons, Ink cap, Ink trousers and boots, a long straight Gold horn held at his side. One figure for the whole game: `art.hub.bugler` holds 3 frames (rest, polish, horn raised), and the race view's call to the post uses frame 3. The track uses frames 1 and 2 only (accepted 2026-11-14) | polishes the horn with his sleeve |
+| the vendor | x216-231, y144-167, right of the cart | Ink, Umber, Sky, Bone | A tall Bone paper hat, Bone apron over a Sky shirt, an Ink ladle reaching into the jar | stirs the lemonade |
+
+**Not a casino, not a bank.** The windows read as a track's because of what is there: open windows with a wood counter and nothing between clerk and bettor; warm lamp-lit booths under the seats; a plain Pine sign with one word; the tote machine with a ticket tongue, the one object a bank or casino does not have; clerks in the track's Turf; a bettor holding a program, not a wallet. Banned on this screen, on top of the banned looks: bars, grilles, brass cages, glass with a slot, marble, velvet ropes, neon, bulb-lit marquees, chandeliers, red carpet, money trays, a "$" anywhere in the picture.
+
+**The windows** open the window screen (spec docs/specs/book-and-window.md section 7). No pixel of this picture changes.
+
+**Focus corners (`art.ui.focus.corner`, 8x8, 2 frames: top, bottom).** An L, 4 px thick, filling the 8x8: Ink outer edge (row 0 and column 0), Yellow 2 px (rows 1-2, x1-6, and columns 1-2, y1-6), Ink inner edge (row 3, x3-7, and column 3, y3-7), Ink caps at the arm ends (x7 rows 1-2, y7 columns 1-2). The bottom frame is the top one flipped vertically in the file; code flips horizontally for the right side. The corner's outer Ink corner sits on the focus box's corner. No corner ever covers a figure's drawn pixels: around a person the focus box sits 4 px outside the figure's frame, and on the windows the corners fall clear of the clerks' art and the tote machines (checked against every box in the spec, with the bugler at y146-169). They bob 1 px outward on the cursor's loop and phase, and only ever appear with the horseshoe in the box, so they read as "this place", not as a second cursor. Like the cursor, they are UI and not counted in the motion cap.
+
+**Motion.** At most 3 ambient things at once, as in the race view: the crowd strip (1 swap a second, neighbors out of phase), the flag (0.4 s), and one person's idle.
+- Idle rotation: every 4 s (data, guess) one person plays A, B, A, B at 0.25 s a step and ends on A. Fixed order, never random: the regular, clerk 2, fan A, the bugler, clerk 1, the vendor, fan C, clerk 3, fan B, then round again. Render only, no RNG.
+- A look plays the looked-at person's idle at once (fan A for the fans), restarts the 4 s count, and the rotation goes on from the next in order. The board, the bettor and the doors have no idle.
+- Prices posting is one cut, not a loop. With reduced motion everything stops, corners and cursor included.
+
+## The window (close-up)
+
+A still picture, `art.window.booth`, 256x72 at y16-87, over the window's Navy box (Joseph, 2026-11-14: "clicking the window should bring up the betting ui"). It is the track's window 2, closer. The clerk is drawn fresh at close-up size, 32x48 (`art.window.clerk`), with the same four colors and the face rule, never scaled from the 16x24 clerk. Mist wall with the track's sign plate on the left. The opening x96-159, y30-79, Maroon frame 2 px on the top and sides, a lamp-lit booth (Dirt under the lintel, Hay below). A tote machine with its ticket tongue on the counter. The wood counter y80-87. Your program on the counter right of the opening, its Maroon masthead showing. The track's "Not a casino, not a bank" rules and banned list hold here. Motion: the clerk's idle every 4 s and his stamp on a bet. Nothing else moves. With reduced motion, nothing moves.
 
 ## Tone
 
@@ -352,7 +516,7 @@ Warm, a little funny, respectful of the animals and the sport.
 
 ## Charm
 
-Charm comes from a world busy with its own small business, a race day with ceremony, and people and words with a voice. It never comes from making a horse cute. NES games did this with slow 2-frame loops on a tight budget, and this game does the same. Every item stays on the grid, in master palette colors, at 3 opaque colors per layer.
+Charm comes from a world busy with its own small business, a race day with ceremony, and people and words with a voice. It never comes from making a horse cute. NES games did this with slow 2-frame loops on a tight budget, and this game does the same. Every item stays on the grid, in master palette colors, at 3 opaque colors per layer (4 for people).
 
 Race day (M1):
 
@@ -397,7 +561,7 @@ Charm test: watch 10 seconds at gameplay speed next to the reference. If you can
 
 ## Do not
 
-- Do not add a fourth opaque color to a layer "just for this one".
+- Do not add a fourth opaque color to a layer "just for this one". (People have four by rule, not by exception.)
 - Do not animate the field in sync.
 - Do not shrink a big sprite to make a small one. Draw the small one.
 - Do not put UI over the leading pack.
@@ -420,6 +584,7 @@ Any of these is a reject, whatever else is good about the asset.
 - Generic fantasy stock: swords, slimes, crystals, castles.
 - Machine-made tells: an uneven pixel grid, smeared details, extra or missing legs, gibberish text.
 - Real brand logos, sponsor marks, real track logos, real owners' registered silks, real jockeys' likenesses.
+- Casino and real-money looks: banknotes, coins, chip stacks, playing cards, cash registers, slot reels, flashing win lights, coin showers.
 - Graphic injury of any kind.
 
 ## Named art and audio slots
@@ -447,7 +612,7 @@ art-director checks every item before an asset counts as done. A missing item is
 3. File path: the slot id with its dots as slashes, under `public/assets/`, plus the extension. Lowercase, underscores inside a segment. Example: `art.race.horse.body.gallop` is `public/assets/art/race/horse/body/gallop.png`. Frame size, frame count and anchor live in the slot data, not in the file name. The engineer loads by slot path, so the path and the id never disagree.
 4. Audio files: the same rule. Example: `sfx.race.gate_open` is `public/assets/sfx/race/gate_open.<ext>`. The format is the engineer's call, logged in docs/DECISIONS.md.
 5. Authored at 1x, never upscaled in the file. Frame size matches the grid rules. Frames sit in one horizontal row, left to right, no padding.
-6. Only master palette colors. At most 3 opaque colors per sprite layer, 4 per tile. Alpha is 0 or 255 only. ICC and gamma chunks stripped so browsers do not shift colors.
+6. Only master palette colors. At most 3 opaque colors per sprite layer (4 for people), 4 per scrolling tile, 8 per 16x16 screen cell of a still picture. Alpha is 0 or 255 only. ICC and gamma chunks stripped so browsers do not shift colors.
 7. Recolorable layers use the key colors (Ink, Ash, Slate). All layers of a set share size, frame count, frame order and anchor.
 8. A slot id exists in data and points to the file.
 9. Checked in context: 20-horse field at speed on all three surfaces for race art, next to the reference asset.

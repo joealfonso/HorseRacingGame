@@ -11,7 +11,8 @@
     "build": "vite build",
     "build:release": "npm run ship:check && vite build",
     "batch": "node scripts/batch.mjs",
-    "ship:check": "node scripts/shipCheck.mjs"
+    "ship:check": "node scripts/shipCheck.mjs",
+    "bet:harness": "node scripts/betHarness.mjs"
   },
   "dependencies": {
     "phaser": "^3.90.0",

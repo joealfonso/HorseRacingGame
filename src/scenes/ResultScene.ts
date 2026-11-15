@@ -5,13 +5,19 @@ import { rgbOf } from '../render/colors';
 import { heldKeys, keyDown, keyState, keyUp, type KeyState } from '../render/keys';
 import { PAPER_CURSOR_SWAPS, PAPER_MARKER_SWAPS } from '../render/page';
 import { cursorFrame } from '../render/pause';
-import { RESULT_CONFIRM_KEYS, resultScreen, type ResultScreen } from '../render/resultScreen';
+import { RESULT_CONFIRM_KEYS, betResultScreen, resultPointerTargets, resultScreen, type ResultScreen } from '../render/resultScreen';
+import type { DayState } from '../bet/day';
 import type { Session } from '../render/session';
 import { SLOT_IDS } from '../render/slotStatus';
 import type { RaceResult } from '../sim/result';
 import { Art, type ArtInfo } from './art';
+import { firstSight } from './keyEvents';
+import type { BetDay } from './betDay';
 import type { CardData } from './CardScene';
+import type { EndOfDayData } from './EndOfDayScene';
+import type { HubData } from './HubScene';
 import { PagePainter } from './paper';
+import { PointerInput } from './pointerInput';
 
 // The result screen (spec 4.6): the order of finish, your trip, the time, splits and seed,
 // and one action, Next race. Its own scene, opened by the race scene when the winner beat
@@ -19,7 +25,11 @@ import { PagePainter } from './paper';
 // them and keeps the keys. It reads the result and never changes it.
 
 export interface ResultData {
-  game: GameData; rd: RaceDayData; art: ArtInfo; session: Session;
+  game: GameData; rd: RaceDayData; art: ArtInfo;
+  /** The Card loop's session, already on the next race. */
+  session?: Session;
+  /** The betting loop: the day, settled from this race. */
+  bet?: { day: BetDay; state: DayState };
   result: RaceResult;
   /** Your horse in this race, as the race scene had it. */
   playerId: string;
@@ -45,7 +55,7 @@ export class ResultScene extends Phaser.Scene {
     this.leaving = false;
     const art = new Art(this, data.art);
     const rd = data.rd.raceDay;
-    const screen: ResultScreen = resultScreen(data.result, rd, data.playerId);
+    const screen: ResultScreen = data.bet ? this.betScreen(data.bet.state) : resultScreen(data.result, rd, data.playerId);
     // The chart page (spec 4.6): flat Parchment, your row on the band, Ink rules where the box edges were.
     this.cameras.main.setBackgroundColor(rgbOf(data.art.colors, screen.paper));
     const page = new PagePainter(this, art, 0);
@@ -65,6 +75,21 @@ export class ResultScene extends Phaser.Scene {
     for (const t of screen.texts) art.text(t.x, t.y, t.text, t.color, t.small ? SLOT_IDS.fontSmall : SLOT_IDS.fontMain).setDepth(2);
     this.cursor = this.add.image(screen.cursor.x, screen.cursor.y, art.swap(SLOT_IDS.cursor, PAPER_CURSOR_SWAPS), '0').setOrigin(0, 0).setDepth(2);
     this.bindKeys();
+    // The mouse (track-hub.md section 6): a click on the action line is Enter.
+    new PointerInput(this, resultPointerTargets, { click: () => this.next() }, rd.pointer.arrivalGuardSeconds.value);
+  }
+
+  /** The chart for a settled betting race, from its record (src/bet/day.ts). */
+  private betScreen(state: DayState): ResultScreen {
+    const record = state.records[state.records.length - 1];
+    if (!record) throw new Error('the result opened before the race was settled');
+    return betResultScreen(this.data0.result, this.data0.rd.raceDay, {
+      ticket: record.ticket,
+      returnCents: record.returnCents,
+      winnerTwoDollarCents: record.winnerTwoDollarCents,
+      bankrollCents: state.bankrollCents,
+      dayEnded: state.ended !== null,
+    });
   }
 
   update(_time: number, delta: number): void {
@@ -79,11 +104,12 @@ export class ResultScene extends Phaser.Scene {
     if (!kb) return;
     kb.addCapture('SPACE,ENTER,UP,DOWN,ESC');
     const onDown = (e: KeyboardEvent) => {
+      if (!firstSight(e)) return;
       const r = keyDown(this.keys, e.code, e.repeat);
       this.keys = r.state;
       if (r.act && RESULT_CONFIRM_KEYS.includes(e.code)) this.next();
     };
-    const onUp = (e: KeyboardEvent) => { this.keys = keyUp(this.keys, e.code); };
+    const onUp = (e: KeyboardEvent) => { if (firstSight(e)) this.keys = keyUp(this.keys, e.code); };
     const onBlur = () => { this.keys = keyState(); };
     kb.on('keydown', onDown);
     kb.on('keyup', onUp);
@@ -95,11 +121,27 @@ export class ResultScene extends Phaser.Scene {
     });
   }
 
-  /** Next race: back to the card with your horse focused. The session is already on the next race. */
+  /**
+   * Next race: back to the card with your horse focused. The session is already on the next race.
+   * Betting: the track before the next race (track-hub.md section 2); after the day's last
+   * race, a day cut short, or with the bank under the minimum bet, the End of day page
+   * (betting-screens.md section 6), whose New day starts the next day.
+   */
   private next(): void {
     if (this.leaving) return;
     this.leaving = true;
+    const bet = this.data0.bet;
+    if (bet) {
+      if (bet.state.ended !== null) {
+        this.scene.start('endOfDay', { bet: bet.day, day: bet.state, art: this.data0.art, held: heldKeys(this.keys) } satisfies EndOfDayData);
+        return;
+      }
+      const data: HubData = { bet: bet.day, day: bet.state, art: this.data0.art, held: heldKeys(this.keys) };
+      this.scene.start('hub', data);
+      return;
+    }
     const { game, rd, art, session } = this.data0;
+    if (!session) return;
     const data: CardData = { game, rd, art, session, held: heldKeys(this.keys) };
     this.scene.start('card', data);
   }

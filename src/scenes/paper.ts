@@ -2,10 +2,11 @@ import Phaser from 'phaser';
 import type { Entry, PageImage, PageRect, PageText } from '../render/page';
 import { rgbOf } from '../render/colors';
 import { SLOT_IDS } from '../render/slotStatus';
+import { FONT_DISPLAY } from '../render/fontLayout';
 import type { Art } from './art';
 
 // Draws the program pages' pure output (src/render/page.ts): filled rects, then text in the
-// main or small font, then images, in the order given. Everything it made can be cleared,
+// main, small or display font, then images, in the order given. Everything it made can be cleared,
 // so a page redraws whole when its state changes.
 
 export class PagePainter {
@@ -27,7 +28,7 @@ export class PagePainter {
 
   texts(list: readonly PageText[]): void {
     for (const t of list) {
-      this.objects.push(this.art.text(t.x, t.y, t.text, t.color, t.small ? SLOT_IDS.fontSmall : SLOT_IDS.fontMain).setDepth(this.depth + 1));
+      this.objects.push(this.art.text(t.x, t.y, t.text, t.color, t.display ? FONT_DISPLAY : t.small ? SLOT_IDS.fontSmall : SLOT_IDS.fontMain).setDepth(this.depth + 1));
     }
   }
 

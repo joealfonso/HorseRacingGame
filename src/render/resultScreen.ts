@@ -2,6 +2,7 @@ import type { RaceDay } from '../data/raceDaySchema';
 import { fillTemplate } from '../data/template';
 import { marginLabel } from '../sim/margins';
 import type { RaceResult } from '../sim/result';
+import { bankLine, resultLostLine, resultPaidLine, winPriceLine } from './betCopy';
 import { formatClock, formatFraction, marginPhrase, ordersShort, ordinal } from './format';
 import { INK, PAPER, SECOND_INK, bandRects, rightAlignedX, rule, type PageRect } from './page';
 import { FEET_PER_FURLONG, raceDistance, sampleAt } from './view';
@@ -192,11 +193,7 @@ export function resultScreen(result: RaceResult, rd: RaceDay, playerId: string):
     .map((text, i) => ({ text, x: RESULT_TRIP.x, y: RESULT_TRIP.y + RESULT_TRIP.dy * i, color: i === 0 ? SECOND_INK : INK }));
 
   const T = RESULT_TIME;
-  const winner = result.finish[0];
-  texts.push({ text: fillTemplate(copy.time, { time: formatClock(winner.time, true), pace: copy.pace[result.pace.label] }), x: T.x, y: T.y, color: INK });
-  const splits = result.fractions.slice(0, -1).map((f) => formatFraction(f.time)).join(' ');
-  texts.push({ text: copy.splits, x: T.x, y: T.y + T.dy, color: INK });
-  texts.push({ text: splits, x: T.x + MAIN_W * (copy.splits.length + 1), y: T.y + T.dy + SMALL_DY, color: INK, small: true });
+  texts.push(...timeLines(result, rd));
   // The seed, right-aligned on the third line, its number in the small font (spec 13, item 11).
   const seed = String(result.seed);
   const seedX = rightAt(seed, T.right, SMALL_W);
@@ -215,5 +212,69 @@ export function resultScreen(result: RaceResult, rd: RaceDay, playerId: string):
   };
 }
 
+/** Time section lines 1 and 2: "Time 2:01.55, hot pace", then "Splits" and the small-font fractions. */
+export function timeLines(result: RaceResult, rd: RaceDay): ResultText[] {
+  const copy = rd.copy.result;
+  const T = RESULT_TIME;
+  const winner = result.finish[0];
+  const splits = result.fractions.slice(0, -1).map((f) => formatFraction(f.time)).join(' ');
+  return [
+    { text: fillTemplate(copy.time, { time: formatClock(winner.time, true), pace: copy.pace[result.pace.label] }), x: T.x, y: T.y, color: INK },
+    { text: copy.splits, x: T.x, y: T.y + T.dy, color: INK },
+    { text: splits, x: T.x + MAIN_W * (copy.splits.length + 1), y: T.y + T.dy + SMALL_DY, color: INK, small: true },
+  ];
+}
+
+// The betting result (docs/specs/betting-screens.md section 5) ---------------------------
+
+/** What the betting result needs from the settled race: its record (src/bet/day.ts) and the day's state after it. */
+export interface BetResultInput {
+  /** The settled race's ticket, or null on a pass. */
+  ticket: { post: number; dollars: number; odds: string } | null;
+  /** What the ticket returned, stake included; 0 when it lost or on a pass. */
+  returnCents: number;
+  /** The winner's $2 price in cents. */
+  winnerTwoDollarCents: number;
+  /** The bankroll after settlement (BK3). */
+  bankrollCents: number;
+  /** The day is over: the action reads End of day (BS3). */
+  dayEnded: boolean;
+}
+
+/**
+ * The chart page for a betting race. The order section is as built, with the band and Ink
+ * arrow on your horse's row only when you bet. The trip is your horse's with a bet and the
+ * winner's on a pass, and its line 5 is the ticket: paid, lost, or passed (BS1). The time
+ * section's line 3 is the winner's $2 price, and line 4 the action and the settled bank
+ * (BS2, BS3). The seed moves to the End of day page.
+ */
+export function betResultScreen(result: RaceResult, rd: RaceDay, bet: BetResultInput): ResultScreen {
+  const copy = rd.copy;
+  const mine = bet.ticket === null ? null : result.finish.find((f) => f.post === bet.ticket!.post) ?? null;
+  const base = resultScreen(result, rd, mine?.id ?? '');
+  const subject = mine?.id ?? result.finish[0].id;
+  const t = bet.ticket;
+  const line5 = t === null ? copy.result.passed
+    : bet.returnCents > 0 ? resultPaidLine(copy, t.dollars, bet.returnCents) : resultLostLine(copy, t.dollars, t.odds);
+  const texts: ResultText[] = [...tripLines(result, rd, subject).slice(0, 4), line5]
+    .map((text, i) => ({ text, x: RESULT_TRIP.x, y: RESULT_TRIP.y + RESULT_TRIP.dy * i, color: i === 0 ? SECOND_INK : INK }));
+  const T = RESULT_TIME;
+  texts.push(...timeLines(result, rd));
+  texts.push({ text: winPriceLine(copy, bet.winnerTwoDollarCents), x: T.x, y: T.y + 2 * T.dy, color: INK });
+  texts.push({ text: bet.dayEnded ? copy.result.end : copy.result.next, x: RESULT_NEXT.x, y: RESULT_NEXT.y, color: INK });
+  const bank = bankLine(copy, bet.bankrollCents);
+  texts.push({ text: bank, x: rightAlignedX(bank, RESULT_ROW.marginLastX), y: RESULT_NEXT.y, color: INK });
+  return { ...base, texts };
+}
+
 /** The keys that choose Next race (spec 4.6). */
 export const RESULT_CONFIRM_KEYS: readonly string[] = ['Enter', 'NumpadEnter', 'Space', 'KeyZ'];
+
+/**
+ * The mouse (track-hub.md section 6): the action line, x8-247 on the row band of "Next race"
+ * or "End of day", is the one target, and a click on it is Enter. Guess: the band is y216-231,
+ * the action's 8 px row with 4 px each side, the same size as End of day's "New day" box.
+ */
+export const RESULT_ACTION_BOX = { x0: 8, y0: RESULT_NEXT.y - 4, x1: 247, y1: RESULT_NEXT.y + 11 } as const;
+export const RESULT_POINTER_KEYS: Readonly<Record<'next', readonly string[]>> = { next: ['Enter'] };
+export const resultPointerTargets = (): { id: 'next'; box: typeof RESULT_ACTION_BOX }[] => [{ id: 'next', box: RESULT_ACTION_BOX }];

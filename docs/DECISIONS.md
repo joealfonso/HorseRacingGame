@@ -322,3 +322,225 @@ Two or three lines for each non-obvious choice.
 **The paper cursor and marker are code recolors.** `Art.swap` applies exact palette swaps all at once (Yellow to Gold and Gold to Auburn for the horseshoe; Yellow and Gold to Ink for the arrow marker), cached per swap set, so no extra art slots are needed. The Navy screens keep the plain slots.
 
 **The old Card and Orders copy is gone.** `copy.card.jockey`, `stats`, `hint`, `lastPick` and `copy.paddock.styles` and `postLine` described the detail box and the old horse box, which the program page replaces; `copy.card.heads` and `jockeyUp` take their place.
+
+## Betting, B0 probe (docs/specs/betting-simple.md)
+
+Measured 2026-11-13 with `node scripts/betProbe.mjs`, Node 25.6.0 on the Apple M4. Helpers in `src/bet/` (streams, estimate, crowd, payout, field draw), probe in `scripts/betProbeCli.ts` and `scripts/betProbeSetup.ts`. Fields come from day seeds 1 to 125, eight races a day, on the spec's streams. Gate passed in round 1: no change to the recipe or the crowd values.
+
+**N = 1,000.** PB2 on 200 fields, set A the game's estimate seeds 1 to N and set B seeds N+1 to 2N of the same stream: N 250 mean 1.88 points, 95th 5.60, same favorite 91.2 percent (fail); 500: 1.45, 4.40, 96.0 (fail on the 95th); 1,000: 0.99, 3.00, 97.2 (pass); 2,000: 0.71, 2.10, 99.4 (pass). PB3 passes: Chrome medians of 3.0 to 3.2 ms per run (the Claude desktop app's Chromium 156 at load about 5.5, not Joseph's own Chrome, PERF.md) make N = 1,000 cost 3.0 to 3.2 s per race against 4 s, about a quarter to spare.
+
+**PB4 and PB5 at N = 1,000, crowd at the starting values** (noise 0.25, styleLean +0.10 / 0 / -0.10, flatten 0.08), 1,000 fields: favorite's median odds 6-5 (per-dollar 230), on the band's short edge; favorite 8-5 or shorter in 78.0 percent; a 20-1 or longer in 96.9 percent; every horse 3-1 to 10-1 in 0.1 percent. The crowd favorite won 38.4 percent, mean crowd share 35.8. Calibration (estimate group, horses, mean estimate, actual): under 5, 2,844, 2.0, 2.1; 5 to 10, 1,593, 7.3, 7.0; 10 to 20, 1,717, 14.3, 13.6; 20 to 35, 1,264, 26.5, 26.3; 35 and up, 582, 42.5, 45.0. All pass.
+
+**PB6, not gated, $2 flat:** realized on the 1,000 real races: random -0.013 per dollar, favorite -0.129, longest -0.709, value +7.000 on 1 bet. Those are single heavy-tailed samples (random's standard error is 0.13). Priced instead on a holdout estimate (below): random -0.272, favorite -0.162, longest -0.690, every horse -0.281. The value bettor almost never finds estimate times price at 1.15, because noise 0.25 cannot misprice a horse by the roughly 39 percent the take demands.
+
+**Crowd sweep against HN3: no setting passes.** Run on the cached B0 sims, no new sim runs (`node scripts/betProbe.mjs sweep`, `detail`). Grid: noise 0.25, 0.5, 0.75, 0.9, 1.0 by flatten 0, 0.02, 0.04, 0.08 by styleLean 0, 0.10, 0.20 (front-runner plus, closer minus), then noise 0.4 to 0.7 by flatten 0.01 to 0.03 by lean 0 to 0.3. Noise 1.0 is above `betting.json`'s 0.9 bound, and above 1.0 a belief can go negative, so 1.25 was not run. The bands are judged on expected returns: the same bets priced with a holdout estimate from estimate seeds 1,001 to 2,000, which the crowd never saw. That estimate is unbiased and has a standard error of about 0.003 to 0.013 per dollar over the 1,000 fields, against 0.03 to 0.7 for the realized returns on the single real races. "Random" is the every-horse average, the stable measure.
+
+The favorite band is what fails. Its best expected return anywhere was -0.153 (noise 0.25, flatten 0.08, lean 0), against a band edge of -0.15. In the 18 settings where every other band passes, it is -0.206 to -0.240. There the favorite wins 35.6 to 36.4 percent (expected), but its crowd share is 37.4 to 38.3. So it is overbet, not underbet as the spec assumes. Noise causes this: the horse the crowd makes favorite is often the one whose noise ran high, so its money outruns its chance. Three bands fight. The favorite band needs low noise and enough flatten. The value band (30 percent of races) needs noise of about 0.5 or more. The longest band needs flatten of 0.02 to 0.03, since 0.04 already gives about -0.55 and 0 gives about 0. The relative gap is the real block: the bands need the favorite at least 3 cents better than the every-horse average, and in that region it ranges from 0.5 cents better to 6 cents worse, so it falls 3.5 to 9 cents short.
+
+Closest setting: noise 0.6, flatten 0.025, lean 0.10. Every band and PB4 passes except the favorite and its crowd-share check. Every horse -0.201, favorite -0.214 (wins 36.3 percent expected, 37.5 realized, crowd share 37.7), longest -0.472, value +0.318 expected (+0.290 realized, SE 0.22) on 398 bets with 52 winners (39.8 percent of races). PB4: favorite median 6-5, 81.9 percent at 8-5 or shorter, 98.1 percent with a 20-1, 0.0 percent flat. The region where only the favorite fails is broad: noise 0.4 to 0.75, flatten 0.015 to 0.03, lean 0 to 0.2. That makes it a structural conflict, not a knife edge.
+
+What the value bettor sees there. By price, its expected edge is +0.16 to +0.37 in every range from 2-1 to 20-1 and up, so it is spread across prices, not hiding in one. By style, it bets 240 closers, 96 stalkers and 62 front-runners, with an edge of +0.27 to +0.34 in each. A stats reader without the estimate can find the lean, but it does not beat the take. Every closer returns -0.086 and the crowd's top closer -0.083, against -0.201 for every horse; the top front-runner returns -0.245. At lean 0.20 the lean is a free win: every closer +0.014 and the top closer +0.031 at noise 0.5, flatten 0.02. At lean 0 the style rules are all about -0.17 and the edge is only visible with the estimate. The value bettor's +0.27 to +0.38 is far above HN3's +0.03 floor, and HN3 sets no ceiling.
+
+Levers left, not changed here:
+- **Takeout** moves every return by about the same factor, so it cannot open the favorite-versus-average gap. At the closest setting, a take of about 10 percent lifts the favorite to about -0.15, but every horse to about -0.13, out of its band.
+- **The value threshold** only moves the value bettor's bet count, not the favorite.
+- **The recipe** sets how strong favorites are, not how the crowd overbets them.
+- **The crowd formula's shape** is the real lever, and changing it is a spec change. Two candidates: noise that shrinks as the estimate grows, which cuts the winner's curse on the favorite, and a longshot bias that moves money from the top of the field to the middle instead of a flat flatten/8 to every horse.
+- **The favorite band itself.** It assumes the real-world favorite-longshot bias. Under this crowd model, a band of about -0.25 to -0.15 with no crowd-share check would pass at the closest setting.
+
+**The stable recipe, as passed.** Seed 20261113 on a `probeStable` stream. 10 sharp (total 235 to 255), 20 solid (210 to 234), 10 plain (185 to 209); styles dealt front-runner, stalker, closer in turn down the tiers, 14, 13, 13. Front-runner speed is a third of the total plus 8 to 14; closer speed a third minus 6 to 12; the rest split in half plus or minus 4; stalkers each a third plus or minus 4. Stat lines (speed, stamina, kick):
+p01 F 94 76 81, p02 S 83 84 85, p03 C 73 90 87, p04 F 92 70 75, p05 S 78 82 77, p06 C 67 88 80, p07 F 93 77 71, p08 S 78 76 88, p09 C 72 92 84, p10 F 93 77 73 (sharp);
+p11 S 71 71 85, p12 C 61 80 78, p13 F 89 71 66, p14 S 75 73 68, p15 C 58 80 72, p16 F 85 69 77, p17 S 70 71 77, p18 C 58 79 73, p19 F 82 63 66, p20 S 73 73 69, p21 C 60 78 80, p22 F 87 71 74, p23 S 69 69 72, p24 C 63 71 79, p25 F 86 69 67, p26 S 75 74 69, p27 C 62 82 80, p28 F 85 73 65, p29 S 77 75 67, p30 C 69 77 84 (solid);
+p31 F 76 61 63, p32 S 68 69 61, p33 C 59 73 68, p34 F 73 52 61, p35 S 65 65 64, p36 C 57 72 73, p37 F 76 51 59, p38 S 69 68 72, p39 C 59 78 72, p40 F 71 59 60 (plain).
+Kick is the remainder, so a stalker can wobble up to 8 from a third: p08 and p11 lean to kick more than "balanced" suggests. Every front-runner is strongest in speed and every closer weakest in it.
+
+**Probe choices.** The estimate seeds are one stream with the race seed and repeats skipped, so N's seeds are a prefix of 2N's. The favorite is the horse with most crowd money, ties to the lower post. The field draw's silks rule is in the code but the probe stable has no silks, so it never ran.
+
+## Betting, B1 and B2 (stable, field draw, prices, money, the headless day)
+
+**The draw is built, not searched.** `src/bet/fieldDraw.ts` lists the stable by silks body color, colors and horses shuffled, and lays the list round a ring with a stride d: horse i goes to place i * d mod S. d is coprime with S and puts any 3 neighbors in the list (one color holds at most 3 horses) at least a field apart round the ring, so any 8 places in a row hold 8 colors. Races take the ring in order (with 40 horses, races 1 to 5), so every horse runs before any runs twice. The second starts are a shuffled greedy pick (gap of 3 races, no shared color), tried 20 times. If every try sticks, the second starts are the ring again from its start. That is always valid: its fields are runs of 8 round the ring, and a horse's two races are at least floor(S / 8) apart, 4 or more for any accepted size. So the draw cannot fail on any stable the loader accepts. At the current betting.json and ST1 values the loader accepts 36 to 54 horses: at least 12 of each style sets the floor (the draw itself needs 32), and at most 3 horses on each of the 18 silks colors sets the ceiling (the draw itself allows 64). A valid stride exists for every size from 25 to 64, so for all of them. The number of second-start tries is an argument to drawDay, default 20, so a test can force the fallback with 0. Over 10,000 day seeds, with the fixture's colors and with 13 colors of 3 plus 1, the fallback was never needed and every check held. Each style's share of each post was within 0.4 points of its share of starts.
+
+**The draw uses two kinds of sub-key.** The day's arrangement draws on `fieldDraw` with sub-key "day"; race r's posts on sub-key r. The spec says each race's field comes from the day seed and the race number. The fields still depend on nothing but the day seed and the stable.
+
+**The probe keeps its own draw.** B0's cached runs came from a greedy draw with no silks rule, so that draw moved into `scripts/betProbeSetup.ts` unchanged, with the tote steps, and the probe still reproduces its cache. The game's draw differs.
+
+**The loader adds a rule ST1 does not list.** A stable larger than races times field size (64) is rejected, since FD4 needs every horse to start. The loader also checks the starting bankroll covers the minimum bet, the bet amounts rise and include the minimum, the odds steps rise from 1-9 to 99-1, every harness band names a real step, and day.json's race names are unique and 30 characters or fewer. Each day race also passes the sim's own cross-file checks (track, surface, going, pace par).
+
+**The Triple Crown list is a constant in `src/data/bettingSchema.ts`.** It is a rule, not tuning, and it lives under `src/data/` with the other real names. Names are compared ignoring case and repeated spaces.
+
+**The race-day checks run per drawn field through the existing loader.** `checkFieldForRaceDay` builds the field as a card and a cardLook and calls `validateRaceDay` unchanged. Its messages name card.json or cardLook.json for the field. `card.json` and `cardLook.json` are untouched.
+
+**A race belongs to one day.** DrawnRace carries its day seed, programFor reads it from there, and goToPost refuses a program drawn for another day seed. An EstimateJob carries its day seed and race, and programFor refuses a finished job made for another day or race. A bare Estimate (from runEstimate or estimateOf) stays { runs, wins } because tests pin that shape, so programFor checks only its size; the screens should pass the job.
+
+**Stable checks come before the day's.** Every per-horse rule runs before day.json is checked, and day.json's races are checked with a synthetic two-horse card at the bottom of tuning.statRange, so a horse's problem is only ever reported once, against stable.json, with its name. Each horse's stats are also checked against tuning.statRange at load.
+
+**The crowd guards its own shares.** The shares sum to 1 exactly in real numbers (sum of s is 1, so (1 - flatten) + flatten = 1), so float rounding leaves the floors short of the pool by less than one dollar a horse. crowdDollars now throws if the shortfall is a dollar a horse or more, so a wrong share formula cannot be hidden by the remainder loop.
+
+**The estimate is plain data stepped in slices.** `startEstimate`, `stepEstimate(job, field, maxRuns)` and `estimateOf` keep only the seed list, a count and wins by post, so slicing cannot change the answer and the job can cross a worker boundary as JSON. For B5 I recommend a Web Worker. The Chrome p99 for one run was up to 15.5 ms, so even one run a frame can break the 16.7 ms budget (UI6). The betting code cannot read a clock, so it cannot slice by time itself.
+
+**The odds a ticket shows are the odds at post with its own money in.** `settle` prices the winner with the player's bet in the pool, so the winner's $2 price on the result is the official one. `bestPriceHit` compares winning tickets by return per dollar, cross-multiplied to stay in whole numbers.
+
+**betting.json's odds steps are `{ label, odds: [to, against] }`.** The loader checks each label matches its pair. The harness bands are in it now, at HN3's values, for B3 to use. `copy.bannedWords` holds SAFE4's eight words; the screens spec's proposed additions wait for approval.
+
+## Betting, B3 (the day harness)
+
+**One command, through the game's own code.** `npm run bet:harness -- --days 500 --from 1` (`scripts/betHarness.mjs`, `scripts/betHarnessCli.ts`) draws each day with `drawnDay`, prices with `crowdFor` and `pricesWith`, and plays the $10-a-race bankroll days through `newDay`, `goToPost` and `settle`. Nothing under `src/` changed for it. The probe scripts are untouched.
+
+**The holdout is on a harness-only stream.** `harnessHoldout` (day seed, sub-key the race) gives N distinct seeds, skipping the race seed and every one of the crowd's N estimate seeds. The random $10 bettor picks on `harnessRandomBettor`. Neither name is a game or sim stream, checked at load.
+
+**Child processes, one day per job.** Like the probe, each worker is a forked process with its own Vite loader; results are keyed by day seed and summed in day order, so the summary does not depend on the worker count. The selftest checks 1 against 3 workers, a cached rerun against a fresh one, and an in-process day against a worker's.
+
+**The cache holds sims, not prices.** Per day: each race's field, race seed, the crowd's wins, the holdout's wins and the real winner. The key covers SIM_VERSION, the stable, the day's races, the draw rules, N, the track and the tuning. Crowd values, pool, takeout, money rules and bands are left out, so changing them reruns no sim. The default folder is `$TMPDIR/betharness`, `--cache` moves it.
+
+**settle is fed a slim result.** The bankroll days call `settle` with only the seed and the winner from the cache, cast to RaceResult, because `settle` reads nothing else and storing full results (about 115 KB each) for 4,000 races is not worth it. If `settle` ever reads more of the result, this must change.
+
+**The $10 bettors bet the largest offered amount up to $10.** Under the 25 percent cap a bankroll under $40 cannot bet $10, so the bettor drops to $5 or $2 rather than passing. The day ends broke under $2 as in the game.
+
+**"Random" is the average over every horse**, as HN3 says, with every horse bet $2 and priced with its own $2 in the pool. The bands are judged on expected returns from the holdout; calibration compares the crowd's estimate with the real races, as PB5 did.
+
+**A cached day is checked against the live draw.** On every run each cached day's horse ids and race seeds are compared with `drawnDay`; a mismatch is a miss, the day is re-simulated and overwritten, and one log line says how many were stale. The key still does not hash the draw code, so a change to the estimate or holdout seed code that keeps the same fields and race seeds, or to what a day holds, still needs `HARNESS_CACHE_VERSION` bumped.
+
+**Day files are written whole or not at all.** A day is written to a temporary name and renamed into place. A file that does not parse or lacks the expected shape is a miss with one log line naming it, not a crash. An empty calibration group is now a failed check. The selftest settles one day with the slim result and with the real `RaceResult` and requires the same bankroll.
+
+**No "Tapped out" page (Joseph, 2026-11-14).** The 25 percent cap stays, so eight straight losses at the largest bet leave $15 and a day cannot end broke. The End of day page has one title, "That's the card". The rules keep the broke ending (BK5) as a guard, with no page or words of its own: if the cap, the minimum or the day length ever changes so a day can end early, the harness's "broke before race 8" figure is where it shows first, and the words come back then.
+
+**Three stamina lines raised, and flatten with them (2026-11-14).** Unsolicited Advice, Doorbell Ditch and Big Plans Monday won 0.2 to 0.5 percent of starts, so their stamina went from 52, 51 and 59 to 67, 64 and 70, picked from a 4,000-day sweep of real races to land at 1.5 to 1.9 percent, beside the other plain horses. With no dead horses left, the random and longest-price returns rose out of their bands at flatten 0.025, so `crowd.flatten` is now 0.035, tried on the cached days. The other choice was to loosen the two bands and leave long prices nearly fair; I kept the bands because they say what the spec meant, that a long price is a worse bet than a short one.
+
+## Betting, B5 step 1 (the program page and the loop on screen)
+
+**The estimate runs in a Web Worker.** `src/scenes/estimateWorker.ts` runs one race's whole estimate per message with `startEstimate` and `stepEstimate`, and `src/scenes/estimates.ts` posts the requests and keeps the finished jobs. One run can take 15.5 ms at Chrome's p99, so no slicing on the main thread keeps every frame under 16.7 ms (UI6). Vite bundles the worker from `new Worker(new URL(...), { type: 'module' })` with no new dependency. If the worker fails, the error screen shows the day seed, the race and the message. There is no main-thread fallback.
+
+**When each estimate runs.** Race 1's is asked for at boot, before the art loads. Each program asks for its own race and the next one. The worker answers in order, so race r + 1 runs while race r's page is read and while it races (UI5). The job comes back whole and goes to `programFor`, which refuses a job for another day or race.
+
+**Day state travels in scene data.** Program, Race and Result carry a `BetDay` (the context, the data, the drawn fields and the `Estimates` object, all fixed for the day) and the `DayState` from `src/bet/day.ts`. Nothing is global. `Estimates` holds only derived data: the same day seed always gives the same estimates.
+
+**A pass while the odds are pending goes to the post at the end of the race.** BP6 lets Pass work before the odds are in, but `goToPost` and `settle` need the program, because the result shows the winner's $2 price. A pass stakes nothing, so the race scene waits for the estimate after the wire, then calls `goToPost` with no bet and settles. In practice the estimate (about 3 s) is long done before a race (about a minute) ends.
+
+**Interim End of day.** The End of day page (screens spec section 6) is the next step. Until then, after the last race or with the bankroll under $2, the result's action reads "End of day" and Enter starts the next day seed with the starting bankroll on the race 1 program. Marked in `src/scenes/betDay.ts` (`nextDay`) and `ResultScene.ts`. Replaced by the End of day page (see "End of day page" below): the result now opens the page and its New day calls `nextDay`.
+
+**End of day page.** `src/render/endOfDayScreen.ts` (pure) and `src/scenes/EndOfDayScene.ts`. The figures are `daySummary`'s and the card rows are the day's records, so nothing is recomputed in render code. Choices a reader would not guess:
+- The words are `copy.end` and the positions `endOfDay` in `raceDay.json`, both new keys (a schema addition). Wherever the spec shows a pattern but lists no key, the pattern is a template: "5 of 8" is `betsOf`, the Change signs are `plus` and `minus`.
+- An ended day that reaches the track, the window, the book or the old program page goes to this page, not straight to the next day, so no path skips it. New day is the only way out, to the next day's cover with the day just ended kept as `previous`.
+- The day pair reuses the cover's `dayPair` and its data, so the two always match (CV1). The pair is Ink as DESIGN says, the title Maroon.
+- The page's aria-live text is the page's own words in reading order, joined with punctuation only (a card row reads "Race 1, #3, 5-2, Paid $10.00."). No joining words were written.
+- Outcome order: nothing bet beats everything (a day of passes is "Watched all eight for free."), then up, even, down by the change in cents.
+
+**Abandoning a race from the pause box opens its result.** BK4 settles an abandoned race as if watched. The pause item still reads "Back to card", but in the betting loop it goes to the result page, so the player sees what happened to the ticket. Going straight to the next program would change the bank with no explanation. Either way the settled bank shows without the wire crossing in playback, which UI3 does not allow for; Joseph's call.
+
+**The Card and Orders loop still runs if started.** `RaceScene` and `ResultScene` take an optional `bet`; without it they behave as before, so `OrdersScene` and `CardScene` are unchanged and still compile. `main.ts` boots into `program`.
+
+**The betting entry shares `programEntry`.** It takes the stat columns as an argument: the Card's (50 px bars) by default, `BET_ENTRY` (40 px bars at x50, x108, x166, the tick in the margin cell x8-15) on the betting program. The odds are a separate list beside the entries, so an entry is still drawn from its horse alone (BP2).
+
+**Spec and DESIGN differences, DESIGN followed.** The column heads start at their stat numbers ("Speed" x40, "Stam." x98, "Kick" x156), not centered over the bars. The tote ticket is x8-247, y209-235 with the torn top edge, and the y210 rule is not drawn while it shows. The race HUD keeps its built rows (y184, y194, y204), not the spec's y181, y191, y201.
+
+**Copy keys the spec names without a key name.** The spec says the stamina head, the short bias phrases and the punch beat are data but names no key. They are `copy.program.heads` (with "Speed", "Kick" and "Odds" beside "Stam."), `copy.program.bias`, and `program.punchSeconds` (0.6). Header lines 3 and 4 are joined with ", " in `src/data/cardWords.ts`, the surface word capitalized, and `checkProgramLines` refuses any over 30 characters, naming `day.json` and the race.
+
+**With no bet, the HUD's first line is the leader's name in Bone.** Yellow means your horse, so the leader is not printed in it. Before the first call both leader lines are blank.
+
+**`copy.result.next` is held to 10 characters by a separate betting check.** The betting result prints it beside the bank, where 10 fit. `validateRaceDay` still allows 28 for the Card loop, and an existing test pins that. So `checkBettingCopy`, run at boot beside `checkProgramLines`, holds it to 10, as `copy.result.end` is.
+
+**Each native key event is handled once (`src/scenes/keyEvents.ts`).** Phaser walks the game's whole key queue again on every native key event, and its duplicate check only looks one event back. So with three key events in one frame, a keydown was emitted twice, and a released Enter could open the ticket and then place the bet. Every scene's 'keydown' and 'keyup' listener first drops an event object it has already seen, using one shared WeakSet. It is shared across scenes because the queue belongs to the game, and it holds no game state. The pure key rules in `src/render/keys.ts` are unchanged.
+
+**One estimate worker per day, errors per race.** A request for a new day seed ends the old worker and starts a fresh one, so the new day's race 1 never waits behind the old day's work and no old error carries over. Replies are kept by day and race, and replies for anything not asked for that day are ignored. A scene fails only on its own race's error. An uncaught worker error fails every race still waiting and ends that worker.
+
+**The wire message has its own priority, above your horse's.** It lands at the same moment as "home in 1st", and a luck event just before the wire could keep it waiting long enough to be dropped. With `PRIORITY.ticket` it shows as soon as the current message ends. `messageSchedule` also never drops a ticket message for waiting, so BR3 holds however `hud.messageSeconds` and `hud.messageMaxWaitSeconds` are tuned.
+
+## The track between races (docs/specs/track-hub.md)
+
+**The hub data is its own file, `src/data/hub.json`, not a `hub` section of raceDay.json.** The spec put it in raceDay.json, but that file was being edited by another session when the track was built, and the track's targets, board layout, idles, sky table and copy are one screen's, as betting.json is the betting rules'. `src/data/hubLoad.ts` checks it at load (TH1's boxes, every voice line at 28, three lines a lookable, the banned words from betting.json plus "cash" and "buy", every odds label against the board's price width, `{r}` at the day's race count). The status bar and the pending line reuse `program.race`, `program.bank` and `program.pending` from raceDay.json.
+
+**The mouse is bound in one scene helper, `src/scenes/pointerInput.ts` (TH15).** It listens to the canvas's own DOM pointer events, not Phaser's input queue, so each event is handled once, and it reads the canvas box and the zoom at every event, so a resize is always current. The rules (grid mapping, hit test, the click state machine) are pure in `src/render/pointer.ts`. The track takes hover; the program and result pages take clicks only, since the spec gives no hover rule for them. IN1's "no pointer API in any scene" check is replaced by "only in the helper", on Joseph's ask for clicking around.
+
+**During the rail's wait, a click on another target cancels it (coordinator's ruling, now in TH7).** A mouse-only player who misclicked the rail had no way back: Esc cancels for keys, a click anywhere but the rail cancels for the mouse, moves focus there and does nothing else. Hover and other keys still do nothing during the wait.
+
+**`cursorFrames` goes into the track's draw function.** The other scenes show frame 0 when the horseshoe art has one frame. The track's focus corners bob on the cursor's frame, so `hubScreen` takes the loaded frame count and returns the frame for both, keeping them in step.
+
+**Looks travel in `BetDay`, replaced, never changed in place.** The counts live with the day (reset by `nextDay`) and pass Track, Program, Race, Result, Track in scene data. The track hands on a copy with its counts; nothing is global or stored.
+
+**The rail and Pass share `passDay` and `betRaceData` (`src/scenes/betDay.ts`).** Pass on the program and the rail at the track are the same act, so both go through one path to the race. The rail waits for the prices instead of going through pending, because the spec wants the race to start the frame they post.
+
+**Pass on a pending program does not wait (coordinator's ruling, spec states table amended).** The spec said Pass waits like the rail. It keeps the committed B5 behavior instead: Pass cuts to the race at once, and the race settles once the prices post. The rail waits because it is chosen on a screen that shows the board; Pass is chosen on the page, where the cut is the approved feedback.
+
+**The race view's sky follows `skyByRace` in the betting loop.** One table, in hub.json, so race r's sky matches the track before it. The Card loop keeps the day sky. The hills still cover y40 down in the race view, so races 7 and 8 show the change in y16-39.
+
+**The track's placements are code, the mock's, checked pixel for pixel.** The parts, tiles and people's positions are in `src/render/hubPicture.ts` as layout, like `PROGRAM_PAGE`. `src/render/hubComposite.test.ts` draws the track headless from the pure modules and the shipped PNGs and compares it with `docs/mocks/track-hub/a-windows.png`, pixel for pixel. The clerks' skins and the fans' skin and jackets use the exact palette swap (`Art.swap`), so no slot is marked recolor.
+
+**The aria-live region is new.** No scene had one. `src/scenes/ariaLive.ts` keeps one visually hidden polite region; the track writes its `aria` text there on every change. The other screens do not use it yet.
+
+**Mouse presses are ignored for 0.5 s after a screen arrives (coordinator's ruling, spec section 6).** The result's "Next race" and the program's "Esc: back" sit over the track's "Just watch" row, and the track's Windows over program entries 3 to 7, so the second half of a double click acted on the next screen. `pointer.arrivalGuardSeconds` in raceDay.json (a starting guess), read by every screen that takes the mouse, is counted down in the helper on the scene's update delta. A press during it is no press, and its release does nothing. Hover still moves focus. It is the mouse's twin of IN2's held-key rule.
+
+## Book and window, step 1
+
+**`{race1Name}` has its own hole matcher.** The spec's mixed-card template names a hole with a digit and a capital, and `template.ts` matches lower-case letters only. `src/data/bookText.ts` has the book's own `fillHoles` and `holesOf`, so the copy stays word for word and `template.ts` is untouched.
+
+**The page-state function returns data, not copy it does not own.** A pending race's footer is "The crowd is still betting." (raceDay.json `program.pending`), so `racePageState` returns `footer: 'pending'` and the screen picks the text from there. An odds cell with no price is `null`, drawn as the tote's "-". Neither string is copied into book.json.
+
+**News ties and edges the spec does not say.** Two-starts: ties on the first start go to the earlier second start, then the lower post in the first race. With only one horse running twice, slot 3 falls back to flavor (the item says "the two horses"). The card item says "all ..." only when every race has the same distance, surface and going, so a day that differs only in going also takes the "First up" wording instead of a false "all". Longest price: the longest winner of the day, whether or not the player bet on it, compared as fractions; a tie keeps the earlier race.
+
+**Flavor is one shuffle, drawn the same way every day.** The whole pool is shuffled on `news` ("day" sub-key) whether or not any fallback is needed, so the stream's draw count never depends on the facts. Slots that want flavor take it in slot order first (1, 4), then the facts that had nothing true to say (3, 5), so a missing fact never changes another slot's line.
+
+**Extra checks the spec's section 13 implies.** "Official" is on the book's own banned list (news.bannedWords), and `news.bannedChars` holds "$", since the spec says no copy uses either. Banned words are matched as whole words, case-insensitive, on the copy as written: a horse's name is the stable's content and is not checked against the lists.
+
+**CV1 fails against day.json, not book.json.** The track name is race 1's `track`, so a name over 19 characters, or with a character the display font lacks, is a DataError for `src/data/day.json` at `races[0].track`. The display font's 19 and its glyph list live in book.json (`cover.display`).
+
+## Book and window, step 3 (the screens and the flow)
+
+**The day opens on the cover, and Esc from it lands the track on Read; from the track's book, on Bet.** FL1 says Esc on the day's cover goes to the track on Read, FL2 says return from the book is Bet. `BookData.from` carries which book it is. The window always returns to Bet. (Amended in the fix round by spec 23.3: from a day-start race page it is Bet.) Superseded 2026-11-14 by spec section 24: the day opens on the track, the book opens on its cover at the first read of the day, and Esc goes by the page. See "The day opens on the track" below.
+
+**The door action is `window`, not `program`, and the track has two new outcomes.** Amendment 11 makes Windows open the window screen, so hub.json's door action and `HubOutcome` say `window`, and the Read row's outcome is `book`. The Read row is a box row with id `read` (`BOOK_ROW`) and no picture target; the focus on arrival, on return and from a lookable is data (`hub.json` `focus`).
+
+**Left and Right from Read step from the windows' place (guess, the spec is silent).** Read has no picture target. Stepping as from Bet keeps the arrival habit of the approved track (Left reaches the regular, Right the tote board).
+
+**A page turn puts the book's cursor on post 1 (guess).** The spec says only that Read opens with the cursor on post 1. (Amended in the fix round by spec 23.1 and 23.2: hover moves the book's entry cursor, and the window's cursor while choosing.)
+
+**The clerk's cycles count uses in the day session (`BetDay.clerk`).** The ticket line advances each time a ticket opens (choosing to ticket, or the book's hand-off), the bet line each bet. Moving an open ticket to another row by click is not a new use. New day resets both. The stamp on the bet beat is frame 1 for one idle step (hub.json `idle.stepSeconds`), then rest; with reduced motion he does not move. The beat is `program.punchSeconds`, the approved 0.6 s.
+
+**News is worked out when the book opens, not stored.** `newsOf` runs `newsFor` on the day and `BetDay.previous`, which `nextDay` fills with the day just ended. Nothing is written to storage, so a reload starts with no previous day and slot 5 is flavor.
+
+**The program page left the loop, and the window reuses its pure parts.** `ProgramScene` is still registered and compiles, but nothing opens it. The window shares `openingDollars`, `shownOdds`, `toteSlip` and the ticket strings with it, so BP3, BP7 and the slip pixels cannot drift. `requestNextEstimates` is the one place the track, the book and the window ask for races r and r + 1 (UI5, BB5).
+
+**The screens are checked against the approved mock pixel for pixel.** `src/render/bookWindowComposite.test.ts` draws the cover, the news, three race pages and four window states from the pure modules and the shipped PNGs and compares them with `docs/mocks/book-and-window/`. The track's composite test moved to sheets 6a and 6b, since its box rows moved. The PNG reader and compositor are shared in `src/render/compositeKit.ts` (test support only).
+
+**The close-up clerk is drawn whole at x112, y34.** The counter's cut at y80 needs no crop: his frame's rows from y80 down are transparent, and the counter is in the booth art below him.
+
+## Book and window, fix round (spec section 23)
+
+**At the window a hover moves the cursor while prices are pending too.** 23.2 excepts only the open ticket. While pending, choosing a row by hover does nothing more than Up and Down do, and Enter there still does nothing.
+
+**The display font's glyph check compares the two lists as sets.** book.json's `glyphs` cannot start with a space (its text schema forbids leading and trailing spaces), so its order differs from `DISPLAY_CHARS`. The test holds the same characters, each once.
+
+**The aria templates hold order and punctuation; code still ends each sentence.** `hub.json` `copy.window.aria` (row, ticket) and `book.json` `cover.aria` and `racePage.ariaEntry` are the joins. The `sentence` helper still adds a full stop where a part has none, as the track's aria-live always has.
+
+**The name check is in the hub loader, and its error names stable.json.** `nameChars` lives in hub.json and the names in stable.json, so `validateHub` takes the stable's names (the shipped ones by default) and throws a DataError for `src/data/stable.json` at `horses[i].name`, as the book loader does for day.json's track name.
+
+## The day opens on the track (spec section 24)
+
+**Boot and New day open the track on Read.** Joseph: "it should open with the place itself". `main.ts` and the End of day page's New day start the hub with the day and no focus given, so it arrives on Read. The cover's first look moved to the day's first Read.
+
+**"Opened today" is `BetDay.bookOpened`.** The book scene opens on the cover when it is false and at race r's page when it is true, and hands on the day with it set. It travels like the looks and the clerk counts (track, book, window, race, result) and `startDay` starts every day with it false, so New day resets it and nothing is saved.
+
+**Enter on the news goes to race r through `BookKeyContext.nextRace`.** Right and the foot's next item are unchanged (one page, to race 1). The field is optional and means race 1 when left out, which is the first race's page and so the old behavior for the day's first race; the book scene always sets it.
+
+**There is no day-start book mode.** `BookData.from` and the `from` argument of `bookCloseFocus` are removed rather than left unused: the close focus is the page's (cover or news to Read, a race page to Bet).
+
+## Useful news
+
+**Seven kinds, computed, no flavor.** The news is book-useful.md section 3 with the section 13 rulings: crowded lead (K3) fires at five or more front-runners only, the inside draw (K6 inside) is dropped and the wide draw stays, priority is lone speed, class, crowded lead, easier crowd, no speed, drawn wide, top on the numbers. The old flavor list, "Today's card", "Running in two races today" and "Yesterday's longest price" are gone from `book.json` and from the code. Their text stays in docs/specs/book-and-window.md section 4.
+
+**The previous day's record is gone too.** Its only reader was "Yesterday's longest price", so `BetDay.previous`, the `previous` argument of `startDay` and the `PreviousDay` type are removed. Nothing else read them.
+
+**The news module reads stats, styles and posts only.** `NewsInput` is `{ daySeed, fields, stable }`: no races, no card words, no odds. It imports no estimate, market or crowd code, and a test reads the import lines to say so (NU5).
+
+**Whole numbers for every threshold.** Lead is compared as `top * n - sum >= leadMin * n` and the easier-crowd difference by cross-multiplying the two rivals' means, so 26 and 6 are exact and 25.9 and 5.857 are not. Ties in a sort go to the earlier race, then the lower post (3.4 step 3); a rank tie shares the better rank (3.1).
+
+**Wording draws once an item, in the order taken.** One `rng.int` on the `news` stream per printed item, among the kind's pairs not yet used that day. Taking the order of priority rather than race order means the page's wording does not depend on how races are laid out. K7 is uncapped and has two pairs, so a day of three K7 items repeats a pair; when every pair of a kind is used, all become available again. The spec says only that a used pair is skipped.
+
+**Two spec pairs are not shipped.** K2 "add up the bars" and K7 "most in the bars" need a third line for some stable names (Biscuit Emergency and Medium Everything; Unsolicited Advice), which the spec's own load check fails. The spec's sample wraps used "Mint Julep Lawsuit". They need rewording by whoever owns the copy; the loader will take them back once they fit. Until then K2 and K7 have two pairs each.
+
+**No word for eight front-runners, and none is needed.** A field of eight front-runners has no closer to name, so K3 cannot fire there. The loader requires a count word for every count from the K3 threshold up to a field with one closer (5, 6, 7).
+
+**The pace phrase is the book's, not the shelved program page's.** `programConditionsLine` takes an optional pace phrase that stands in for "playing fair" while the bias is fair. Only `bookScreen.ts` passes it, so `programScreen.ts` (the shelved program page) still prints "playing fair". Header line 4 is also read out by the book's aria-live line now, as section 6 asks.
+
+**The harness bets the horse each printed item names.** One blind rule per kind and one for the whole news, each held to the existing "at most 0" band, plus a check that the whole news returns more than random on the same days. Random here is every horse in every race with the $2 in its own pool, like the other blind rules, so its figure is a little below the playtester's.
+
+**The mock is stale in two rows, and the composite test says so.** `docs/mocks/book-and-window/` was drawn with "Gossip, facts and peanuts." and "playing fair". `bookWindowComposite.test.ts` leaves those two rows out of its pixel comparison (y14-21 on the news sheet, y34-41 on the race sheets) and compares everything else, until the artist redraws the sheets.

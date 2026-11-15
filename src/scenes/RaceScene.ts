@@ -3,7 +3,10 @@ import type { RaceDayData } from '../data/raceDayLoad';
 import type { GameData } from '../data/schema';
 import { rgbOf } from '../render/colors';
 import { simErrorLines } from '../render/format';
-import { makeRaceSetup, playerView, raceFrame, type PlayerView, type RaceFrame, type RaceSetup } from '../render/raceFrame';
+import { goToPost, settle, type DayState, type DrawnRace } from '../bet/day';
+import { hudBetLine } from '../render/betCopy';
+import { skyFor } from '../render/hubScreen';
+import { bettorView, makeRaceSetup, playerView, raceFrame, watchingView, type PlayerView, type RaceFrame, type RaceSetup } from '../render/raceFrame';
 import { raceInput } from '../render/raceInput';
 import type { RaceTicket, Session } from '../render/session';
 import { PLACEHOLDER_TAG_AT, SLOT_IDS, neededSlotIds, showPlaceholderTag, standIns, trackSlotId } from '../render/slotStatus';
@@ -15,6 +18,8 @@ import { railTiles, type PoleKind } from '../render/view';
 import { runRace } from '../sim/runRace';
 import type { RaceResult } from '../sim/result';
 import { Art, type ArtInfo } from './art';
+import { firstSight } from './keyEvents';
+import { betErrorLines, programIfReady, type BetDay } from './betDay';
 import type { CardData } from './CardScene';
 import type { ResultData } from './ResultScene';
 
@@ -27,12 +32,25 @@ import type { ResultData } from './ResultScene';
 
 export interface RaceData {
   game: GameData; rd: RaceDayData; art: ArtInfo;
-  /** Already on the next race: Go to the post spent this race's seed (LP1). */
-  session: Session;
+  /** The Card loop: already on the next race, Go to the post spent this race's seed (LP1). */
+  session?: Session;
   /** This race: its number, seed, your horse and its orders. */
   ticket: RaceTicket;
   /** Keys still down from the screen before, ignored until released (IN2). */
   held?: string[];
+  /** The betting loop instead of the Card's: the race runs on the drawn field and is settled at the end. */
+  bet?: BetRaceData;
+}
+
+/**
+ * A betting race (docs/specs/betting-screens.md section 4). `state` is the day after Go to
+ * the post, with the ticket and its stake gone; or, for a pass made while the odds were
+ * still pending, the day before it, and the race goes to the post when it ends.
+ */
+export interface BetRaceData {
+  day: BetDay;
+  state: DayState;
+  drawn: DrawnRace;
 }
 
 const LAYERS = ['body', 'tack', 'jacket', 'cap'] as const;
@@ -75,7 +93,7 @@ export class RaceScene extends Phaser.Scene {
   private art!: Art;
   private setup!: RaceSetup;
   private me!: PlayerView;
-  private session!: Session;
+  private session: Session | undefined;
   private ticket!: RaceTicket;
   private clock: Clock = startClock();
   private keys: KeyState = keyState();
@@ -83,6 +101,8 @@ export class RaceScene extends Phaser.Scene {
   private uiSeconds = 0;
   /** Set once this race hands over to the next, so a second Enter in the same frame does nothing. */
   private leaving = false;
+  /** Betting: the race is over and waits for its odds (a pass made while they were pending) to settle. */
+  private settling = false;
   private hills!: Phaser.GameObjects.TileSprite;
   private dirt!: Phaser.GameObjects.TileSprite;
   private rails: Record<'far' | 'near', Phaser.GameObjects.Image[]> = { far: [], near: [] };
@@ -118,6 +138,7 @@ export class RaceScene extends Phaser.Scene {
     this.pause = closedPause();
     this.uiSeconds = 0;
     this.leaving = false;
+    this.settling = false;
     this.crowd = [];
     this.infield = [];
     this.flags = [];
@@ -133,8 +154,9 @@ export class RaceScene extends Phaser.Scene {
     const seed = this.ticket.seed;
     let result: RaceResult;
     try {
-      // A copy of the card with your orders, validated again; the loaded data is never changed (OR2).
-      result = runRace(raceInput(data.game, this.ticket.post, this.ticket.orders), seed);
+      // Betting: the drawn field as it is, all default orders. The Card loop: a copy of the
+      // card with your orders, validated again; the loaded data is never changed (OR2).
+      result = data.bet ? runRace(data.game, seed) : runRace(raceInput(data.game, this.ticket.post, this.ticket.orders), seed);
     } catch (err) {
       console.error(`The race could not be run (seed ${seed}).`, err);
       this.scene.start('error', { lines: simErrorLines(seed, err), art: data.art });
@@ -156,7 +178,7 @@ export class RaceScene extends Phaser.Scene {
       flagAt: this.art.slot(SLOT_IDS.flag).attachAt ?? [0, 0],
       flagWidth: this.art.slot(SLOT_IDS.flag).frameWidth ?? 8,
     });
-    this.me = playerView(this.setup, this.ticket.post);
+    this.me = this.viewFor(data);
 
     this.buildWorld();
     this.buildHorses(result);
@@ -167,8 +189,20 @@ export class RaceScene extends Phaser.Scene {
     this.draw(raceFrame(this.setup, this.me, this.clock));
   }
 
+  /** Your horse's view: the Card loop's pick, the horse you bet on, or none when you passed. */
+  private viewFor(data: RaceData): PlayerView {
+    const ticket = data.bet?.state.open?.ticket ?? null;
+    if (!data.bet) return playerView(this.setup, this.ticket.post);
+    if (ticket === null) return watchingView(this.setup);
+    return bettorView(this.setup, ticket.post, hudBetLine(data.rd.raceDay.copy, ticket.dollars, ticket.odds));
+  }
+
   update(_time: number, delta: number): void {
     if (!this.setup) return;
+    if (this.settling) {
+      this.trySettle();
+      return;
+    }
     const dt = Math.min(Math.max(0, delta), this.data0.rd.raceDay.playback.maxFrameMs.value) / 1000;
     if (this.pause.open) {
       // Nothing in the race advances while paused, ambient loops included; only the cursor bobs.
@@ -193,11 +227,48 @@ export class RaceScene extends Phaser.Scene {
   private toResult(): void {
     if (this.leaving) return;
     this.leaving = true;
+    if (this.data0.bet) {
+      this.settling = true;
+      this.trySettle();
+      return;
+    }
     const data: ResultData = {
       game: this.data0.game, rd: this.data0.rd, art: this.data0.art, session: this.session,
       result: this.setup.result, playerId: this.me.id, held: heldKeys(this.keys),
     };
     this.scene.start('result', data);
+  }
+
+  /**
+   * Betting: settle the race from its result (watched, skipped or abandoned, the money is the
+   * same, BK4) and open the result page, the first place the settled bank shows (UI3). A pass
+   * made while the odds were pending goes to the post here, once they are in.
+   */
+  private trySettle(): void {
+    const b = this.data0.bet!;
+    const ctx = b.day.ctx;
+    try {
+      let state = b.state;
+      if (state.open === null) {
+        const problem = b.day.estimates.failure(b.drawn);
+        if (problem !== null) throw new Error(`the odds could not be worked out: ${problem}`);
+        const program = programIfReady(b.day, b.drawn);
+        if (program === null) return;
+        state = goToPost(ctx, state, program, null);
+      }
+      const settled = settle(ctx, state, this.setup.result);
+      this.settling = false;
+      const data: ResultData = {
+        game: this.data0.game, rd: this.data0.rd, art: this.data0.art,
+        result: this.setup.result, playerId: this.me.id, held: heldKeys(this.keys),
+        bet: { day: b.day, state: settled },
+      };
+      this.scene.start('result', data);
+    } catch (err) {
+      this.settling = false;
+      console.error(err);
+      this.scene.start('error', { lines: betErrorLines(b.state.daySeed, b.drawn.race, err), art: this.data0.art });
+    }
   }
 
   private color(name: string): number {
@@ -214,8 +285,10 @@ export class RaceScene extends Phaser.Scene {
     const band = (name: string, y0: number, y1: number) => { g.fillStyle(this.color(name)); g.fillRect(0, y0, 256, y1 - y0 + 1); };
     band('Navy', 0, 14);
     band('Ash', 15, 15);
-    band('Sky', 16, 39);
-    band('Sky Pale', 40, 63);
+    // Betting: the sky by race, the track's table (DESIGN), so the day never jumps between screens.
+    const bet = this.data0.bet;
+    if (bet) for (const s of skyFor(bet.day.hub, bet.drawn.race)) band(s.color, s.y, s.y + s.h - 1);
+    else { band('Sky', 16, 39); band('Sky Pale', 40, 63); }
     band('Grass', 64, 91);
     band('Grass', 152, 159);
 
@@ -303,7 +376,8 @@ export class RaceScene extends Phaser.Scene {
     const t = (x: number, y: number, color = 'Bone') => this.art.text(x, y, '', color).setDepth(DEPTH.hud + 3);
     this.texts = {
       call: t(4, 4).setDepth(DEPTH.hudTop),
-      name: t(8, LINES.name, 'Yellow'),
+      // Yellow is your horse; with no bet the leader's name prints in the HUD's Bone.
+      name: t(8, LINES.name, this.me.watching ? 'Bone' : 'Yellow'),
       position: t(8, LINES.position),
       orders: t(8, LINES.orders),
       clock: t(192, 210),
@@ -363,9 +437,13 @@ export class RaceScene extends Phaser.Scene {
     this.drawPause();
   }
 
-  /** Back to card from the pause box: the race is abandoned and its seed stays spent (LP1). */
+  /**
+   * Back to card from the pause box: the race is abandoned and its seed stays spent (LP1).
+   * Betting: the race settles exactly as if watched (BK4) and its result page opens.
+   */
   private backToCard(): void {
     if (this.leaving) return;
+    if (this.data0.bet || !this.session) return this.toResult();
     this.leaving = true;
     const { game, rd, art } = this.data0;
     const data: CardData = { game, rd, art, session: this.session, held: heldKeys(this.keys) };
@@ -377,11 +455,12 @@ export class RaceScene extends Phaser.Scene {
     if (!kb) return;
     kb.addCapture('SPACE,ENTER,UP,DOWN,ESC');
     const onDown = (e: KeyboardEvent) => {
+      if (!firstSight(e)) return;
       const r = keyDown(this.keys, e.code, e.repeat);
       this.keys = r.state;
       if (r.act && !this.leaving) this.act(e.code);
     };
-    const onUp = (e: KeyboardEvent) => { this.keys = keyUp(this.keys, e.code); };
+    const onUp = (e: KeyboardEvent) => { if (firstSight(e)) this.keys = keyUp(this.keys, e.code); };
     // A key let go while the window is unfocused never sends keyup, so forget them all.
     const onBlur = () => { this.keys = keyState(); };
     kb.on('keydown', onDown);
