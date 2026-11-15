@@ -100,7 +100,7 @@ export function endOfDayScreen(input: EndOfDayInput): EndOfDayScreen {
     const y = L.firstRowTop + L.rowPitch * i;
     texts.push({ text: label, x: L.left, y, color: INK });
     texts.push({ text: value, x: rightAlignedX(value, L.lastX), y, color });
-    aria.push(`${label} ${value}`);
+    aria.push(fillTemplate(copy.aria.figure, { label, value }));
   });
 
   const line = copy.line[dayOutcome(summary)];
@@ -116,20 +116,22 @@ export function endOfDayScreen(input: EndOfDayInput): EndOfDayScreen {
     const t = r.ticket;
     if (t === null) {
       texts.push({ text: copy.card.passed, x: C.passedX, y, color: INK });
-      aria.push(`${race}, ${copy.card.passed}`);
+      aria.push(fillTemplate(copy.aria.passedRow, { race, passed: copy.card.passed }));
       return;
     }
     const cloth = clothFor(rd, t.post);
     const boxY = y + C.boxDy;
     rects.push({ x: C.boxX, y: boxY, w: C.boxSize, h: C.boxSize, color: INK });
     rects.push({ x: C.boxX + 1, y: boxY + 1, w: C.boxSize - 2, h: C.boxSize - 2, color: cloth.fill });
-    texts.push({ text: String(t.post % 10), x: C.boxX + C.numberDx, y: y + C.numberDy, color: cloth.number, small: true });
+    // The post as it is, so a post 10 never reads "0"; a second digit steps the number left to stay in the box (4 px cells).
+    const num = String(t.post);
+    texts.push({ text: num, x: C.boxX + C.numberDx - 2 * (num.length - 1), y: y + C.numberDy, color: cloth.number, small: true });
     texts.push({ text: t.odds, x: C.oddsX, y, color: INK });
     const ticket = r.returnCents > 0
       ? fillTemplate(copy.card.paid, { total: money(r.returnCents) })
       : fillTemplate(copy.card.lost, { amount: stake(t.dollars) });
     texts.push({ text: ticket, x: rightAlignedX(ticket, C.ticketLastX), y, color: INK });
-    aria.push(`${race}, #${t.post}, ${t.odds}, ${ticket}`);
+    aria.push(fillTemplate(copy.aria.row, { race, n: t.post, odds: t.odds, ticket }));
   });
 
   const A = L.action;

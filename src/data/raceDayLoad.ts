@@ -1,5 +1,7 @@
 import type { z } from 'zod';
+import bettingJson from './betting.json';
 import cardLook from './cardLook.json';
+import hubJson from './hub.json';
 import palette from './palette.json';
 import raceDay from './raceDay.json';
 import slots from './slots.json';
@@ -9,6 +11,7 @@ import {
 } from './raceDaySchema';
 import { MAX_NAME_LENGTH, type GameData, type Race } from './schema';
 import { allBiasLines, conditionsLine, programConditionsLine, programPlaceLine } from './cardWords';
+import { bannedWordIn } from './bookText';
 import { templateHoles, fillTemplate, wrapWords } from './template';
 import { DataError, type DataIssue } from './validate';
 
@@ -289,6 +292,7 @@ export function validateRaceDay(
   const seedPx = 8 * (r.seed.length + 1) + SMALL_PX * 10;
   if (seedPx > BOX_PX) add('raceDay', 'copy.result.seed', `the seed line is ${seedPx} px at its widest; the box holds ${BOX_PX}`);
   checkBettingCopyWidths(copy, check, add);
+  checkEndOfDay(rd, check, add);
 
   if (rd.beats.photoCaptionSeconds.value > rd.beats.photoSeconds.value) {
     add('raceDay', 'beats.photoCaptionSeconds', `is ${rd.beats.photoCaptionSeconds.value} s; the caption must show within the photo's ${rd.beats.photoSeconds.value} s`);
@@ -357,6 +361,103 @@ function checkBettingCopyWidths(copy: RaceDay['copy'], check: Check, add: (file:
   check('copy.result.passed', r.passed, [], BOX_CHARS);
   check('copy.result.winPrice', r.winPrice, ['price'], BOX_CHARS, { price: W.twoDollar });
   check('copy.result.end', r.end, [], RESULT_ACTION_CHARS);
+}
+
+// The End of day page (betting-screens.md sections 6, 8 and 10, DESIGN "End of day, the back page").
+// "Paid $20,620.00" is the longest ticket, 15 cells from x128. The day pair is "Day" plus a 4 px gap
+// and "#" with up to 10 digits of seed in 4 px cells, so it is at most 72 px, right-aligned to x247.
+export const END_PAID_CHARS = 15;
+export const END_DAY_PAIR_PX = 72;
+export const END_VALUE_CHARS = 12;
+export const END_CARD_ROWS = 8;
+export const END_LINE_CHARS = 30;
+
+/** Every string under `v`, with its dotted path. */
+function stringsOf(v: unknown, path: string): [string, string][] {
+  if (typeof v === 'string') return [[path, v]];
+  if (Array.isArray(v)) return v.flatMap((x, i) => stringsOf(x, `${path}[${i}]`));
+  if (v !== null && typeof v === 'object') return Object.entries(v).flatMap(([k, x]) => stringsOf(x, `${path}.${k}`));
+  return [];
+}
+
+/**
+ * `copy.end` and the `endOfDay` positions, checked at load like every other copy key and layout
+ * block: each line fits its field at its longest fill, every hole is known, no banned word (whole
+ * words, the list the betting and track copy use), and the page's pieces neither overlap nor
+ * reach the New day box.
+ */
+function checkEndOfDay(rd: RaceDay, check: Check, add: (file: string, path: string, message: string) => void): void {
+  const W = BET_WIDEST;
+  const e = rd.copy.end;
+  const L = rd.endOfDay.value;
+  const C = L.card;
+  const A = L.action;
+  const at = (path: string, message: string) => add('raceDay', path, message);
+
+  // Words.
+  check('copy.end.title', e.title, [], Math.floor((L.lastX + 1 - END_DAY_PAIR_PX - L.left) / 8) - 1);
+  for (const k of ['up', 'even', 'down', 'none'] as const) check(`copy.end.line.${k}`, e.line[k], [], END_LINE_CHARS);
+  // Label, a space, then the widest value, on one 30-cell line.
+  const labelMax = END_LINE_CHARS - 1 - END_VALUE_CHARS;
+  for (const k of ['started', 'ended', 'change', 'bets', 'winners', 'best'] as const) check(`copy.end.${k}`, e[k], [], labelMax);
+  check('copy.end.betsOf', e.betsOf, ['bets', 'races'], END_VALUE_CHARS, { bets: String(END_CARD_ROWS), races: String(END_CARD_ROWS) });
+  check('copy.end.plus', e.plus, ['amount'], END_VALUE_CHARS, { amount: W.bank });
+  check('copy.end.minus', e.minus, ['amount'], END_VALUE_CHARS, { amount: W.bank });
+  check('copy.end.noWinner', e.noWinner, [], END_VALUE_CHARS);
+  check('copy.end.even', e.even, [], END_VALUE_CHARS);
+  check('copy.end.newDay', e.newDay, [], PROGRAM_CURSOR_LINE_CHARS);
+  const raceMax = Math.floor((C.boxX - C.raceX) / 8);
+  check('copy.end.card.race', e.card.race, ['r'], raceMax, { r: String(END_CARD_ROWS) });
+  check('copy.end.card.paid', e.card.paid, ['total'], END_PAID_CHARS, { total: W.total });
+  check('copy.end.card.lost', e.card.lost, ['amount'], END_PAID_CHARS, { amount: W.stake });
+  check('copy.end.card.passed', e.card.passed, [], Math.floor((C.ticketLastX + 1 - C.passedX) / 8));
+  const wide = 400;
+  const ariaHoles: [string, string, string[]][] = [
+    ['figure', e.aria.figure, ['label', 'value']],
+    ['row', e.aria.row, ['race', 'n', 'odds', 'ticket']],
+    ['passedRow', e.aria.passedRow, ['race', 'passed']],
+  ];
+  for (const [k, template, holes] of ariaHoles) {
+    check(`copy.end.aria.${k}`, template, holes, wide);
+    // Every hole is used, or a figure would be read without its value.
+    for (const h of holes) if (!templateHoles(template).includes(h)) at(`copy.end.aria.${k}`, `must use {${h}}`);
+  }
+  const banned = [...bettingJson.copy.bannedWords, ...hubJson.copy.bannedWords];
+  for (const [path, text] of stringsOf(e, 'copy.end')) {
+    const word = bannedWordIn(text, banned);
+    if (word !== null) at(path, `"${text}" contains the banned word "${word}"`);
+  }
+
+  // Positions.
+  const [rule1, rule2] = L.rules;
+  if (L.left < 0) at('endOfDay.value.left', 'must be 0 or more');
+  if (L.left >= L.lastX || L.lastX > 255) at('endOfDay.value.lastX', `must be right of left (${L.left}) and at most 255`);
+  if (!(L.titleTop >= 0 && L.titleTop + 8 <= L.trackTop && L.trackTop + 8 <= rule1)) at('endOfDay.value.trackTop', `the title (y${L.titleTop}) and the track line (y${L.trackTop}) must stack above the first rule (y${rule1}), 8 rows each`);
+  const lastFigure = L.firstRowTop + L.rowPitch * 5;
+  if (L.rowPitch < 8) at('endOfDay.value.rowPitch', 'must be at least 8, the main font\'s height');
+  if (!(rule1 < L.firstRowTop && lastFigure + 8 <= rule2)) at('endOfDay.value.firstRowTop', `the six figures (y${L.firstRowTop} to y${lastFigure + 7}) must sit between the rules at y${rule1} and y${rule2}`);
+  if (!(rule2 < L.lineTop && L.lineTop + 8 <= L.cardRuleTop)) at('endOfDay.value.lineTop', `the day's line (y${L.lineTop}) must sit between the rule at y${rule2} and the card's rule at y${L.cardRuleTop}`);
+  if (L.cardTop <= L.cardRuleTop) at('endOfDay.value.cardTop', `must be below the card's rule (y${L.cardRuleTop})`);
+  if (L.cardPitch < C.boxSize) at('endOfDay.value.cardPitch', `must be at least the box's ${C.boxSize} rows, or the boxes touch`);
+  const lastRowTop = L.cardTop + L.cardPitch * (END_CARD_ROWS - 1);
+  const lastRowBottom = lastRowTop + Math.max(7, C.boxDy + C.boxSize - 1);
+  if (lastRowBottom >= A.box.y0) at('endOfDay.value.cardTop', `the card's last row (y${lastRowTop}, ending y${lastRowBottom}) must end above the New day box (y${A.box.y0})`);
+  // Columns along a card row.
+  const raceEnd = C.raceX + 8 * fillTemplate(e.card.race, { r: String(END_CARD_ROWS) }).length;
+  if (raceEnd > C.boxX) at('endOfDay.value.card.boxX', `the box starts at x${C.boxX}, but "Race 8" ends at x${raceEnd - 1}`);
+  if (C.boxX + C.boxSize > C.oddsX) at('endOfDay.value.card.oddsX', `the odds start at x${C.oddsX}, inside the box (x${C.boxX} to x${C.boxX + C.boxSize - 1})`);
+  const paidX = C.ticketLastX + 1 - 8 * END_PAID_CHARS;
+  if (C.oddsX + 8 * 4 > paidX) at('endOfDay.value.card.ticketLastX', `the longest ticket starts at x${paidX}, but 4-character odds from x${C.oddsX} end at x${C.oddsX + 31}`);
+  if (C.passedX < raceEnd) at('endOfDay.value.card.passedX', `"Passed" starts at x${C.passedX}, but "Race 8" ends at x${raceEnd - 1}`);
+  if (C.ticketLastX > L.lastX) at('endOfDay.value.card.ticketLastX', `must not pass the page's right edge (x${L.lastX})`);
+  if (C.numberDx < 1 || C.numberDx + 4 > C.boxSize - 1) at('endOfDay.value.card.numberDx', `the 4 px number must sit inside the box's fill (x1 to x${C.boxSize - 2} of the box)`);
+  if (C.numberDy < C.boxDy + 1 || C.numberDy + 5 > C.boxDy + C.boxSize - 1) at('endOfDay.value.card.numberDy', 'the 5-row number must sit inside the box\'s fill');
+  // The action.
+  const [x0, y0, x1, y1] = [A.box.x0, A.box.y0, A.box.x1, A.box.y1];
+  if (x0 > x1 || y0 > y1 || x1 > 255 || y1 > 239 || x0 < 0 || y0 < 0) at('endOfDay.value.action.box', 'must be a box inside the screen, with x0 <= x1 and y0 <= y1');
+  if (A.top < y0 || A.top + 8 - 1 > y1) at('endOfDay.value.action.top', `the "New day" row (y${A.top}) must lie inside its box (y${y0} to y${y1})`);
+  if (A.cursorX + 8 > A.textX) at('endOfDay.value.action.textX', 'must start right of the cursor, which fills 8 columns');
+  if (A.textX + 8 * e.newDay.length > L.lastX + 1) at('endOfDay.value.action.textX', `"${e.newDay}" would pass x${L.lastX}`);
 }
 
 /**

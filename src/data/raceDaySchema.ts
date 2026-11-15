@@ -469,6 +469,8 @@ export const raceDaySchema = z.strictObject({
       minus: text,
       newDay: text,
       card: z.strictObject({ race: text, paid: text, lost: text, passed: text }),
+      // aria-live only (book-and-window.md 23.6): how the page's words are joined. Order and punctuation; the words are copy.
+      aria: z.strictObject({ figure: text, row: text, passedRow: text }),
     }),
     orders: z.strictObject({
       allDefault: text,

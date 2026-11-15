@@ -285,3 +285,42 @@ describe('the keys and the one pointer target', () => {
     for (const k of END_POINTER_KEYS.newDay) expect(END_CONFIRM_KEYS).toContain(k);
   });
 });
+
+describe('the aria-live joining words come from data (book-and-window.md 23.6)', () => {
+  const day = dayOf({ 1: { post: 3, dollars: 10, winner: 3 } });
+  const withAria = (aria: Partial<typeof rd.copy.end.aria>) =>
+    endOfDayScreen({
+      rd: { ...rd, copy: { ...rd.copy, end: { ...rd.copy.end, aria: { ...rd.copy.end.aria, ...aria } } } },
+      book, trackName: TRACK, summary: daySummary(ctx, day), records: day.records,
+    }).aria;
+
+  it('the shipped templates give the text the page read before they were data', () => {
+    const e = rd.copy.end.aria;
+    expect(e).toEqual({ figure: '{label} {value}', row: '{race}, #{n}, {odds}, {ticket}', passedRow: '{race}, {passed}' });
+    const a = page(day).aria;
+    expect(a).toContain('Started with $100.00.');
+    expect(a).toContain(`Race 1, #3, ${day.records[0].ticket!.odds}, Paid ${dollars(day.records[0].returnCents)}.`);
+    expect(a).toContain('Race 2, Passed.');
+  });
+  it('a figure reads through its template', () => expect(withAria({ figure: '{label}: {value}' })).toContain('Started with: $100.00.'));
+  it('a bet row reads through its template', () => expect(withAria({ row: '{race} on #{n}, {ticket}, {odds}' })).toMatch(/Race 1 on #3, Paid \$[\d.,]+, \d+-\d+\./));
+  it('a passed row reads through its template', () => expect(withAria({ passedRow: '{race}; {passed}' })).toContain('Race 2; Passed.'));
+});
+
+describe('the saddlecloth number prints the post as it is', () => {
+  const day = dayOf({ 1: { post: 3, dollars: 2, winner: 3 } });
+  const withPost = (post: number) => {
+    const rec = { ...day.records[0], ticket: { ...day.records[0].ticket!, post } };
+    return endOfDayScreen({ rd, book, trackName: TRACK, summary: daySummary(ctx, day), records: [rec] });
+  };
+  const small = (s: { texts: PageText[] }) => s.texts.filter((t) => t.small && t.y === 129);
+  it('posts 1 to 8 print their digit at x67', () => {
+    for (let p = 1; p <= 8; p++) expect(small(withPost(p)).map((t) => [t.text, t.x])).toEqual([[String(p), 67]]);
+  });
+  it('a post 10 reads "10", never "0", and stays inside the 8 px fill (x65-72)', () => {
+    const [t] = small(withPost(10));
+    expect(t.text).toBe('10');
+    expect(t.x).toBeGreaterThanOrEqual(65);
+    expect(t.x + 4 * 2 - 1).toBeLessThanOrEqual(72);
+  });
+});

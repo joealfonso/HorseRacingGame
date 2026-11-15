@@ -266,7 +266,8 @@
       "plus": "+{amount}",
       "minus": "-{amount}",
       "newDay": "New day",
-      "card": { "race": "Race {r}", "paid": "Paid {total}", "lost": "Lost {amount}", "passed": "Passed" }
+      "card": { "race": "Race {r}", "paid": "Paid {total}", "lost": "Lost {amount}", "passed": "Passed" },
+      "aria": { "figure": "{label} {value}", "row": "{race}, #{n}, {odds}, {ticket}", "passedRow": "{race}, {passed}" }
     },
     "orders": {
       "allDefault": "Rider's call",
