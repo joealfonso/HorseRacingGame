@@ -143,7 +143,6 @@ function foot(c, prev, next) {
 }
 const SEED = '12345';
 const TRACK = DAY.races[0].track;
-const COVER_LINE = 'Bugler finds a 13th note';
 
 function cover({ eightByEight = false, picture = COVER } = {}) {
   const c = paper();
@@ -172,16 +171,9 @@ function news() {
   const c = paper();
   text(c, 'Rail Talk', 8, 4, 'Maroon');
   dayPairRight(c, 247, 4, SEED);
-  text(c, 'Gossip, facts and peanuts.', 8, 14, 'Ink');
+  text(c, 'Pace, class and peanuts.', 8, 14, 'Ink'); // docs/specs/book-useful.md section 8
   rule(c, 24);
-  const items = [
-    ['Bugler finds a 13th note', 'He is saving it for a special', 'occasion. Today is not it.'],
-    ["Today's card", '8 races, all 1 1/4 miles on', 'fast dirt.'],
-    ['Running in two races today', 'Mint Julep Lawsuit, races 2, 6', 'Hold My Oats, races 3, 7'],
-    ['Pigeons hold the good seats', 'Ushers asked nicely. The', 'pigeons have declined.'],
-    ["Yesterday's longest price", 'Sock In The Dryer won race 4', 'at 26-1.'],
-  ];
-  items.forEach(([h, b1, b2], k) => {
+  NEWS.forEach(({ headline: h, lines: [b1, b2] }, k) => {
     for (const s of [h, b1, b2]) if (s.length > 30) fails.push(`news line over 30: ${s}`);
     text(c, h, 8, 30 + 36 * k, 'Maroon');
     text(c, b1, 8, 40 + 36 * k, 'Ink');
@@ -207,6 +199,47 @@ const R5 = field(['Ten Items Or Less', 'Burgoo Weather', 'Smoke Alarm Chirp', 'L
 const R2 = field(['Biscuit Emergency', 'Mint Julep Lawsuit', 'Porch Light On', 'Understudy', 'Decaf By Mistake', 'Take A Number', 'Polite Applause', 'Mayor Of Turn Two']);
 const R2_ODDS = ['6-1', '5-2', '2-1', '9-1', '7-2', '15-1', '11-1', '4-1'];
 
+// ------------------------------------------------------------- news (book-useful.md 3)
+// Five hints in race order, pairs word for word from section 3.5. Races 2, 3 and 5 are the
+// mock's own fields (stable.json): each has a unique top total, a lead under 26, 2 or 3
+// front-runners and no front-runner ranked 1-3 in post 7 or 8, so K7 is the only kind that
+// fires there; each takes a different K7 pair. Races 1 and 7 are not drawn in the mock, so
+// they take a K1 and a K3 pair with horses from outside the three fields, of the right style.
+// The lead (cover line) is the first by priority K1, K2, K3, K4, K5, K6, K7.
+function wrap30(s) {
+  const out = [''];
+  for (const w of s.split(' ')) {
+    const cur = out[out.length - 1];
+    if (cur && cur.length + 1 + w.length > 30) out.push(w); else out[out.length - 1] = cur ? `${cur} ${w}` : w;
+  }
+  return out;
+}
+const PRIORITY = ['K1', 'K2', 'K3', 'K4', 'K5', 'K6', 'K7'];
+const fieldTop = (hs) => hs.map((h) => [h, h.stats.speed + h.stats.stamina + h.stats.kick]).sort((a, b) => b[1] - a[1]);
+const NEWS_SRC = [
+  { r: 1, kind: 'K1', name: 'Running Joke', style: 'frontRunner', headline: 'one wants the lead', body: 'Only {name} wants the lead. The bugler approves.' },
+  { r: 2, kind: 'K7', field: R2, headline: 'tops on the numbers', body: 'On paper, {name}. Paper has been wrong before.' },
+  { r: 3, kind: 'K7', field: R3, headline: 'most in the bars', body: 'Add the three bars. Top here: {name}.' },
+  { r: 5, kind: 'K7', field: R5, headline: 'best sum here', body: 'Sum the bars and {name} comes out on top.' },
+  { r: 7, kind: 'K3', name: 'Late Checkout', style: 'closer', headline: 'a crowd up front', body: 'A busy lead helps closers. Top one here: {name}.' },
+];
+const NEWS = NEWS_SRC.map((n) => {
+  let name = n.name;
+  if (n.field) {
+    const t = fieldTop(n.field);
+    if (t[0][1] === t[1][1]) throw new Error(`race ${n.r}: no unique top, K7 is false`);
+    name = t[0][0].name;
+  } else {
+    if (byName[name].style !== n.style) throw new Error(`${name} is not a ${n.style}`);
+    if ([R2, R3, R5].some((f) => f.some((h) => h.name === name))) throw new Error(`${name} is in a mock field`);
+  }
+  const lines = wrap30(n.body.replace('{name}', name));
+  if (lines.length > 2) throw new Error(`race ${n.r}: body needs a third line`);
+  return { r: n.r, kind: n.kind, headline: `Race ${n.r}: ${n.headline}`, lines: [lines[0], lines[1] ?? ''] };
+});
+const LEAD = [...NEWS].sort((a, b) => PRIORITY.indexOf(a.kind) - PRIORITY.indexOf(b.kind) || a.r - b.r)[0];
+const COVER_LINE = LEAD.headline;
+
 function clothBlock(c, x, y, post) { // 16x17 program block: Ink border, fill, main-font number
   const cl = CLOTH[post - 1];
   c.rect(x, y, 16, 17, 'Ink');
@@ -220,7 +253,9 @@ function racePage(r, horses, odds, { right, cursor, tick = null, footL1 }) {
   if (right) textRight(c, right, 247, 4, 'Ink');
   text(c, race.name, 8, 14, 'Maroon');
   text(c, `${race.track}, 1 1/4 miles`, 8, 24, 'Ink');
-  text(c, 'Dirt, fast, playing fair', 8, 34, 'Ink');
+  // L4: the pace phrase from the field's own front-runner count (book-useful.md section 6)
+  const fronts = horses.filter((h) => h.style === 'frontRunner').length;
+  text(c, `Dirt, fast, ${fronts === 0 ? 'none' : fronts} up front`, 8, 34, 'Ink');
   for (const y of [44, 56, 210]) rule(c, y);
   const H = RD.copy.program.heads;
   text(c, H.speed, 40, 47, 'Ink');
@@ -582,3 +617,5 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
   console.log('checks passed');
 }
+
+export { NEWS, LEAD, COVER_LINE };

@@ -84,6 +84,14 @@ export function validateBook(raw: BookInput): Book {
   checkFoot(b, raceNumbers, line, add);
   if (issues.length > 0) throw new DataError(FILE, issues);
 
+  // A horse's name is the stable's, but the news prints it: no stable name may hold a word the book bans.
+  const dirty: DataIssue[] = [];
+  raw.horseNames.forEach((name, i) => {
+    const word = bannedWordIn(name, banned);
+    if (word !== null) dirty.push({ path: `horses[${i}].name`, message: `"${name}" contains the banned word "${word}", and the news prints names` });
+  });
+  if (dirty.length > 0) throw new DataError('src/data/stable.json', dirty);
+
   // CV1, amended in 18.1 item 3 and 18.2: race 1's track name in the display font.
   const track = raw.races[0]?.track;
   if (track !== undefined) {

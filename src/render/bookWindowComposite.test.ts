@@ -39,15 +39,17 @@ const R5 = fieldOf(5, ['Ten Items Or Less', 'Burgoo Weather', 'Smoke Alarm Chirp
 const R2 = fieldOf(2, ['Biscuit Emergency', 'Mint Julep Lawsuit', 'Porch Light On', 'Understudy', 'Decaf By Mistake', 'Take A Number', 'Polite Applause', 'Mayor Of Turn Two']);
 const R2_ODDS = ['6-1', '5-2', '2-1', '9-1', '7-2', '15-1', '11-1', '4-1'];
 
-// The mock's sample items are the old news (docs/specs/book-and-window.md section 4). The page draws whatever NewsItems it is
-// handed, so they are handed in as they are; kind, race and horse are placeholders the drawing never reads, `lead` marks the cover line.
-const item = (slot: number, headline: string, body: string[]): NewsItem => ({ slot, id: `mock:${slot}`, kind: 'K7', race: slot, horseId: '', post: 1, lead: slot === 1, headline, body });
+// The mock's sample news (scripts/art/book_mock.mjs NEWS, LEAD, COVER_LINE; the values are written here, not imported:
+// that script regenerates the PNGs when loaded). The page draws whatever NewsItems it is handed, so they are handed in as
+// the mock has them; kind, horse and post are placeholders the drawing never reads. `lead` is the first taken (Race 1).
+const item = (race: number, kind: NewsItem['kind'], headline: string, body: string[], slot: number): NewsItem =>
+  ({ slot, id: `mock:${race}`, kind, race, horseId: '', post: 1, lead: race === 1, headline, body });
 const MOCK_NEWS: NewsItem[] = [
-  item(1, 'Bugler finds a 13th note', ['He is saving it for a special', 'occasion. Today is not it.']),
-  item(2, "Today's card", ['8 races, all 1 1/4 miles on', 'fast dirt.']),
-  item(3, 'Running in two races today', ['Mint Julep Lawsuit, races 2, 6', 'Hold My Oats, races 3, 7']),
-  item(4, 'Pigeons hold the good seats', ['Ushers asked nicely. The', 'pigeons have declined.']),
-  item(5, "Yesterday's longest price", ['Sock In The Dryer won race 4', 'at 26-1.']),
+  item(1, 'K1', 'Race 1: one wants the lead', ['Only Running Joke wants the', 'lead. The bugler approves.'], 1),
+  item(2, 'K7', 'Race 2: tops on the numbers', ['On paper, Biscuit Emergency.', 'Paper has been wrong before.'], 2),
+  item(3, 'K7', 'Race 3: most in the bars', ['Add the three bars. Top here:', 'Paddock Gossip.'], 3),
+  item(5, 'K7', 'Race 5: best sum here', ['Sum the bars and Long Story', 'Longer comes out on top.'], 4),
+  item(7, 'K3', 'Race 7: a crowd up front', ['A busy lead helps closers. Top', 'one here: Late Checkout.'], 5),
 ];
 const cover = coverFor(book, { daySeed: 12345, trackName: ctx.races[0].track, raceCount: 8, news: MOCK_NEWS });
 
@@ -67,16 +69,6 @@ function paintBook(s: BookScreen): Frame {
   return f;
 }
 
-/**
- * The mock (docs/mocks/book-and-window/) was drawn before book-useful.md, so two rows of it are the old words:
- * the news page's subtitle row ("Gossip, facts and peanuts.", now "Pace, class and peanuts.", spec section 2, y14-21)
- * and a race page's header line 4 ("playing fair", now the pace phrase, spec section 6, y34-41). Those rows are left
- * out of the comparison until the artist redraws the sheets; every other pixel must still match.
- */
-const STALE_ROWS = { news: [14, 21], race: [34, 41] } as const;
-const diffsOutside = (diffs: string[], rows: readonly [number, number]): string[] =>
-  diffs.filter((d) => { const y = Number(d.split(':')[0].split(',')[1]); return y < rows[0] || y > rows[1]; });
-
 const pageState = (race: number, over: Partial<RacePageState>): RacePageState =>
   ({ race, kind: 'posted', odds: [], right: '', footer: 'blurb', enter: 'none', tick: null, ...over });
 const racePage = (drawn: DrawnRace, page: RacePageState) => racePageScreen({ book, ctx, rd, look: lookFor(drawn), drawn, page, focus: 0 });
@@ -88,6 +80,14 @@ describe('the book matches the approved mock pixel for pixel', () => {
     expect(diffs.length, diffs.slice(0, 10).join('\n')).toBe(0);
   });
 
+  it('the cover line is the lead item\'s headline, and header line 4 comes out of the code from the mock\'s own fields', () => {
+    expect(cover.line).toBe('Race 1: one wants the lead');
+    const l4 = (drawn: DrawnRace, page: RacePageState) => racePage(drawn, page).texts.find((t) => t.y === 34)!.text;
+    expect(l4(R3, pageState(3, {}))).toBe('Dirt, fast, 2 up front');
+    expect(l4(R5, pageState(5, {}))).toBe('Dirt, fast, 3 up front');
+    expect(l4(R2, pageState(2, {}))).toBe('Dirt, fast, 3 up front');
+  });
+
   it('CV3: the cover uses only Parchment, Ink and Maroon', () => {
     const f = paintBook(coverScreen(book, cover, 8));
     expect([...f.colorsIn(0, 0, 255, 239)].sort()).toEqual(['Ink', 'Maroon', 'Parchment']);
@@ -95,25 +95,25 @@ describe('the book matches the approved mock pixel for pixel', () => {
 
   it('3-news: the five items, the day pair right-aligned, the foot', () => {
     const f = paintBook(newsScreen(book, MOCK_NEWS, cover.dayLabel, cover.dayNumber, 8));
-    const diffs = diffsOutside(f.diff(MOCK('3-news.png')), STALE_ROWS.news);
+    const diffs = f.diff(MOCK('3-news.png'));
     expect(diffs.length, diffs.slice(0, 10).join('\n')).toBe(0);
   });
 
   it('4a: race 3 with prices posted, the cursor on #1 and its blurb, "Enter: to window"', () => {
     const f = paintBook(racePage(R3, pageState(3, { odds: R3_ODDS, right: 'Enter: to window', enter: 'window' })));
-    const diffs = diffsOutside(f.diff(MOCK('4a-race3-prices-posted.png')), STALE_ROWS.race);
+    const diffs = f.diff(MOCK('4a-race3-prices-posted.png'));
     expect(diffs.length, diffs.slice(0, 10).join('\n')).toBe(0);
   });
 
   it('4b: race 5, "Prices later" and every odds cell "-"', () => {
     const f = paintBook(racePage(R5, pageState(5, { kind: 'later', odds: R5.horseIds.map(() => null), right: 'Prices later' })));
-    const diffs = diffsOutside(f.diff(MOCK('4b-race5-prices-later.png')), STALE_ROWS.race);
+    const diffs = f.diff(MOCK('4b-race5-prices-later.png'));
     expect(diffs.length, diffs.slice(0, 10).join('\n')).toBe(0);
   });
 
   it('4c: race 2 run, "Winner: #5" and the pencil tick on your #3', () => {
     const f = paintBook(racePage(R2, pageState(2, { kind: 'run', odds: R2_ODDS, right: 'Winner: #5', tick: 3 })));
-    const diffs = diffsOutside(f.diff(MOCK('4c-race2-run.png')), STALE_ROWS.race);
+    const diffs = f.diff(MOCK('4c-race2-run.png'));
     expect(diffs.length, diffs.slice(0, 10).join('\n')).toBe(0);
   });
 });

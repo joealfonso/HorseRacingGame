@@ -95,6 +95,10 @@ describe('the shipped book.json', () => {
       'K1:nobody to argue with': ['Mint Julep Lawsuit is the lone', 'speed. Better than its bars.'],
       'K1:a lead for one': ['No rival for the lead. Mint', 'Julep Lawsuit likes that.'],
       'K2:a class above': ['No one here is close to Mint', 'Julep Lawsuit on paper.'],
+      'K2:add up the bars': ['Add up the bars. Well ahead:', 'Mint Julep Lawsuit.'],
+      'K2:a cut above': ['The regular added it twice:', 'Mint Julep Lawsuit, by plenty.'],
+      'K2:class of the race': ['Mint Julep Lawsuit is the', 'class here. Ask anyone.'],
+      'K2:nobody near on paper': ['Even the pigeons see it: Mint', 'Julep Lawsuit, clear.'],
       'K2:best by a lot': ['Mint Julep Lawsuit has the', 'most in the bars, by a lot.'],
       'K3:{k} want the lead': ['Closers like a busy front.', 'Mint Julep Lawsuit tops them.'],
       'K3:a crowd up front': ['A busy lead helps closers. Top', 'one here: Mint Julep Lawsuit.'],
@@ -102,13 +106,20 @@ describe('the shipped book.json', () => {
       'K4:an easier crowd': ['Mint Julep Lawsuit runs twice.', 'Race 6 is the easier field.'],
       'K4:softer company': ['Two starts for Mint Julep', 'Lawsuit. Race 6 is kinder.'],
       'K4:kinder rivals': ['Race 6 is the easier of Mint', "Julep Lawsuit's two."],
+      'K4:the kinder of two': ['Mint Julep Lawsuit: two races.', "This one's softer."],
+      'K4:a gentler bunch': ['Mint Julep Lawsuit runs two.', 'Fewer bigwigs here.'],
+      'K4:lighter company': ['Mint Julep Lawsuit has the', 'lighter field of two.'],
       'K5:nobody wants the lead': ['Stalkers set the pace, and', 'Mint Julep Lawsuit tops them.'],
       'K5:no speed at all': ['No early speed suits stalkers.', 'Top one: Mint Julep Lawsuit.'],
       'K5:who goes first?': ['Someone has to go first. Top', 'stalker: Mint Julep Lawsuit.'],
       'K6:drawn wide': ['Post 8 for Mint Julep Lawsuit.', 'A long way round for speed.'],
       'K6:a long way round': ['Mint Julep Lawsuit drew wide,', 'post 8. Speed minds it a bit.'],
       'K6:parked out wide': ['Mint Julep Lawsuit starts from', 'post 8. A long trip for speed.'],
+      'K6:outside looking in': ['Mint Julep Lawsuit, post 8: a', 'bit of extra ground.'],
+      'K6:far from the rail': ['Mint Julep Lawsuit is in post', '8. Costs a little.'],
+      'K6:the outside seats': ['Mint Julep Lawsuit: post 8,', 'small cost, nice view.'],
       'K7:tops on the numbers': ['On paper, Mint Julep Lawsuit.', 'Paper has been wrong before.'],
+      'K7:most in the bars': ['Add the three bars. Top here:', 'Mint Julep Lawsuit.'],
       'K7:best sum here': ['Sum the bars and Mint Julep', 'Lawsuit comes out on top.'],
     };
     let seen = 0;
@@ -124,9 +135,25 @@ describe('the shipped book.json', () => {
     expect(seen).toBe(Object.keys(spec).length);
   });
 
-  it('every stable name fits every shipped pair in 2 lines of 30 (the two spec pairs that need a third line for some names are left out)', () => {
-    const left = ['add up the bars', 'most in the bars'];
-    for (const k of Object.values(loadBook().news.kinds.value)) for (const p of k.pairs) expect(left).not.toContain(p.headline);
+  it('ships three to six pairs a kind: the reworded K2 and K7 pairs and pairs 4 to 6 of K2, K4 and K6 wide are in', () => {
+    const k = loadBook().news.kinds.value;
+    expect(Object.fromEntries(Object.entries(k).map(([n, v]) => [n, v.pairs.length]))).toEqual({ K1: 3, K2: 6, K3: 3, K4: 6, K5: 3, K6: 6, K7: 3 });
+    expect(k.K2.pairs.map((p) => p.headline)).toContain('add up the bars');
+    expect(k.K7.pairs.map((p) => p.headline)).toContain('most in the bars');
+  });
+
+  it('every stable name fits every shipped pair in 2 lines of 30, at either end of the posts (the loader\'s own judge)', () => {
+    const names = stableJson.horses.map((h) => h.name);
+    for (const [kind, k] of Object.entries(loadBook().news.kinds.value)) {
+      for (const p of k.pairs) {
+        for (const name of names) for (const post of [1, 8]) {
+          const body = p.body.replace('{name}', name).replace('{post}', String(post)).replace('{soft}', '8');
+          const lines = wrapWords(body, 30);
+          expect(lines.length, `${kind}:${p.headline} with ${name}`).toBeLessThanOrEqual(2);
+          for (const l of lines) expect(l.length).toBeLessThanOrEqual(30);
+        }
+      }
+    }
   });
 });
 
@@ -147,9 +174,11 @@ describe('NU4: pairs checked at load, with the key', () => {
     expect(e.issues[0].message).toMatch(/needs more than 2 lines of 30/);
   });
 
-  it('the two spec pairs left out do fail the check (so the spec\'s own rule keeps them out)', () => {
-    expect(paths(failure((b) => { b.news.kinds.value.K2.pairs.push({ headline: 'add up the bars', body: 'Add up the bars. {name} comes out well ahead.' }); }))).toContain(pairAt('K2', 2) + '.body');
-    expect(paths(failure((b) => { b.news.kinds.value.K7.pairs.push({ headline: 'most in the bars', body: 'Add the three bars: {name} is top here.' }); }))).toContain(pairAt('K7', 2) + '.body');
+  it('the two bodies the designer replaced still fail the check (so they stay out)', () => {
+    const n2 = bookJson.news.kinds.value.K2.pairs.length;
+    const n7 = bookJson.news.kinds.value.K7.pairs.length;
+    expect(paths(failure((b) => { b.news.kinds.value.K2.pairs.push({ headline: 'add up it', body: 'Add up the bars. {name} comes out well ahead.' }); }))).toContain(pairAt('K2', n2) + '.body');
+    expect(paths(failure((b) => { b.news.kinds.value.K7.pairs.push({ headline: 'most bars', body: 'Add the three bars: {name} is top here.' }); }))).toContain(pairAt('K7', n7) + '.body');
   });
 
   it('an unknown hole fails, and so does a hole a kind does not have', () => {
@@ -245,6 +274,33 @@ describe('NU4: banned words, whole words, case-insensitive', () => {
     expect(bannedWordIn('Pickle', ['pick'])).toBeNull();
     expect(bannedWordIn('Pick, six', ['pick'])).toBe('pick');
     expect(holesOf('{race1Name} {a}')).toEqual(['race1Name', 'a']);
+  });
+});
+
+describe('stable names are held to the banned words of the book', () => {
+  const withNames = (names: string[]): DataError | null => {
+    try { validateBook({ ...base(structuredClone(bookJson)), horseNames: names }); } catch (e) { if (e instanceof DataError) return e; throw e; }
+    return null;
+  };
+  const names = stableJson.horses.map((h) => h.name);
+
+  it('no current stable name hits the news ban list', () => {
+    expect(withNames(names)).toBeNull();
+  });
+
+  it('a name with a banned word, as a whole word in any case, fails against src/data/stable.json naming the horse', () => {
+    for (const [name, word] of [['Fresh Paint', 'fresh'], ['Sure Thing Sally', 'sure thing'], ['Cash Out Carl', 'cash out'], ['Hot TIP', 'tip']]) {
+      const e = withNames([...names.slice(0, 3), name])!;
+      expect(e, name).not.toBeNull();
+      expect(e.file).toBe('src/data/stable.json');
+      expect(e.issues.map((i) => i.path)).toEqual(['horses[3].name']);
+      expect(e.message).toContain(`"${name}"`);
+      expect(e.message).toContain(`"${word}"`);
+    }
+  });
+
+  it('a banned word inside a longer word is not a hit', () => {
+    expect(withNames([...names, 'Pickle Tipsy', 'Freshwater'])).toBeNull();
   });
 });
 

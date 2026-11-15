@@ -240,7 +240,8 @@ describe('K4 easier crowd: a horse runs twice, the rivals\' means differ by 6 or
     expect(items).toHaveLength(1);
     expect(items[0].race).toBe(2);
     expect(items[0].headline.startsWith('Race 2: ')).toBe(true);
-    expect(items[0].body.join(' ')).toMatch(/Race 2\b/);
+    // the headline prints the softer race; a body may repeat it ("Race 2 is kinder") or say "here", but never names the other race
+    expect([...items[0].body.join(' ').matchAll(/Race (\d+)/g)].map((m) => Number(m[1])).filter((n) => n !== 2)).toEqual([]);
     expect(items[0].body.join(' ')).not.toMatch(/Race 1\b/);
   });
 
@@ -541,7 +542,9 @@ describe('real days: the claim of every printed item is true, recomputed from th
           const soft = means[0].mean < means[1].mean ? means[0] : means[1];
           expect(it.race, tag).toBe(soft.race);
           expect(soft.rank, tag).toBeLessThanOrEqual(3);
-          expect(it.body.join(' '), tag).toMatch(new RegExp(`Race ${soft.race}\\b`));
+          // the headline prints the softer race; a body that names a race names that one, and "here" means it
+          expect(it.headline.startsWith(`Race ${soft.race}: `), tag).toBe(true);
+          expect([...it.body.join(' ').matchAll(/Race (\d+)/g)].map((m) => Number(m[1])).filter((n) => n !== soft.race), tag).toEqual([]);
         } else if (it.kind === 'K5') {
           expect(fronts, tag).toBe(0);
           expect(named.style, tag).toBe('stalker');
@@ -813,12 +816,14 @@ describe('NU4 to NU6: every shipped pair, filled with every stable name, race, p
     for (const p of kinds.K3.pairs) expect(`${p.headline} ${p.body}`).not.toMatch(/tire|fade|slow|duel|burn/i);
   });
 
-  it('the two pairs the engineer left out really do need a third line for some names (K2 "add up the bars", K7 "most in the bars")', () => {
+  it('the old bodies of the two reworded pairs really need a third line for some names, are no longer shipped, and every shipped K2 and K7 body fits every name', () => {
     const over = (t: string) => names.filter((nm) => wrap(fill(t, { name: nm })).length > 2);
-    expect(over('Add up the bars. {name} comes out well ahead.').sort()).toEqual(['Biscuit Emergency', 'Medium Everything']);
-    expect(over('Add the three bars: {name} is top here.')).toEqual(['Unsolicited Advice']);
-    // and the shipped pairs of those two kinds are the ones that fit
-    expect(kinds.K2.pairs.map((p) => p.headline)).not.toContain('add up the bars');
-    expect(kinds.K7.pairs.map((p) => p.headline)).not.toContain('most in the bars');
+    const OLD_K2 = 'Add up the bars. {name} comes out well ahead.';
+    const OLD_K7 = 'Add the three bars: {name} is top here.';
+    expect(over(OLD_K2).sort()).toEqual(['Biscuit Emergency', 'Medium Everything']);
+    expect(over(OLD_K7)).toEqual(['Unsolicited Advice']);
+    expect(kinds.K2.pairs.map((p) => p.body)).not.toContain(OLD_K2);
+    expect(kinds.K7.pairs.map((p) => p.body)).not.toContain(OLD_K7);
+    for (const k of ['K2', 'K7']) for (const p of kinds[k].pairs) expect(over(p.body), `${k}: ${p.body}`).toEqual([]);
   });
 });

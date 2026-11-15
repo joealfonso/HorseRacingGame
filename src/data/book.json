@@ -167,8 +167,24 @@
               "body": "No one here is close to {name} on paper."
             },
             {
+              "headline": "add up the bars",
+              "body": "Add up the bars. Well ahead: {name}."
+            },
+            {
               "headline": "best by a lot",
               "body": "{name} has the most in the bars, by a lot."
+            },
+            {
+              "headline": "a cut above",
+              "body": "The regular added it twice: {name}, by plenty."
+            },
+            {
+              "headline": "class of the race",
+              "body": "{name} is the class here. Ask anyone."
+            },
+            {
+              "headline": "nobody near on paper",
+              "body": "Even the pigeons see it: {name}, clear."
             }
           ]
         },
@@ -207,6 +223,18 @@
             {
               "headline": "kinder rivals",
               "body": "Race {soft} is the easier of {name}'s two."
+            },
+            {
+              "headline": "the kinder of two",
+              "body": "{name}: two races. This one's softer."
+            },
+            {
+              "headline": "a gentler bunch",
+              "body": "{name} runs two. Fewer bigwigs here."
+            },
+            {
+              "headline": "lighter company",
+              "body": "{name} has the lighter field of two."
             }
           ]
         },
@@ -245,6 +273,18 @@
             {
               "headline": "parked out wide",
               "body": "{name} starts from post {post}. A long trip for speed."
+            },
+            {
+              "headline": "outside looking in",
+              "body": "{name}, post {post}: a bit of extra ground."
+            },
+            {
+              "headline": "far from the rail",
+              "body": "{name} is in post {post}. Costs a little."
+            },
+            {
+              "headline": "the outside seats",
+              "body": "{name}: post {post}, small cost, nice view."
             }
           ]
         },
@@ -256,6 +296,10 @@
               "body": "On paper, {name}. Paper has been wrong before."
             },
             {
+              "headline": "most in the bars",
+              "body": "Add the three bars. Top here: {name}."
+            },
+            {
               "headline": "best sum here",
               "body": "Sum the bars and {name} comes out on top."
             }
@@ -263,7 +307,7 @@
         }
       },
       "status": "starting guess",
-      "note": "docs/specs/book-useful.md sections 3.2 and 3.5, with the 13 rulings: crowded lead at five or more (13.1), K6 inside dropped and wide kept (13.3). Thresholds are starting guesses from docs/specs/book-signals.md; the wording pairs are the spec's, word for word. Two spec pairs are left out because they need a third line for some stable names: K2 \"add up the bars\" (Biscuit Emergency, Medium Everything) and K7 \"most in the bars\" (Unsolicited Advice). The spec's own loader rule fails them."
+      "note": "docs/specs/book-useful.md sections 3.2 and 3.5, with the 13 rulings: crowded lead at five or more (13.1), K6 inside dropped and wide kept (13.3). Thresholds are starting guesses from docs/specs/book-signals.md; the wording pairs are the spec's, word for word, including the two reworded 2026-11-15 and pairs 4 to 6 of K2, K4 and K6 wide."
     },
     "priority": {
       "value": [
