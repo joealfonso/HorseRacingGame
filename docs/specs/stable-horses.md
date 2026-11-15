@@ -26,46 +26,48 @@ Counts in brackets are characters, including spaces and punctuation.
 
 | id | name [n] | style | spd | sta | kick | jockey [n] | coat | silks body / cap | blurb [n] |
 |---|---|---|---|---|---|---|---|---|---|
-| s01 | Hold My Oats [12] | front-runner | 94 | 76 | 81 | Marisol Dunne [13] | chestnut | Royal / Bone | Wants the lead and a snack. [27] |
-| s02 | Paddock Gossip [14] | stalker | 83 | 84 | 85 | Teodoro Valdivia [16] | bay | Gold / Navy | Knows everyone's business. [26] |
+| s01 | Hold My Oats [12] | front-runner | 94 | 76 | 81 | Marisol Dunne [13] | chestnut | Royal / Bone | Fastest here. Then a snack. [27] |
+| s02 | Paddock Gossip [14] | stalker | 83 | 84 | 85 | Teodoro Valdivia [16] | bay | Gold / Navy | Knows all. Beats most. [22] |
 | s03 | Sock In The Dryer [17] | closer | 73 | 90 | 87 | Priya Ramaswamy [15] | dark bay or brown | Sky / Navy | Turns up late, still warm. [26] |
 | s04 | Ten Items Or Less [17] | front-runner | 92 | 70 | 75 | Beau Thibodeaux [15] | dark bay or brown | Red / Bone | Express lane, no exceptions. [28] |
-| s05 | Legally A Horse [15] | stalker | 78 | 82 | 77 | Dani Ferreira [13] | chestnut | Purple / Gold | Papers say horse. We agree. [27] |
+| s05 | Legally A Horse [15] | stalker | 78 | 82 | 77 | Dani Ferreira [13] | chestnut | Purple / Gold | Papers say good horse. True. [28] |
 | s06 | Burgoo Weather [14] | closer | 67 | 88 | 80 | Maeve Callaghan [15] | bay | Emerald / Gold | Low heat, long simmer. [22] |
-| s07 | Goat Is In Charge [17] | front-runner | 93 | 77 | 71 | Kenji Arakawa [13] | black | Hay / Maroon | Goat said go. So, go. [21] |
-| s08 | Smoke Alarm Chirp [17] | stalker | 78 | 76 | 88 | Lucia Barrientos [16] | black | Red / Gold | Quiet, quiet, then BEEP. [24] |
+| s07 | Goat Is In Charge [17] | front-runner | 93 | 77 | 71 | Kenji Arakawa [13] | black | Hay / Maroon | Goat said go. Goat is good. [27] |
+| s08 | Smoke Alarm Chirp [17] | stalker | 78 | 76 | 88 | Lucia Barrientos [16] | black | Red / Gold | Loudest BEEP in the barn. [25] |
 | s09 | Long Story Longer [17] | closer | 72 | 92 | 84 | Odell Fairweather [17] | chestnut | Navy / Lime | Has a lot more to say. [22] |
 | s10 | Biscuit Emergency [17] | front-runner | 93 | 77 | 73 | Nadia Kowalczyk [15] | dark bay or brown | Gold / Maroon | Leaves early for the buffet. [28] |
-| s11 | Circling Back [13] | stalker | 71 | 71 | 85 | Ruben Echeverria [16] | bay | Turquoise / Navy | Will follow up shortly. [23] |
-| s12 | Lost The Remote [15] | closer | 61 | 80 | 78 | Tallulah Grimes [15] | dark bay or brown | Ash / Royal | Stop looking. There it is. [26] |
-| s13 | Derby Hat Budget [16] | front-runner | 89 | 71 | 66 | Emeka Adeyemi [13] | chestnut | Purple / Lime | Dressed for the front row. [26] |
-| s14 | Ran Out Of Names [16] | stalker | 75 | 73 | 68 | Inez Marroquin [14] | bay | Bone / Navy | Was almost called Steve. [24] |
+| s11 | Circling Back [13] | stalker | 71 | 71 | 85 | Ruben Echeverria [16] | bay | Turquoise / Navy | Will follow up, firmly. [23] |
+| s12 | Lost The Remote [15] | closer | 61 | 80 | 78 | Tallulah Grimes [15] | dark bay or brown | Ash / Royal | Found late, now and then. [25] |
+| s13 | Derby Hat Budget [16] | front-runner | 89 | 71 | 66 | Emeka Adeyemi [13] | chestnut | Purple / Lime | Quick off. Hat is midsize. [26] |
+| s14 | Ran Out Of Names [16] | stalker | 75 | 73 | 68 | Inez Marroquin [14] | bay | Bone / Navy | Almost Steve. Wins at times. [28] |
 | s15 | Scenic Route [12] | closer | 58 | 80 | 72 | Wade Holloway [13] | bay | Sky / Maroon | Saw the whole backstretch. [26] |
 | s16 | Running Joke [12] | front-runner | 85 | 69 | 77 | Saoirse Duggan [14] | black | Orange / Navy | Starts before you're ready. [27] |
-| s17 | Take A Number [13] | stalker | 70 | 71 | 77 | Mateo Alcantar [14] | dark bay or brown | Turquoise / Maroon | Waits its turn. Mostly. [23] |
-| s18 | Hay Is For Horses [17] | closer | 58 | 79 | 73 | June Pemberton [14] | bay | Hay / Emerald | Eats well, goes long. [21] |
+| s17 | Take A Number [13] | stalker | 70 | 71 | 77 | Mateo Alcantar [14] | dark bay or brown | Turquoise / Maroon | Waits its turn. Kicks a bit. [28] |
+| s18 | Hay Is For Horses [17] | closer | 58 | 79 | 73 | June Pemberton [14] | bay | Hay / Emerald | Eats well. Wins some days. [26] |
 | s19 | Post Time Panic [15] | front-runner | 82 | 63 | 66 | Linh Truong [11] | dark bay or brown | Red / Navy | Out the door, keys inside. [26] |
-| s20 | Polite Applause [15] | stalker | 73 | 73 | 69 | Esperanza Villalobos [20] | chestnut | Maroon / Bone | Applauds the pace, quietly. [27] |
+| s20 | Polite Applause [15] | stalker | 73 | 73 | 69 | Esperanza Villalobos [20] | chestnut | Maroon / Bone | Mostly claps for the winner. [28] |
 | s21 | Late Checkout [13] | closer | 60 | 78 | 80 | Ferris Lockhart [15] | chestnut | Navy / Gold | Asks for one more hour. [23] |
-| s22 | Porch Light On [14] | front-runner | 87 | 71 | 74 | Greta Lindqvist [15] | bay | Gold / Purple | Keeps the light on for you. [27] |
-| s23 | Bring A Sweater [15] | stalker | 69 | 69 | 72 | Amos Whitlock [13] | chestnut | Maroon / Hay | Has a scarf. Just in case. [26] |
-| s24 | Left On Read [12] | closer | 63 | 71 | 79 | Hollis Tran [11] | bay | Sky / Bone | Typing... still typing... [25] |
-| s25 | Mayor Of Turn Two [17] | front-runner | 86 | 69 | 67 | Yesenia Duarte [14] | chestnut | Royal / Gold | Waves at everyone, early. [25] |
-| s26 | Mint Julep Lawsuit [18] | stalker | 75 | 74 | 69 | Imogen Pruitt [13] | dark bay or brown | Turquoise / Gold | Sweet, cold, and litigious. [27] |
+| s22 | Porch Light On [14] | front-runner | 87 | 71 | 74 | Greta Lindqvist [15] | bay | Gold / Purple | Porch light on, out front. [26] |
+| s23 | Bring A Sweater [15] | stalker | 69 | 69 | 72 | Amos Whitlock [13] | chestnut | Maroon / Hay | Rarely first. Always cozy. [26] |
+| s24 | Left On Read [12] | closer | 63 | 71 | 79 | Hollis Tran [11] | bay | Sky / Bone | Typing... then a fair kick. [27] |
+| s25 | Mayor Of Turn Two [17] | front-runner | 86 | 69 | 67 | Yesenia Duarte [14] | chestnut | Royal / Gold | Fast early. Mayor, not king. [28] |
+| s26 | Mint Julep Lawsuit [18] | stalker | 75 | 74 | 69 | Imogen Pruitt [13] | dark bay or brown | Turquoise / Gold | Litigious. Mid-pack, mostly. [28] |
 | s27 | Unexpected Banjo [16] | closer | 62 | 82 | 80 | Corbin Ashby [12] | dark bay or brown | Lime / Navy | Joins in on the last verse. [27] |
-| s28 | Reply All [9] | front-runner | 85 | 73 | 65 | Walt Pettibone [14] | chestnut | Lime / Royal | Cc's the entire grandstand. [27] |
-| s29 | Understudy [10] | stalker | 77 | 75 | 67 | Hana Takeda [11] | black | Ash / Purple | Knows the lead's lines. [23] |
+| s28 | Reply All [9] | front-runner | 85 | 73 | 65 | Walt Pettibone [14] | chestnut | Lime / Royal | Replies fast. Results vary. [27] |
+| s29 | Understudy [10] | stalker | 77 | 75 | 67 | Hana Takeda [11] | black | Ash / Purple | Knows the lines. Seldom on. [27] |
 | s30 | Decaf By Mistake [16] | closer | 69 | 77 | 84 | Rosa Kettering [14] | bay | Orange / Auburn | Wakes up at the far turn. [25] |
-| s31 | Parking Lot Pigeon [18] | front-runner | 76 | 61 | 63 | Lionel Okafor [13] | bay | Ash / Navy | First to every crumb. [21] |
+| s31 | Parking Lot Pigeon [18] | front-runner | 76 | 61 | 63 | Lionel Okafor [13] | bay | Ash / Navy | Early to crumbs. Few wins. [26] |
 | s32 | Group Project [13] | stalker | 68 | 69 | 61 | Della Mayhew [12] | dark bay or brown | Hay / Purple | Made the title slide. [21] |
-| s33 | Extra Long Receipt [18] | closer | 59 | 73 | 68 | Rafael Montalvo [15] | bay | Bone / Emerald | Prints for a full furlong. [26] |
-| s34 | Unsolicited Advice [18] | front-runner | 73 | 67 | 61 | Agnes Faulkner [14] | bay | Emerald / Bone | Chimes in right away. [21] |
-| s35 | Medium Everything [17] | stalker | 65 | 65 | 64 | Tobias Wren [11] | chestnut | Royal / Hay | Orders the usual. Again. [24] |
-| s36 | Saved It For Later [18] | closer | 57 | 72 | 73 | Paloma Ibarra [13] | chestnut | Purple / Hay | Unwraps it in the stretch. [26] |
+| s33 | Extra Long Receipt [18] | closer | 59 | 73 | 68 | Rafael Montalvo [15] | bay | Bone / Emerald | Prints a lot. Wins a little. [28] |
+| s34 | Unsolicited Advice [18] | front-runner | 73 | 67 | 61 | Agnes Faulkner [14] | bay | Emerald / Bone | Early opinions. Rare wins. [26] |
+| s35 | Medium Everything [17] | stalker | 65 | 65 | 64 | Tobias Wren [11] | chestnut | Royal / Hay | Less than medium. Very kind. [28] |
+| s36 | Saved It For Later [18] | closer | 57 | 72 | 73 | Paloma Ibarra [13] | chestnut | Purple / Hay | Saves it. Still saving it. [26] |
 | s37 | Doorbell Ditch [14] | front-runner | 76 | 64 | 59 | Silas Penhallow [15] | dark bay or brown | Orange / Bone | Rings once and runs. [20] |
-| s38 | Gravy Subpoena [14] | stalker | 69 | 68 | 72 | Cal Broussard [12] | dark bay or brown | Bone / Red | Served papers to the leader. [28] |
-| s39 | Mostly Legs [11] | closer | 59 | 78 | 72 | Anselm Voss [11] | bay | Emerald / Hay | The rest is mostly lungs. [25] |
-| s40 | Big Plans Monday [16] | front-runner | 71 | 70 | 60 | Ingrid Solberg [14] | black | Lime / Maroon | Agenda item one: the lead. [26] |
+| s38 | Gravy Subpoena [14] | stalker | 69 | 68 | 72 | Cal Broussard [12] | dark bay or brown | Bone / Red | Serves papers. Rarely a win. [28] |
+| s39 | Mostly Legs [11] | closer | 59 | 78 | 72 | Anselm Voss [11] | bay | Emerald / Hay | Lots of lungs, few wins. [24] |
+| s40 | Big Plans Monday [16] | front-runner | 71 | 70 | 60 | Ingrid Solberg [14] | black | Lime / Maroon | Plans big. Wins small. [22] |
+
+**Changed 2026-11-15:** 27 blurbs were rewritten so each truthfully alludes to how the horse runs or how good it is (Joseph: "all of the information in thebook should legit allude to outcomes and be useful", and he chose "the mix"). The two columns and the rule are in book-useful.md sections 5 and 14. The table shows the blurbs as shipped.
 
 **Changed 2026-11-14:** the stamina of s34, s37 and s40 was raised (52 to 67, 51 to 64, 59 to 70) because the three almost never won. See "B3 result" in betting-simple.md. The table shows the new values.
 

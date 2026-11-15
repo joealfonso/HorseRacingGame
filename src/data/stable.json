@@ -8,7 +8,7 @@
       "stats": { "speed": 94, "stamina": 76, "kick": 81 },
       "coat": "chestnut",
       "silks": { "body": "Royal", "cap": "Bone" },
-      "blurb": "Wants the lead and a snack."
+      "blurb": "Fastest here. Then a snack."
     },
     {
       "id": "s02",
@@ -18,7 +18,7 @@
       "stats": { "speed": 83, "stamina": 84, "kick": 85 },
       "coat": "bay",
       "silks": { "body": "Gold", "cap": "Navy" },
-      "blurb": "Knows everyone's business."
+      "blurb": "Knows all. Beats most."
     },
     {
       "id": "s03",
@@ -48,7 +48,7 @@
       "stats": { "speed": 78, "stamina": 82, "kick": 77 },
       "coat": "black",
       "silks": { "body": "Purple", "cap": "Gold" },
-      "blurb": "Papers say horse. We agree."
+      "blurb": "Papers say good horse. True."
     },
     {
       "id": "s06",
@@ -68,7 +68,7 @@
       "stats": { "speed": 93, "stamina": 77, "kick": 71 },
       "coat": "black",
       "silks": { "body": "Hay", "cap": "Maroon" },
-      "blurb": "Goat said go. So, go."
+      "blurb": "Goat said go. Goat is good."
     },
     {
       "id": "s08",
@@ -78,7 +78,7 @@
       "stats": { "speed": 78, "stamina": 76, "kick": 88 },
       "coat": "black",
       "silks": { "body": "Red", "cap": "Gold" },
-      "blurb": "Quiet, quiet, then BEEP."
+      "blurb": "Loudest BEEP in the barn."
     },
     {
       "id": "s09",
@@ -108,7 +108,7 @@
       "stats": { "speed": 71, "stamina": 71, "kick": 85 },
       "coat": "bay",
       "silks": { "body": "Turquoise", "cap": "Navy" },
-      "blurb": "Will follow up shortly."
+      "blurb": "Will follow up, firmly."
     },
     {
       "id": "s12",
@@ -118,7 +118,7 @@
       "stats": { "speed": 61, "stamina": 80, "kick": 78 },
       "coat": "dark bay or brown",
       "silks": { "body": "Ash", "cap": "Royal" },
-      "blurb": "Stop looking. There it is."
+      "blurb": "Found late, now and then."
     },
     {
       "id": "s13",
@@ -128,7 +128,7 @@
       "stats": { "speed": 89, "stamina": 71, "kick": 66 },
       "coat": "chestnut",
       "silks": { "body": "Purple", "cap": "Lime" },
-      "blurb": "Dressed for the front row."
+      "blurb": "Quick off. Hat is midsize."
     },
     {
       "id": "s14",
@@ -138,7 +138,7 @@
       "stats": { "speed": 75, "stamina": 73, "kick": 68 },
       "coat": "bay",
       "silks": { "body": "Bone", "cap": "Navy" },
-      "blurb": "Was almost called Steve."
+      "blurb": "Almost Steve. Wins at times."
     },
     {
       "id": "s15",
@@ -168,7 +168,7 @@
       "stats": { "speed": 70, "stamina": 71, "kick": 77 },
       "coat": "dark bay or brown",
       "silks": { "body": "Turquoise", "cap": "Maroon" },
-      "blurb": "Waits its turn. Mostly."
+      "blurb": "Waits its turn. Kicks a bit."
     },
     {
       "id": "s18",
@@ -178,7 +178,7 @@
       "stats": { "speed": 58, "stamina": 79, "kick": 73 },
       "coat": "bay",
       "silks": { "body": "Hay", "cap": "Emerald" },
-      "blurb": "Eats well, goes long."
+      "blurb": "Eats well. Wins some days."
     },
     {
       "id": "s19",
@@ -198,7 +198,7 @@
       "stats": { "speed": 73, "stamina": 73, "kick": 69 },
       "coat": "chestnut",
       "silks": { "body": "Maroon", "cap": "Bone" },
-      "blurb": "Applauds the pace, quietly."
+      "blurb": "Mostly claps for the winner."
     },
     {
       "id": "s21",
@@ -218,7 +218,7 @@
       "stats": { "speed": 87, "stamina": 71, "kick": 74 },
       "coat": "bay",
       "silks": { "body": "Gold", "cap": "Purple" },
-      "blurb": "Keeps the light on for you."
+      "blurb": "Porch light on, out front."
     },
     {
       "id": "s23",
@@ -228,7 +228,7 @@
       "stats": { "speed": 69, "stamina": 69, "kick": 72 },
       "coat": "chestnut",
       "silks": { "body": "Maroon", "cap": "Hay" },
-      "blurb": "Has a scarf. Just in case."
+      "blurb": "Rarely first. Always cozy."
     },
     {
       "id": "s24",
@@ -238,7 +238,7 @@
       "stats": { "speed": 63, "stamina": 71, "kick": 79 },
       "coat": "bay",
       "silks": { "body": "Sky", "cap": "Bone" },
-      "blurb": "Typing... still typing..."
+      "blurb": "Typing... then a fair kick."
     },
     {
       "id": "s25",
@@ -248,7 +248,7 @@
       "stats": { "speed": 86, "stamina": 69, "kick": 67 },
       "coat": "chestnut",
       "silks": { "body": "Royal", "cap": "Gold" },
-      "blurb": "Waves at everyone, early."
+      "blurb": "Fast early. Mayor, not king."
     },
     {
       "id": "s26",
@@ -258,7 +258,7 @@
       "stats": { "speed": 75, "stamina": 74, "kick": 69 },
       "coat": "dark bay or brown",
       "silks": { "body": "Turquoise", "cap": "Gold" },
-      "blurb": "Sweet, cold, and litigious."
+      "blurb": "Litigious. Mid-pack, mostly."
     },
     {
       "id": "s27",
@@ -278,7 +278,7 @@
       "stats": { "speed": 85, "stamina": 73, "kick": 65 },
       "coat": "chestnut",
       "silks": { "body": "Lime", "cap": "Royal" },
-      "blurb": "Cc's the entire grandstand."
+      "blurb": "Replies fast. Results vary."
     },
     {
       "id": "s29",
@@ -288,7 +288,7 @@
       "stats": { "speed": 77, "stamina": 75, "kick": 67 },
       "coat": "black",
       "silks": { "body": "Ash", "cap": "Purple" },
-      "blurb": "Knows the lead's lines."
+      "blurb": "Knows the lines. Seldom on."
     },
     {
       "id": "s30",
@@ -308,7 +308,7 @@
       "stats": { "speed": 76, "stamina": 61, "kick": 63 },
       "coat": "bay",
       "silks": { "body": "Ash", "cap": "Navy" },
-      "blurb": "First to every crumb."
+      "blurb": "Early to crumbs. Few wins."
     },
     {
       "id": "s32",
@@ -328,7 +328,7 @@
       "stats": { "speed": 59, "stamina": 73, "kick": 68 },
       "coat": "bay",
       "silks": { "body": "Bone", "cap": "Emerald" },
-      "blurb": "Prints for a full furlong."
+      "blurb": "Prints a lot. Wins a little."
     },
     {
       "id": "s34",
@@ -338,7 +338,7 @@
       "stats": { "speed": 73, "stamina": 67, "kick": 61 },
       "coat": "bay",
       "silks": { "body": "Emerald", "cap": "Bone" },
-      "blurb": "Chimes in right away."
+      "blurb": "Early opinions. Rare wins."
     },
     {
       "id": "s35",
@@ -348,7 +348,7 @@
       "stats": { "speed": 65, "stamina": 65, "kick": 64 },
       "coat": "chestnut",
       "silks": { "body": "Royal", "cap": "Hay" },
-      "blurb": "Orders the usual. Again."
+      "blurb": "Less than medium. Very kind."
     },
     {
       "id": "s36",
@@ -358,7 +358,7 @@
       "stats": { "speed": 57, "stamina": 72, "kick": 73 },
       "coat": "chestnut",
       "silks": { "body": "Purple", "cap": "Hay" },
-      "blurb": "Unwraps it in the stretch."
+      "blurb": "Saves it. Still saving it."
     },
     {
       "id": "s37",
@@ -378,7 +378,7 @@
       "stats": { "speed": 69, "stamina": 68, "kick": 72 },
       "coat": "dark bay or brown",
       "silks": { "body": "Bone", "cap": "Red" },
-      "blurb": "Served papers to the leader."
+      "blurb": "Serves papers. Rarely a win."
     },
     {
       "id": "s39",
@@ -388,7 +388,7 @@
       "stats": { "speed": 59, "stamina": 78, "kick": 72 },
       "coat": "bay",
       "silks": { "body": "Emerald", "cap": "Hay" },
-      "blurb": "The rest is mostly lungs."
+      "blurb": "Lots of lungs, few wins."
     },
     {
       "id": "s40",
@@ -398,7 +398,7 @@
       "stats": { "speed": 71, "stamina": 70, "kick": 60 },
       "coat": "black",
       "silks": { "body": "Lime", "cap": "Maroon" },
-      "blurb": "Agenda item one: the lead."
+      "blurb": "Plans big. Wins small."
     }
   ]
 }

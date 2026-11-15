@@ -117,9 +117,13 @@ function hash(text: string): string {
   return (h >>> 0).toString(16).padStart(8, '0');
 }
 
-/** Everything a day's sims depend on. Crowd values, pool, takeout and money rules are not in it. */
+/**
+ * Everything a day's sims depend on. Crowd values, pool, takeout and money rules are not in it,
+ * and neither is a horse's blurb: it is words on a page, and rewriting one must not cost a
+ * 90-minute rerun.
+ */
 function cacheKey(ctx: DayContext, runs: number): string {
-  const stableHash = hash(JSON.stringify(ctx.stable));
+  const stableHash = hash(JSON.stringify(ctx.stable.map((h) => ({ ...h, blurb: undefined }))));
   const rulesHash = hash(JSON.stringify({ races: ctx.races, draw: ctx.rules.draw, runs, track: ctx.track, tuning: ctx.tuning }));
   return `sim${SIM_VERSION}-v${HARNESS_CACHE_VERSION}-stable${stableHash}-rules${rulesHash}`;
 }

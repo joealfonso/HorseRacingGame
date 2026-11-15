@@ -381,6 +381,7 @@ Made by the main session on the playtester's numbers ("News kinds (2026-11-15)" 
 5. **K1, K2, K4 and K5 stand as specified.** K5 passes on the true chance (38 percent) and has too few real races to say more (102 in 500 days).
 6. **Harness checks:** one blind rule per kind, "bet the horse the news names" (K1, K2, K3, K4, K5, K7), and one for every horse the printed news names. Each must return below zero per dollar, as every blind rule must. The whole news must also beat picking at random. Measured today: the printed news returns -0.143 per dollar against random's -0.196 on the same days.
 7. **The blurbs in section 5 are not applied yet.** Joseph approved the current blurbs line by line, and the rewrite trades some of their humor for plain class words. They wait for his read.
+   **Decided by Joseph, 2026-11-15: "the mix".** The second-pass column of section 14 ships for every horse it covers except s39, which takes section 5's line with the rest of the weakest ten. 27 blurbs change and 13 of the approved originals stay: nine that section 14 gave back (s03, s04, s06, s09, s10, s16, s21, s27, s30) and the four section 5 kept (s15, s19, s32, s37).
 
 ## 14. Blurbs, a second pass (2026-11-15)
 
